@@ -112,6 +112,11 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
             this.guiTop + 108,
             Settings.FUZZY_MODE,
             FuzzyMode.IGNORE_ALL);
+        this.oreFilter = new GuiImgButton(
+            this.guiLeft - 18,
+            this.guiTop + 108,
+            Settings.ACTIONS,
+            ActionItems.ORE_FILTER);
         btnPriority = new GuiTabButton(
             this.guiLeft + 154,
             this.guiTop,
@@ -121,6 +126,7 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
 
         this.buttonList.add(btnStorageFilter);
         this.buttonList.add(this.fuzzyMode);
+        this.buttonList.add(this.oreFilter);
         this.buttonList.add(btnRwMode);
         this.buttonList.add(btnExtractionMode);
         this.buttonList.add(btnPartition);
@@ -133,17 +139,19 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
         final ContainerSingularityStorageBus c = (ContainerSingularityStorageBus) this.inventorySlots;
         final int capacity = c.storageBus.getInstalledUpgrades(Upgrades.CAPACITY);
         final int hasFuzzy = c.storageBus.getInstalledUpgrades(Upgrades.FUZZY);
+        final boolean hasOreFilter = c.storageBus.getInstalledUpgrades(Upgrades.ORE_FILTER) > 0;
 
         if (btnClear != null) btnClear.setVisibility(true);
         if (btnPartition != null) btnPartition.setVisibility(true);
         if (btnRwMode != null) btnRwMode.setVisibility(true);
         if (btnExtractionMode != null) btnExtractionMode.setVisibility(true);
         if (btnStorageFilter != null) btnStorageFilter.setVisibility(true);
-        if (this.fuzzyMode != null) this.fuzzyMode.setVisibility(hasFuzzy > 0);
+        if (this.fuzzyMode != null) this.fuzzyMode.setVisibility(hasFuzzy > 0 && !hasOreFilter);
+        if (this.oreFilter != null) this.oreFilter.setVisibility(hasOreFilter);
         // btnPriority is a GuiTabButton — always visible, no setVisibility needed
 
         // Slot visibility: 18 base + 9 per CAPACITY card
-        final int activeSlots = 18 + 9 * capacity;
+        final int activeSlots = hasOreFilter ? 0 : 18 + 9 * capacity;
         for (int i = 0; i < virtualSlots.length; i++) {
             if (virtualSlots[i] != null) {
                 virtualSlots[i].setHidden(i >= activeSlots);
@@ -163,6 +171,7 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
             btnExtractionMode.setEnabled(c.accessMode == AccessRestriction.READ_WRITE);
         }
         if (this.fuzzyMode != null) this.fuzzyMode.set(c.fzMode);
+        if (this.oreFilter != null) this.oreFilter.set(ActionItems.ORE_FILTER);
         if (btnPartition != null) btnPartition.set(ActionItems.WRENCH);
         if (btnClear != null) btnClear.set(ActionItems.CLOSE);
 
@@ -173,10 +182,11 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
     public void drawBG(final int offsetX, final int offsetY, final int mouseX, final int mouseY) {
         super.drawBG(offsetX, offsetY, mouseX, mouseY);
         final ContainerSingularityStorageBus c = (ContainerSingularityStorageBus) this.inventorySlots;
-        final int capacity = c.storageBus.getInstalledUpgrades(Upgrades.CAPACITY);
+        final boolean hasOreFilter = c.storageBus.getInstalledUpgrades(Upgrades.ORE_FILTER) > 0;
+        final int capacity = hasOreFilter ? 0 : c.storageBus.getInstalledUpgrades(Upgrades.CAPACITY);
         final int activeRows = 2 + capacity; // base 2 rows + 1 per CAPACITY card, max 7
         for (int i = 0; i < MAX_ROWS; i++) {
-            if (i < activeRows) {
+            if (!hasOreFilter && i < activeRows) {
                 // Active row: UV(7,28), 162×18
                 this.drawTexturedModalRect(offsetX + 7, offsetY + 28 + 18 * i, 7, 28, 162, 18);
             } else {
@@ -205,6 +215,8 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
                 NetworkHandler.instance.sendToServer(new PacketConfigButton(btnStorageFilter.getSetting(), backwards));
             } else if (btn == this.fuzzyMode) {
                 NetworkHandler.instance.sendToServer(new PacketConfigButton(this.fuzzyMode.getSetting(), backwards));
+            } else if (btn == this.oreFilter) {
+                NetworkHandler.instance.sendToServer(new PacketSwitchGuis(GuiBridge.GUI_ORE_FILTER));
             }
         } catch (final IOException e) {
             AELog.debug(e);

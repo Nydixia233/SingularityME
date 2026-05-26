@@ -1,7 +1,6 @@
 package com.github.singularityme.proxy;
 
 import net.minecraft.item.ItemBlock;
-import net.minecraft.item.ItemStack;
 
 import com.github.singularityme.SingularityME;
 import com.github.singularityme.block.BlockSingularityDrive;
@@ -23,9 +22,9 @@ import com.github.singularityme.tile.TileSingularityProbe;
 import com.github.singularityme.tile.TileSingularityStorageBus;
 import com.github.singularityme.tile.TileSingularityTerminal;
 
-import appeng.api.config.Upgrades;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLInterModComms;
+import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
@@ -93,33 +92,9 @@ public class CommonProxy {
 
     public void postInit(FMLPostInitializationEvent event) {
         RecipeHandler.registerRecipes();
-        registerUpgrades();
     }
 
-    private static void registerUpgrades() {
-        // Import Bus
-        Upgrades.CAPACITY.registerItem(new ItemStack(blockImportBus), 2);
-        Upgrades.SPEED.registerItem(new ItemStack(blockImportBus), 4);
-        Upgrades.SUPERSPEED.registerItem(new ItemStack(blockImportBus), 4);
-        Upgrades.SUPERLUMINALSPEED.registerItem(new ItemStack(blockImportBus), 4);
-        Upgrades.ORE_FILTER.registerItem(new ItemStack(blockImportBus), 1);
-        Upgrades.FUZZY.registerItem(new ItemStack(blockImportBus), 1);
-        Upgrades.REDSTONE.registerItem(new ItemStack(blockImportBus), 1);
-
-        // Export Bus
-        Upgrades.CAPACITY.registerItem(new ItemStack(blockExportBus), 2);
-        Upgrades.SPEED.registerItem(new ItemStack(blockExportBus), 4);
-        Upgrades.SUPERSPEED.registerItem(new ItemStack(blockExportBus), 4);
-        Upgrades.SUPERLUMINALSPEED.registerItem(new ItemStack(blockExportBus), 4);
-        Upgrades.ORE_FILTER.registerItem(new ItemStack(blockExportBus), 1);
-        Upgrades.FUZZY.registerItem(new ItemStack(blockExportBus), 1);
-        Upgrades.REDSTONE.registerItem(new ItemStack(blockExportBus), 1);
-        Upgrades.CRAFTING.registerItem(new ItemStack(blockExportBus), 1);
-
-        // Storage Bus
-        Upgrades.CAPACITY.registerItem(new ItemStack(blockStorageBus), 5);
-        Upgrades.FUZZY.registerItem(new ItemStack(blockStorageBus), 1);
-        Upgrades.INVERTER.registerItem(new ItemStack(blockStorageBus), 1);
-        Upgrades.STICKY.registerItem(new ItemStack(blockStorageBus), 1);
+    public void loadComplete(FMLLoadCompleteEvent event) {
+        com.github.singularityme.init.SingularityUpgradeMirror.mirrorAll();
     }
 }
