@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.classpath
+*.project
+.settings/
+
+# Minecraft dev environment
+run/
+eclipse/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kiro / Claude session files
+.claude/
+
+# Build artifacts
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Logs
+*.log
+build_out.txt
