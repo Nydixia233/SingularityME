@@ -7,11 +7,13 @@ import net.minecraft.entity.player.InventoryPlayer;
 import com.github.singularityme.tile.TileSingularityImportBus;
 
 import appeng.api.config.RedstoneMode;
+import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
 import appeng.api.storage.StorageName;
 import appeng.api.storage.data.IAEStack;
 import appeng.container.implementations.ContainerUpgradeable;
 import appeng.container.interfaces.IVirtualSlotHolder;
+import appeng.container.slot.OptionalSlotFake;
 import appeng.tile.inventory.IAEStackInventory;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
@@ -48,13 +50,13 @@ public class ContainerSingularityImportBus extends ContainerUpgradeable implemen
     @Override
     protected void loadSettingsFromHost(final appeng.api.util.IConfigManager cm) {
         this.rsMode = (RedstoneMode) cm.getSetting(Settings.REDSTONE_CONTROLLED);
-        if (importBus.getInstalledUpgrades(appeng.api.config.Upgrades.FUZZY) > 0) {
-            this.fzMode = (appeng.api.config.FuzzyMode) cm.getSetting(Settings.FUZZY_MODE);
-        }
+        this.fzMode = (appeng.api.config.FuzzyMode) cm.getSetting(Settings.FUZZY_MODE);
     }
 
     @Override
     public void detectAndSendChanges() {
+        this.verifyPermissions(SecurityPermissions.BUILD, false);
+
         if (isServer()) {
             this.loadSettingsFromHost(importBus.getConfigManager());
             this.updateVirtualSlots(
@@ -62,7 +64,17 @@ public class ContainerSingularityImportBus extends ContainerUpgradeable implemen
                 importBus.getAEInventoryByName(StorageName.CONFIG),
                 virtualSlotsClient);
         }
+        this.clearDisabledFakeSlots();
         this.standardDetectAndSendChanges();
+    }
+
+    private void clearDisabledFakeSlots() {
+        for (final Object slot : this.inventorySlots) {
+            if (slot instanceof OptionalSlotFake fakeSlot && !fakeSlot.isEnabled()
+                && fakeSlot.getDisplayStack() != null) {
+                fakeSlot.clearStack();
+            }
+        }
     }
 
     // ---- IVirtualSlotHolder ----

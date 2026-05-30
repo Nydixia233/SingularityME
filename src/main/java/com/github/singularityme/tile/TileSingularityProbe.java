@@ -1,10 +1,16 @@
 package com.github.singularityme.tile;
 
+import java.util.EnumSet;
+
+import net.minecraftforge.common.util.ForgeDirection;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.github.singularityme.core.SingularityNetworkManager;
 
+import appeng.api.networking.IGridNode;
+import appeng.api.util.AECableType;
 import appeng.me.GridNode;
 import appeng.tile.TileEvent;
 import appeng.tile.events.TileEventType;
@@ -15,9 +21,8 @@ import appeng.tile.grid.AENetworkTile;
  *
  * <p>
  * When placed (with a player owner set), it registers its AE2 node into the player's
- * SingularityGrid. Logs the active state once it first goes active, confirming that the energy
- * virtualisation in {@link com.github.singularityme.grid.SingularityAnchorNode} is working
- * correctly.
+ * SingularityGrid. Logs the active state once it first goes active, confirming that the
+ * grid has received real power.
  *
  * <p>
  * Obtain via {@code /give <player> singularityme:singularity_probe 1 0}. No crafting recipe is
@@ -30,10 +35,23 @@ public class TileSingularityProbe extends AENetworkTile {
     /** Set to true once we have logged the first active-state confirmation. */
     private boolean loggedActive = false;
 
+    public TileSingularityProbe() {
+        this.getProxy()
+            .setFlags();
+        this.getProxy()
+            .setValidSides(EnumSet.noneOf(ForgeDirection.class));
+        this.getProxy()
+            .setIdlePowerUsage(0.0);
+    }
+
     // ---- AE2 lifecycle hooks ----
 
     @Override
     public void onReady() {
+        this.getProxy()
+            .setFlags();
+        this.getProxy()
+            .setValidSides(EnumSet.noneOf(ForgeDirection.class));
         // super.onReady() calls proxy.onReady() which creates the GridNode and sets playerID
         // from the owner stored by Block.onBlockPlacedBy -> proxy.setOwner(player)
         super.onReady();
@@ -51,7 +69,7 @@ public class TileSingularityProbe extends AENetworkTile {
             return;
         }
 
-        SingularityNetworkManager.INSTANCE.registerNode(playerID, node);
+        SingularityNetworkManager.INSTANCE.registerNode(playerID, 0, node);
         LOG.info(
             "[SingularityME][Probe] onReady: registered node (playerID={}, isActive={})",
             playerID,
@@ -60,13 +78,13 @@ public class TileSingularityProbe extends AENetworkTile {
 
     @Override
     public void onChunkUnload() {
-        unregister();
+        unregister(false);
         super.onChunkUnload();
     }
 
     @Override
     public void invalidate() {
-        unregister();
+        unregister(true);
         super.invalidate();
     }
 
@@ -80,7 +98,7 @@ public class TileSingularityProbe extends AENetworkTile {
 
         if (getProxy().isActive()) {
             LOG.info(
-                "[SingularityME][Probe] isActive=true — SingularityGrid energy virtualisation OK at ({},{},{})",
+                "[SingularityME][Probe] isActive=true — SingularityGrid has power at ({},{},{})",
                 xCoord,
                 yCoord,
                 zCoord);
@@ -88,13 +106,23 @@ public class TileSingularityProbe extends AENetworkTile {
         }
     }
 
+    @Override
+    public IGridNode getGridNode(final ForgeDirection dir) {
+        return SingularityPhysicalIsolation.getGridNode(this, dir);
+    }
+
+    @Override
+    public AECableType getCableConnectionType(final ForgeDirection dir) {
+        return AECableType.NONE;
+    }
+
     // ---- helpers ----
 
-    private void unregister() {
+    private void unregister(final boolean permanent) {
         if (worldObj == null || worldObj.isRemote) return;
         GridNode node = (GridNode) getProxy().getNode();
         if (node != null) {
-            SingularityNetworkManager.INSTANCE.unregisterNode(node.getPlayerID(), node);
+            SingularityNetworkManager.INSTANCE.unregisterNode(node.getPlayerID(), 0, node, permanent);
         }
     }
 }

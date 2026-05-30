@@ -8,12 +8,14 @@ import com.github.singularityme.tile.TileSingularityExportBus;
 
 import appeng.api.config.RedstoneMode;
 import appeng.api.config.SchedulingMode;
+import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
 import appeng.api.config.YesNo;
 import appeng.api.storage.StorageName;
 import appeng.api.storage.data.IAEStack;
 import appeng.container.implementations.ContainerUpgradeable;
 import appeng.container.interfaces.IVirtualSlotHolder;
+import appeng.container.slot.OptionalSlotFake;
 import appeng.tile.inventory.IAEStackInventory;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
@@ -50,12 +52,8 @@ public class ContainerSingularityExportBus extends ContainerUpgradeable implemen
     protected void loadSettingsFromHost(final appeng.api.util.IConfigManager cm) {
         this.rsMode = (RedstoneMode) cm.getSetting(Settings.REDSTONE_CONTROLLED);
         this.setSchedulingMode((SchedulingMode) cm.getSetting(Settings.SCHEDULING_MODE));
-        if (exportBus.getInstalledUpgrades(appeng.api.config.Upgrades.CRAFTING) > 0) {
-            this.cMode = (YesNo) cm.getSetting(Settings.CRAFT_ONLY);
-        }
-        if (exportBus.getInstalledUpgrades(appeng.api.config.Upgrades.FUZZY) > 0) {
-            this.fzMode = (appeng.api.config.FuzzyMode) cm.getSetting(Settings.FUZZY_MODE);
-        }
+        this.cMode = (YesNo) cm.getSetting(Settings.CRAFT_ONLY);
+        this.fzMode = (appeng.api.config.FuzzyMode) cm.getSetting(Settings.FUZZY_MODE);
     }
 
     // setSchedulingMode is package-private in ContainerUpgradeable, so shadow the field directly.
@@ -65,6 +63,8 @@ public class ContainerSingularityExportBus extends ContainerUpgradeable implemen
 
     @Override
     public void detectAndSendChanges() {
+        this.verifyPermissions(SecurityPermissions.BUILD, false);
+
         if (isServer()) {
             this.loadSettingsFromHost(exportBus.getConfigManager());
             this.updateVirtualSlots(
@@ -72,7 +72,17 @@ public class ContainerSingularityExportBus extends ContainerUpgradeable implemen
                 exportBus.getAEInventoryByName(StorageName.CONFIG),
                 virtualSlotsClient);
         }
+        this.clearDisabledFakeSlots();
         this.standardDetectAndSendChanges();
+    }
+
+    private void clearDisabledFakeSlots() {
+        for (final Object slot : this.inventorySlots) {
+            if (slot instanceof OptionalSlotFake fakeSlot && !fakeSlot.isEnabled()
+                && fakeSlot.getDisplayStack() != null) {
+                fakeSlot.clearStack();
+            }
+        }
     }
 
     // ---- IVirtualSlotHolder ----

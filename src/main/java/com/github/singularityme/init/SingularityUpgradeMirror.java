@@ -11,6 +11,7 @@ import net.minecraft.item.ItemStack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.github.singularityme.init.SingularityPrototypeRegistry.SyncStatus;
 import com.github.singularityme.proxy.CommonProxy;
 import com.google.common.base.Optional;
 
@@ -66,25 +67,29 @@ public final class SingularityUpgradeMirror {
 
         final List<DeviceMapping> mappings = Arrays.asList(
             new DeviceMapping(
-                "Interface",
+                "ME Interface",
                 new ItemStack(CommonProxy.blockInterface),
                 INTERFACE_UPGRADES,
+                SyncStatus.AUTO_MIRROR,
                 parts.iface(),
                 blocks.iface()),
             new DeviceMapping(
-                "Import Bus",
+                "ME Import Bus",
                 new ItemStack(CommonProxy.blockImportBus),
                 IMPORT_BUS_UPGRADES,
+                SyncStatus.MIRROR_SAFE,
                 parts.importBus()),
             new DeviceMapping(
-                "Export Bus",
+                "ME Export Bus",
                 new ItemStack(CommonProxy.blockExportBus),
                 EXPORT_BUS_UPGRADES,
+                SyncStatus.MIRROR_SAFE,
                 parts.exportBus()),
             new DeviceMapping(
-                "Storage Bus",
+                "ME Storage Bus",
                 new ItemStack(CommonProxy.blockStorageBus),
                 STORAGE_BUS_UPGRADES,
+                SyncStatus.MIRROR_SAFE,
                 parts.storageBus()));
 
         int mirrored = 0;
@@ -116,9 +121,23 @@ public final class SingularityUpgradeMirror {
                 final int max = Math.max(sourceMax, existingTargetMax);
                 upgrade.registerItem(mapping.targetStack.copy(), max);
                 mirrored++;
+                SingularityPrototypeRegistry.recordUpgradeResult(
+                    mapping.name,
+                    upgrade,
+                    mapping.allowedStatus,
+                    sourceMax,
+                    max,
+                    "prototype mirror");
                 LOG.info("[SingularityME] {} accepts {} x{} via AE2 prototype mirror.", mapping.name, upgrade, max);
             } else if (!allowed && (sourceMax > 0 || existingTargetMax > 0)) {
                 denied++;
+                SingularityPrototypeRegistry.recordUpgradeResult(
+                    mapping.name,
+                    upgrade,
+                    SyncStatus.NOT_SUPPORTED,
+                    sourceMax,
+                    existingTargetMax,
+                    "behavior not implemented");
                 LOG.warn(
                     "[SingularityME] {} rejected unsupported upgrade {} (prototypeMax={}, directTargetMax={}).",
                     mapping.name,
@@ -181,13 +200,15 @@ public final class SingularityUpgradeMirror {
         private final String name;
         private final ItemStack targetStack;
         private final EnumSet<Upgrades> allowedUpgrades;
+        private final SyncStatus allowedStatus;
         private final List<ItemStack> sourceStacks;
 
         private DeviceMapping(final String name, final ItemStack targetStack, final EnumSet<Upgrades> allowedUpgrades,
-            final IItemDefinition... sources) {
+            final SyncStatus allowedStatus, final IItemDefinition... sources) {
             this.name = name;
             this.targetStack = targetStack;
             this.allowedUpgrades = allowedUpgrades;
+            this.allowedStatus = allowedStatus;
             this.sourceStacks = stacks(sources);
         }
     }

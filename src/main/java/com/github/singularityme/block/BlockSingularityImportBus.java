@@ -1,8 +1,5 @@
 package com.github.singularityme.block;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.ITileEntityProvider;
-import net.minecraft.block.material.Material;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -19,12 +16,13 @@ import appeng.me.helpers.IGridProxyable;
  * Singularity Import Bus block — pulls items from the adjacent container into
  * the player's global SingularityGrid each tick.
  */
-public class BlockSingularityImportBus extends Block implements ITileEntityProvider {
+public class BlockSingularityImportBus extends BlockSingularityPartLike {
 
     public static final int GUI_ID = 6;
+    private static int renderTypeId;
 
     public BlockSingularityImportBus() {
-        super(Material.iron);
+        super(SingularityPartGeometry.Kind.IMPORT_BUS);
         setBlockName("singularity_import_bus");
         setBlockTextureName("appliedenergistics2:ItemPart.ImportBus");
         setHardness(2.0f);
@@ -41,12 +39,17 @@ public class BlockSingularityImportBus extends Block implements ITileEntityProvi
     }
 
     @Override
+    public int onBlockPlaced(final World world, final int x, final int y, final int z, final int side, final float hitX,
+        final float hitY, final float hitZ, final int metadata) {
+        return ForgeDirection.getOrientation(side)
+            .getOpposite()
+            .ordinal();
+    }
+
+    @Override
     public void onBlockPlacedBy(final World world, final int x, final int y, final int z, final EntityLivingBase placer,
         final ItemStack stack) {
         super.onBlockPlacedBy(world, x, y, z, placer, stack);
-
-        ForgeDirection facing = BlockSingularityStorageBus.facingFromPlacer(placer);
-        world.setBlockMetadataWithNotify(x, y, z, facing.ordinal(), 2);
 
         if (placer instanceof EntityPlayer) {
             TileEntity te = world.getTileEntity(x, y, z);
@@ -59,17 +62,27 @@ public class BlockSingularityImportBus extends Block implements ITileEntityProvi
 
     @Override
     public boolean renderAsNormalBlock() {
-        return true;
+        return super.renderAsNormalBlock();
+    }
+
+    @Override
+    public int getRenderType() {
+        return renderTypeId == 0 ? super.getRenderType() : renderTypeId;
+    }
+
+    public static void setRenderTypeId(final int renderTypeId) {
+        BlockSingularityImportBus.renderTypeId = renderTypeId;
     }
 
     @Override
     public boolean isOpaqueCube() {
-        return true;
+        return super.isOpaqueCube();
     }
 
     @Override
     public boolean onBlockActivated(final World world, final int x, final int y, final int z, final EntityPlayer player,
         final int side, final float fx, final float fy, final float fz) {
+        if (BlockSingularityStorageBus.tryWrenchRotate(world, x, y, z, player)) return true;
         if (!world.isRemote) {
             player.openGui(SingularityME.instance, GUI_ID, world, x, y, z);
         }

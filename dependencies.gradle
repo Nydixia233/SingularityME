@@ -2,8 +2,19 @@ dependencies {
     api('com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-944-GTNH:dev')
     api('com.github.GTNewHorizons:GT5-Unofficial:5.09.52.525:dev')
     api('com.github.GTNewHorizons:GTNHLib:0.10.2:dev')
+    api('club.heiqi.uilib:Qz-UILib-4.1.3-LTS:NO-GIT-TAG-SET:dev') {
+        transitive = false
+    }
     api('com.github.GTNewHorizons:NotEnoughItems:2.8.98-GTNH:dev')
     api('com.github.GTNewHorizons:waila:1.19.28:dev')
 
     compileOnly("org.jetbrains:annotations:26.1.0")
+
+    if ((findProperty('singularityme.compat.ae2fc') ?: 'false').toString().toBoolean()) {
+        runtimeOnly("com.github.GTNewHorizons:AE2FluidCraft-Rework:${findProperty('singularityme.compat.ae2fcVersion') ?: '1.5.85-gtnh'}:dev")
+    }
+
+    if ((findProperty('singularityme.compat.wct') ?: 'false').toString().toBoolean()) {
+        runtimeOnly("com.github.GTNewHorizons:WirelessCraftingTerminal:${findProperty('singularityme.compat.wctVersion') ?: '1.12.13'}:dev")
+    }
 }

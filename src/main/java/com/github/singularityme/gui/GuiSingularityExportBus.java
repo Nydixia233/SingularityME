@@ -4,6 +4,7 @@ import static appeng.util.item.AEItemStackType.ITEM_STACK_TYPE;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.util.StatCollector;
 
 import org.lwjgl.input.Mouse;
 
@@ -21,6 +22,7 @@ import appeng.api.storage.data.IAEStackType;
 import appeng.client.gui.implementations.GuiUpgradeable;
 import appeng.client.gui.slots.VirtualMEPhantomSlot;
 import appeng.client.gui.widgets.GuiImgButton;
+import appeng.client.gui.widgets.GuiTabButton;
 import appeng.core.sync.GuiBridge;
 import appeng.core.sync.network.NetworkHandler;
 import appeng.core.sync.packets.PacketConfigButton;
@@ -44,6 +46,7 @@ public class GuiSingularityExportBus extends GuiUpgradeable {
     protected final VirtualMEPhantomSlot[] virtualSlots = new VirtualMEPhantomSlot[9];
     protected GuiImgButton schedulingMode;
     protected GuiImgButton craftMode;
+    private GuiTabButton btnNetworkTab;
 
     public GuiSingularityExportBus(final InventoryPlayer ip, final TileSingularityExportBus te) {
         super(new ContainerSingularityExportBus(ip, te));
@@ -106,6 +109,14 @@ public class GuiSingularityExportBus extends GuiUpgradeable {
             Settings.SCHEDULING_MODE,
             SchedulingMode.DEFAULT);
         this.buttonList.add(this.schedulingMode);
+
+        this.btnNetworkTab = new GuiTabButton(
+            this.guiLeft + this.xSize - 22,
+            this.guiTop + 4,
+            2 + 11 * 16,
+            "Network",
+            itemRender);
+        this.buttonList.add(this.btnNetworkTab);
     }
 
     @Override
@@ -167,6 +178,10 @@ public class GuiSingularityExportBus extends GuiUpgradeable {
             NetworkHandler.instance.sendToServer(new PacketConfigButton(this.fuzzyMode.getSetting(), backwards));
         } else if (btn == this.oreFilter) {
             NetworkHandler.instance.sendToServer(new PacketSwitchGuis(GuiBridge.GUI_ORE_FILTER));
+        } else if (btn == this.btnNetworkTab) {
+            final ContainerSingularityExportBus c = (ContainerSingularityExportBus) this.inventorySlots;
+            final net.minecraft.tileentity.TileEntity te = c.exportBus;
+            NetworkTabClientActions.open(te);
         }
     }
 
@@ -200,7 +215,7 @@ public class GuiSingularityExportBus extends GuiUpgradeable {
 
     @Override
     protected String getName() {
-        return "Singularity Export Bus";
+        return StatCollector.translateToLocal("tile.singularity_export_bus.name");
     }
 
     private boolean acceptType(final VirtualMEPhantomSlot slot, final IAEStackType<?> type, final int btn) {

@@ -11,6 +11,8 @@ import net.minecraft.item.ItemStack;
 
 import com.github.singularityme.proxy.CommonProxy;
 
+import appeng.api.AEApi;
+import appeng.api.definitions.IItemDefinition;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.ItemList;
 import gregtech.api.enums.Materials;
@@ -32,11 +34,15 @@ public final class RecipeHandler {
     public static void registerRecipes() {
         registerStorageBus();
         registerTerminal();
+        registerNetworkTerminal();
+        registerCraftingTerminal();
+        registerPatternTerminal();
         registerImportBus();
         registerExportBus();
         registerInterface();
         registerPowerCore();
         registerDrive();
+        registerCraftingCore();
     }
 
     // ---- helpers ----
@@ -46,6 +52,12 @@ public final class RecipeHandler {
         ItemStack s = GTModHandler.getModItem("appliedenergistics2", "item.ItemMultiPart", 1);
         if (s != null) s.setItemDamage(damage);
         return s;
+    }
+
+    private static ItemStack ae2Definition(final IItemDefinition definition) {
+        return definition == null ? null
+            : definition.maybeStack(1)
+                .orNull();
     }
 
     private static ItemStack plate(final Materials mat, final int n) {
@@ -118,6 +130,84 @@ public final class RecipeHandler {
             .itemOutputs(new ItemStack(CommonProxy.blockTerminal, 1))
             .eut(TierEU.RECIPE_LuV)
             .duration(30 * SECONDS)
+            .addTo(AssemblyLine);
+    }
+
+    private static void registerNetworkTerminal() {
+        ItemStack research = new ItemStack(CommonProxy.blockTerminal, 1);
+
+        GTValues.RA.stdBuilder()
+            .metadata(RESEARCH_ITEM, research)
+            .metadata(SCANNING, new Scanning(2 * MINUTES, TierEU.RECIPE_IV))
+            .itemInputs(
+                research.copy(),
+                circuit(6),
+                circuitIV(4),
+                plate(Materials.Iridium, 4),
+                plateDouble(Materials.NaquadahAlloy, 2),
+                ItemList.Sensor_LuV.get(4),
+                ItemList.Emitter_LuV.get(2),
+                GTOreDictUnificator.get(OrePrefixes.wireGt04, Materials.YttriumBariumCuprate, 8))
+            .fluidInputs(Materials.SolderingAlloy.getMolten(6 * INGOTS), Materials.Naquadah.getMolten(3 * INGOTS))
+            .itemOutputs(new ItemStack(CommonProxy.blockNetworkTerminal, 1))
+            .eut(TierEU.RECIPE_ZPM)
+            .duration(45 * SECONDS)
+            .addTo(AssemblyLine);
+    }
+
+    private static void registerCraftingTerminal() {
+        ItemStack research = ae2Definition(
+            AEApi.instance()
+                .definitions()
+                .parts()
+                .craftingTerminal());
+        if (research == null) return;
+
+        GTValues.RA.stdBuilder()
+            .metadata(RESEARCH_ITEM, research)
+            .metadata(SCANNING, new Scanning(2 * MINUTES, TierEU.RECIPE_IV))
+            .itemInputs(
+                research.copy(),
+                new ItemStack(CommonProxy.blockTerminal, 1),
+                circuit(4),
+                circuitIV(2),
+                plate(Materials.Iridium, 4),
+                plateDouble(Materials.NaquadahAlloy, 2),
+                ItemList.Sensor_LuV.get(2),
+                ItemList.Emitter_LuV.get(2),
+                GTOreDictUnificator.get(OrePrefixes.wireGt04, Materials.YttriumBariumCuprate, 4))
+            .fluidInputs(Materials.SolderingAlloy.getMolten(4 * INGOTS), Materials.Naquadah.getMolten(2 * INGOTS))
+            .itemOutputs(new ItemStack(CommonProxy.blockCraftingTerminal, 1))
+            .eut(TierEU.RECIPE_LuV)
+            .duration(30 * SECONDS)
+            .addTo(AssemblyLine);
+    }
+
+    private static void registerPatternTerminal() {
+        ItemStack research = ae2Definition(
+            AEApi.instance()
+                .definitions()
+                .parts()
+                .patternTerminal());
+        if (research == null) return;
+
+        GTValues.RA.stdBuilder()
+            .metadata(RESEARCH_ITEM, research)
+            .metadata(SCANNING, new Scanning(2 * MINUTES, TierEU.RECIPE_IV))
+            .itemInputs(
+                research.copy(),
+                new ItemStack(CommonProxy.blockTerminal, 1),
+                circuit(4),
+                circuitIV(4),
+                plate(Materials.Iridium, 4),
+                plateDouble(Materials.NaquadahAlloy, 2),
+                ItemList.Field_Generator_LuV.get(1),
+                ItemList.Emitter_LuV.get(2),
+                GTOreDictUnificator.get(OrePrefixes.wireGt04, Materials.YttriumBariumCuprate, 6))
+            .fluidInputs(Materials.SolderingAlloy.getMolten(6 * INGOTS), Materials.Naquadah.getMolten(3 * INGOTS))
+            .itemOutputs(new ItemStack(CommonProxy.blockPatternTerminal, 1))
+            .eut(TierEU.RECIPE_LuV)
+            .duration(45 * SECONDS)
             .addTo(AssemblyLine);
     }
 
@@ -229,6 +319,37 @@ public final class RecipeHandler {
             .addTo(AssemblyLine);
     }
 
+    private static void registerCraftingCore() {
+        ItemStack research = ae2Definition(
+            AEApi.instance()
+                .definitions()
+                .blocks()
+                .craftingUnit());
+        if (research == null) return;
+
+        GTValues.RA.stdBuilder()
+            .metadata(RESEARCH_ITEM, research)
+            .metadata(SCANNING, new Scanning(3 * MINUTES, TierEU.RECIPE_IV))
+            .itemInputs(
+                research.copy(),
+                circuit(8),
+                circuitIV(4),
+                plateDouble(Materials.Iridium, 4),
+                plateDouble(Materials.NaquadahAlloy, 4),
+                ItemList.Field_Generator_LuV.get(2),
+                ItemList.Sensor_LuV.get(2),
+                ItemList.Emitter_LuV.get(2),
+                GTOreDictUnificator.get(OrePrefixes.wireGt04, Materials.YttriumBariumCuprate, 8))
+            .fluidInputs(
+                Materials.SolderingAlloy.getMolten(8 * INGOTS),
+                Materials.Naquadah.getMolten(4 * INGOTS),
+                Materials.Osmium.getMolten(2 * INGOTS))
+            .itemOutputs(new ItemStack(CommonProxy.blockCraftingCore, 1))
+            .eut(TierEU.RECIPE_LuV)
+            .duration(1 * MINUTES)
+            .addTo(AssemblyLine);
+    }
+
     /**
      * 奇点能量核心 — researched from ME Energy Acceptor block.
      * Draws EU from GT cables and converts it to AE power for the SingularityGrid.
@@ -259,4 +380,5 @@ public final class RecipeHandler {
             .duration(1 * MINUTES)
             .addTo(AssemblyLine);
     }
+
 }

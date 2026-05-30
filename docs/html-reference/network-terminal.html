@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网络终端 — Singularity ME</title>
+<link rel="stylesheet" href="shared-palette.css">
+<style>
+  /* ── 页面容器 ── */
+  .overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(5, 7, 11, 0.67);
+  }
+
+  .frame {
+    width: min(92vw, 760px);
+    height: min(92vh, 520px);
+    display: flex; flex-direction: column;
+    background: rgba(20, 25, 35, 0.93);
+    border: 1px solid var(--border-panel);
+    border-radius: var(--radius-panel);
+    overflow: hidden;
+  }
+
+  /* ── 导航栏 ── */
+  .nav {
+    display: flex; align-items: center;
+    flex-shrink: 0;
+    background: var(--bg-list);
+    border: 1px solid var(--border-list);
+    border-radius: var(--radius-row);
+    margin: var(--gap-md);
+    padding: 4px;
+    gap: 4px;
+  }
+  .nav-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 30px;
+    padding: 5px 10px;
+    border-radius: var(--radius-row);
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.05); }
+  .nav-btn.active { background: var(--btn-active); color: var(--text-primary); }
+
+  /* ── 内容区 ── */
+  .content {
+    flex: 1 1 0;
+    display: flex; flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── 网络信息条 ── */
+  .network-bar {
+    display: flex; align-items: center;
+    flex-shrink: 0;
+    padding: var(--pad-sm) var(--pad-lg);
+    gap: var(--gap-md);
+  }
+  .network-bar .bar-title {
+    flex: 1; min-width: 0;
+    color: var(--text-primary);
+    font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .network-bar .bar-name {
+    color: var(--text-secondary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── 滚动盒 ── */
+  .scroll-box {
+    flex: 1 1 0; min-height: 120px;
+    overflow-y: auto; overflow-x: hidden;
+    padding: var(--gap-sm) var(--pad-lg);
+  }
+
+  /* ── 列表元信息 ── */
+  .list-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-shrink: 0;
+    padding: 4px var(--pad-lg);
+    color: var(--text-muted); font-size: 12px;
+  }
+
+  /* ── 网络列表 ── */
+  .network-list-inner {
+    display: flex; flex-direction: column;
+    background: var(--bg-list);
+    border: 1px solid var(--border-list);
+    border-radius: var(--radius-row);
+  }
+  .network-row {
+    display: flex; align-items: center;
+    height: var(--row-h);
+    padding: 0 var(--pad-sm);
+    gap: var(--gap-md);
+    border: 1px solid var(--border-row);
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .network-row:not(:last-child) { border-bottom: none; }
+  .network-row:hover { filter: brightness(1.1); }
+  .network-row .name {
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── 选中摘要栏 ── */
+  .selection-summary {
+    display: flex; align-items: center;
+    flex-shrink: 0;
+    margin: var(--gap-sm) var(--pad-lg) 0;
+    padding: var(--pad-md); gap: var(--gap-md);
+    background: var(--bg-list);
+    border: 1px solid;
+    border-radius: var(--radius-row);
+  }
+  .selection-summary .text {
+    flex: 1; min-width: 0;
+    color: var(--text-secondary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── 操作行 ── */
+  .actions {
+    display: flex; align-items: center;
+    flex-shrink: 0;
+    padding: 0 var(--pad-lg) var(--gap-lg);
+    gap: var(--gap-md);
+    flex-wrap: wrap;
+  }
+
+  /* ── 编辑表单 ── */
+  .edit-form {
+    display: flex; flex-direction: column;
+    gap: var(--gap-md);
+    padding: var(--pad-lg);
+  }
+  .field-row {
+    display: flex; align-items: center;
+    gap: var(--gap-md);
+  }
+  .field-row .field-label {
+    width: 80px; flex-shrink: 0;
+    color: var(--text-label);
+    text-align: right;
+  }
+  .field-row input,
+  .field-row .readonly-field {
+    flex: 1; min-width: 0;
+  }
+
+  /* ── 颜色调色板 ── */
+  .color-palette {
+    display: flex; flex-wrap: wrap;
+    gap: var(--gap-sm);
+  }
+
+  /* ── 预览条 ── */
+  .preview-bar {
+    display: flex; align-items: center;
+    gap: var(--gap-md);
+    padding: var(--pad-md);
+    background: var(--bg-list);
+    border: 1px solid;
+    border-radius: var(--radius-row);
+  }
+  .preview-bar .preview-name {
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── 信息行 ── */
+  .info-row {
+    display: flex; align-items: center;
+    height: var(--row-h);
+    padding: 0 var(--gap-lg); gap: var(--gap-md);
+    background: var(--bg-row);
+    border: 1px solid var(--border-row);
+  }
+  .info-row:not(:last-child) { border-bottom: none; }
+  .info-row .info-label {
+    width: 100px; flex-shrink: 0;
+    color: var(--text-label);
+  }
+  .info-row .info-value {
+    flex: 1; min-width: 0;
+    color: var(--text-secondary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── 空状态 ── */
+  .empty-state {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-empty);
+    font-size: 14px;
+  }
+
+  /* ── 按钮变体 ── */
+  .btn-xs { padding: 0 8px; height: 28px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="overlay">
+  <div class="frame">
+
+    <!-- 导航栏 -->
+    <div class="nav" id="nav"></div>
+
+    <!-- 内容区 -->
+    <div class="content" id="content"></div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 模拟数据
+// ============================================================
+const MOCK_NETWORKS = [
+  { networkID: 1,  name: "主基地网络", color: 0x4A90E2, security:"PRIVATE",   access:"OWNER",
+    ownerName:"PlayerX", ownerPlayerID:100, isOwner:true,  isPasswordProtected:true,
+    adminPlayerIDs:[101],  adminNames:["Helper1"],
+    memberPlayerIDs:[102,103], memberNames:["FriendA","FriendB"],
+    blockedPlayerIDs:[200], blockedNames:["Griefer99"] },
+  { networkID: 2,  name: "采矿前哨",  color: 0xE2A84A, security:"ENCRYPTED", access:"NONE",
+    ownerName:"Steve",   ownerPlayerID:201, isOwner:false, isPasswordProtected:true,
+    adminPlayerIDs:[], adminNames:[], memberPlayerIDs:[], memberNames:[], blockedPlayerIDs:[], blockedNames:[] },
+  { networkID: 3,  name: "公共交易站", color: 0x4AE24A, security:"PUBLIC",    access:"MEMBER",
+    ownerName:"Alex",    ownerPlayerID:301, isOwner:false, isPasswordProtected:false,
+    adminPlayerIDs:[302], adminNames:["Trader1"],
+    memberPlayerIDs:[303], memberNames:["PlayerX"],
+    blockedPlayerIDs:[],  blockedNames:[] },
+  { networkID: 4,  name: "实验室网络", color: 0x7B68EE, security:"PRIVATE",   access:"ADMIN",
+    ownerName:"Notch",   ownerPlayerID:401, isOwner:false, isPasswordProtected:false,
+    adminPlayerIDs:[402], adminNames:["PlayerX"],
+    memberPlayerIDs:[403], memberNames:["Researcher1"],
+    blockedPlayerIDs:[],  blockedNames:[] },
+  { networkID: 5,  name: "被封锁网络", color: 0xE24A4A, security:"ENCRYPTED", access:"BLOCKED",
+    ownerName:"Griefer", ownerPlayerID:501, isOwner:false, isPasswordProtected:false,
+    adminPlayerIDs:[], adminNames:[], memberPlayerIDs:[], memberNames:[], blockedPlayerIDs:[], blockedNames:[] },
+];
+
+const DEFAULT_NETWORK_ID = 1;
+const PALETTE_COLORS = [0x4A90E2, 0x7B68EE, 0xE24A4A, 0xE2A84A, 0x4AE24A, 0x4AE2D0, 0xE24AB0, 0xFFFFFF];
+
+// ── 安全级别 ──
+const SECURITY = {
+  PUBLIC:    { name:"公开",     short:"公", color:"var(--security-public)" },
+  ENCRYPTED: { name:"加密",     short:"密", color:"var(--security-encrypted)" },
+  PRIVATE:   { name:"私有",     short:"私", color:"var(--security-private)" },
+};
+
+// ── 访问级别 ──
+const ACCESS = {
+  OWNER:   { name:"所有者",  short:"O", roleName:"所有者", color:"var(--access-owner)" },
+  ADMIN:   { name:"管理员",  short:"A", roleName:"管理员", color:"var(--access-admin)" },
+  MEMBER:  { name:"成员",    short:"M", roleName:"成员",   color:"var(--access-member)" },
+  BLOCKED: { name:"已封锁",  short:"B", roleName:"已封锁", color:"var(--access-blocked)" },
+  NONE:    { name:"无",      short:"-", roleName:"无",     color:"var(--access-none)" },
+};
+
+// ── 面板枚举 ──
+const PANEL = { SELECTION:"SELECTION", MEMBERS:"MEMBERS", SETTINGS:"SETTINGS", INFO:"INFO", CREATE:"CREATE" };
+const PANEL_LABELS = {
+  SELECTION: "网络选择", MEMBERS: "成员管理", SETTINGS: "网络设置", INFO: "网络信息", CREATE: "创建网络"
+};
+const PANEL_ICONS = {
+  SELECTION: "🧭", MEMBERS: "🏷️", SETTINGS: "⚙️", INFO: "📄", CREATE: "✨"
+};
+
+// ── 状态 ──
+let panel = PANEL.SELECTION;
+let selectedNetworkID = 1;
+let selectedMemberID = -1;
+let selectedColor = 0x4A90E2;
+let selectedSecurity = "PRIVATE";
+
+// ── 工具函数 ──
+const entryColor = e => e.networkID === 0 ? 'var(--color-unassigned)' : '#' + (e.color & 0xFFFFFF).toString(16).padStart(6,'0');
+const darken = (hex, f) => {
+  const r=Math.floor(parseInt(hex.slice(1,3),16)*f), g=Math.floor(parseInt(hex.slice(3,5),16)*f), b=Math.floor(parseInt(hex.slice(5,7),16)*f);
+  return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');
+};
+const secInfo = e => SECURITY[e.security] || SECURITY.PUBLIC;
+const accInfo = e => ACCESS[e.access] || ACCESS.NONE;
+const secName = s => SECURITY[s]?.name || s;
+const secColor = s => SECURITY[s]?.color || 'var(--security-public)';
+const roleColor = r => ACCESS[r]?.color || 'var(--access-none)';
+const entry = () => MOCK_NETWORKS.find(e => e.networkID === selectedNetworkID);
+
+function buildColorSwatch(color, selected, size) {
+  const s = selected ? (size||18) : (size||14);
+  return `<span class="swatch${selected?' selected':''}" style="background:#${(color&0xFFFFFF).toString(16).padStart(6,'0')};width:${s}px;height:${s}px;"></span>`;
+}
+function buildBadge(text, bgColor) {
+  return `<span class="badge" style="background:${bgColor};">${text}</span>`;
+}
+function buildIdPill(id) {
+  return `<span class="id-pill">#${id}</span>`;
+}
+
+// ── 渲染入口 ──
+function render() {
+  renderNav();
+  const content = document.getElementById('content');
+  const sel = entry();
+  content.innerHTML = '';
+
+  // 网络信息条
+  const bar = document.createElement('div');
+  bar.className = 'network-bar';
+  bar.innerHTML = `
+    <span class="bar-title">${PANEL_LABELS[panel]}</span>
+    ${sel ? `
+      ${buildColorSwatch(sel.color, false, 10)}
+      <span class="bar-name" style="color:${entryColor(sel)};">${sel.name}</span>
+      ${buildIdPill(sel.networkID)}
+      ${sel.networkID === DEFAULT_NETWORK_ID ? buildBadge('D', 'var(--badge-default)') : ''}
+    ` : ''}
+  `;
+  content.appendChild(bar);
+
+  // 按面板渲染
+  switch (panel) {
+    case PANEL.SELECTION: renderSelection(content); break;
+    case PANEL.MEMBERS:   renderMembers(content); break;
+    case PANEL.SETTINGS:  renderSettings(content); break;
+    case PANEL.INFO:      renderInfo(content); break;
+    case PANEL.CREATE:    renderCreate(content); break;
+  }
+}
+
+// ── 导航栏 ──
+function renderNav() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = Object.entries(PANEL).map(([key, val]) => {
+    const active = panel === val;
+    return `<button class="nav-btn${active?' active':''}" data-panel="${val}">
+      ${PANEL_ICONS[val]} ${PANEL_LABELS[val]}
+    </button>`;
+  }).join('');
+
+  nav.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      panel = btn.dataset.panel;
+      render();
+    });
+  });
+}
+
+// ── 网络选择面板 ──
+function renderSelection(content) {
+  // 列表元信息
+  const meta = document.createElement('div');
+  meta.className = 'list-meta';
+  meta.innerHTML = `<span>按 名称 排序</span><span>共 ${MOCK_NETWORKS.length} 个网络</span>`;
+  content.appendChild(meta);
+
+  // 滚动列表
+  const scroll = document.createElement('div');
+  scroll.className = 'scroll-box';
+  const listInner = document.createElement('div');
+  listInner.className = 'network-list-inner';
+  listInner.innerHTML = MOCK_NETWORKS.map(e => {
+    const sel = e.networkID === selectedNetworkID;
+    const color = entryColor(e);
+    return `<div class="network-row" data-nid="${e.networkID}"
+      style="background:${sel?darken(color,0.32):'var(--bg-row)'};border-color:${sel?color:'var(--border-row)'};">
+      ${buildColorSwatch(e.color, false)}
+      ${buildIdPill(e.networkID)}
+      <span class="name" style="color:${sel?'#FFF':'var(--text-secondary)'};">${e.name}</span>
+      ${buildBadge(secInfo(e).short, secInfo(e).color)}
+      ${buildBadge(accInfo(e).short, accInfo(e).color)}
+      ${e.networkID===DEFAULT_NETWORK_ID?buildBadge('D','var(--badge-default)'):''}
+    </div>`;
+  }).join('');
+  scroll.appendChild(listInner);
+  content.appendChild(scroll);
+
+  // 点击行
+  scroll.querySelectorAll('.network-row').forEach(row => {
+    row.addEventListener('click', () => {
+      selectedNetworkID = parseInt(row.dataset.nid);
+      selectedMemberID = -1;
+      render();
+    });
+  });
+
+  // 选中摘要
+  const sel = entry();
+  const summary = document.createElement('div');
+  summary.className = 'selection-summary';
+  summary.style.borderColor = sel ? entryColor(sel) : 'var(--border-list)';
+  summary.innerHTML = `<span class="text">${
+    sel ? `已选中：#${sel.networkID} ${sel.name}  ${secInfo(sel).name}  (${accInfo(sel).short})`
+    : '未选中任何网络'
+  }</span>`;
+  content.appendChild(summary);
+
+  // 操作按钮
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  const isDefault = sel && sel.networkID === DEFAULT_NETWORK_ID;
+  actions.innerHTML = `
+    <button class="btn btn-xs" id="setDefaultBtn">
+      ${isDefault ? '清除默认' : '设为默认网络'}
+    </button>
+  `;
+  content.appendChild(actions);
+
+  document.getElementById('setDefaultBtn').addEventListener('click', () => {
+    alert(`[模拟] ${isDefault ? '清除' : '设置'}默认网络 #${sel.networkID}`);
+    if (isDefault) {
+      // 实际上 default 常量在 demo 中不变，这里只做提示
+    }
+    render();
+  });
+}
+
+// ── 成员管理面板 ──
+function renderMembers(content) {
+  const sel = entry();
+  if (!sel) {
+    content.innerHTML += '<div class="empty-state">请先选择一个网络</div>';
+    return;
+  }
+
+  // 成员列表
+  const scroll = document.createElement('div');
+  scroll.className = 'scroll-box';
+  const listInner = document.createElement('div');
+  listInner.className = 'network-list-inner';
+
+  const buildMemberRow = (pid, name, role) => {
+    const sel2 = pid === selectedMemberID;
+    const rc = roleColor(role);
+    return `<div class="network-row" data-pid="${pid}" data-role="${role}"
+      style="background:${sel2?darken(rc,0.25):'var(--bg-row)'};border-color:${sel2?rc:'var(--border-row)'};cursor:${role==='OWNER'?'default':'pointer'};">
+      ${buildBadge(ACCESS[role]?.roleName||role, rc)}
+      <span class="name" style="color:var(--text-primary);">${name}</span>
+    </div>`;
+  };
+
+  let rows = '';
+  rows += buildMemberRow(sel.ownerPlayerID, sel.ownerName, 'OWNER');
+  sel.adminPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.adminNames[i]||('#'+pid), 'ADMIN'));
+  sel.memberPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.memberNames[i]||('#'+pid), 'MEMBER'));
+  sel.blockedPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.blockedNames[i]||('#'+pid), 'BLOCKED'));
+  listInner.innerHTML = rows;
+  scroll.appendChild(listInner);
+  content.appendChild(scroll);
+
+  // 点击成员行
+  scroll.querySelectorAll('.network-row').forEach(row => {
+    row.addEventListener('click', () => {
+      if (row.dataset.role === 'OWNER') return;
+      selectedMemberID = parseInt(row.dataset.pid);
+      render();
+    });
+  });
+
+  // 添加成员
+  const addRow = document.createElement('div');
+  addRow.className = 'actions';
+  addRow.style.paddingTop = '6px';
+  addRow.innerHTML = `
+    <input type="text" id="memberNameInput" placeholder="输入玩家名..." maxlength="64" style="flex:1;min-width:120px;">
+    <button class="btn btn-xs" id="addMemberBtn">添加成员</button>
+  `;
+  content.appendChild(addRow);
+
+  document.getElementById('addMemberBtn').addEventListener('click', () => {
+    const name = document.getElementById('memberNameInput').value.trim();
+    if (!name) return;
+    alert(`[模拟] 向网络 #${sel.networkID} 添加成员: ${name}`);
+    document.getElementById('memberNameInput').value = '';
+  });
+  document.getElementById('memberNameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('addMemberBtn').click();
+  });
+
+  // 角色操作（仅 owner 可见）
+  if (sel.isOwner && selectedMemberID >= 0) {
+    const roleRow = document.createElement('div');
+    roleRow.className = 'actions';
+    roleRow.innerHTML = `
+      <button class="btn btn-xs" id="promoteBtn">提升为管理员</button>
+      <button class="btn btn-xs btn-danger" id="demoteBtn">降级为成员</button>
+      <button class="btn btn-xs btn-danger" id="removeBtn">移出网络</button>
+    `;
+    content.appendChild(roleRow);
+
+    document.getElementById('promoteBtn').addEventListener('click', () => {
+      alert(`[模拟] 提升玩家 #${selectedMemberID} 为管理员`);
+    });
+    document.getElementById('demoteBtn').addEventListener('click', () => {
+      alert(`[模拟] 降级玩家 #${selectedMemberID} 为成员`);
+    });
+    document.getElementById('removeBtn').addEventListener('click', () => {
+      alert(`[模拟] 将玩家 #${selectedMemberID} 移出网络`);
+    });
+  }
+}
+
+// ── 设置面板 ──
+function renderSettings(content) {
+  const sel = entry();
+  if (!sel) { content.innerHTML += '<div class="empty-state">请先选择一个网络</div>'; return; }
+
+  const scroll = document.createElement('div');
+  scroll.className = 'scroll-box';
+  scroll.innerHTML = `
+    <div class="edit-form">
+      <div class="field-row">
+        <span class="field-label">名称</span>
+        <input type="text" id="settingsNameInput" value="${sel.name}" maxlength="64">
+      </div>
+      ${selectedSecurity === 'ENCRYPTED' ? `
+      <div class="field-row">
+        <span class="field-label">密码</span>
+        <input type="password" id="settingsPasswordInput" placeholder="新密码 (留空不变)" maxlength="64">
+      </div>` : ''}
+      <div class="field-row">
+        <span class="field-label">安全级别</span>
+        <div class="readonly-field">${secName(selectedSecurity)}</div>
+      </div>
+      <div style="color:var(--text-label);font-weight:700;">颜色</div>
+      <div class="color-palette" id="colorPaletteSettings">
+        ${PALETTE_COLORS.map(c => {
+          const sel2 = (c & 0xFFFFFF) === (selectedColor & 0xFFFFFF);
+          return buildColorSwatch(c, sel2);
+        }).join('')}
+      </div>
+      <div class="preview-bar" id="previewBarSettings" style="border-color:${'#'+(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')};">
+        ${buildColorSwatch(selectedColor, false, 12)}
+        <span class="preview-name" style="color:#${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')};">${sel.name}</span>
+        ${buildBadge(secName(selectedSecurity), secColor(selectedSecurity))}
+      </div>
+    </div>
+  `;
+  content.appendChild(scroll);
+
+  // 颜色点击
+  scroll.querySelectorAll('.swatch').forEach((sw, i) => {
+    sw.addEventListener('click', () => {
+      selectedColor = PALETTE_COLORS[i] & 0xFFFFFF;
+      render();
+    });
+  });
+
+  // 操作按钮
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  actions.innerHTML = `
+    <button class="btn btn-xs" id="cycleSecurityBtn">切换安全级别</button>
+    <button class="btn btn-xs" id="applySettingsBtn">应用设置</button>
+    ${sel.isOwner ? '<button class="btn btn-xs btn-danger" id="deleteNetworkBtn">删除网络</button>' : ''}
+  `;
+  content.appendChild(actions);
+
+  document.getElementById('cycleSecurityBtn').addEventListener('click', () => {
+    const vals = Object.keys(SECURITY);
+    const idx = vals.indexOf(selectedSecurity);
+    selectedSecurity = vals[(idx + 1) % vals.length];
+    render();
+  });
+  document.getElementById('applySettingsBtn').addEventListener('click', () => {
+    const name = document.getElementById('settingsNameInput').value.trim() || sel.name;
+    alert(`[模拟] 应用设置: 名称="${name}", 颜色=#${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')}, 安全级别=${selectedSecurity}`);
+  });
+  if (sel.isOwner) {
+    document.getElementById('deleteNetworkBtn').addEventListener('click', () => {
+      if (confirm(`确定要删除网络 "${sel.name}" 吗？此操作不可撤销。`)) {
+        alert(`[模拟] 已删除网络 #${sel.networkID}`);
+        selectedNetworkID = 1;
+        panel = PANEL.SELECTION;
+        render();
+      }
+    });
+  }
+}
+
+// ── 信息面板 ──
+function renderInfo(content) {
+  const sel = entry();
+  if (!sel) { content.innerHTML += '<div class="empty-state">请先选择一个网络</div>'; return; }
+
+  const scroll = document.createElement('div');
+  scroll.className = 'scroll-box';
+  scroll.style.padding = '0 12px';
+  const totalMembers = sel.adminPlayerIDs.length + sel.memberPlayerIDs.length;
+  scroll.innerHTML = `
+    <div style="display:flex;flex-direction:column;">
+      ${buildInfoLine('网络 ID', '#' + sel.networkID)}
+      ${buildInfoLine('名称', sel.name)}
+      ${buildInfoLine('安全级别', secInfo(sel).name)}
+      ${buildInfoLine('访问级别', accInfo(sel).name)}
+      ${buildInfoLine('成员数', String(totalMembers))}
+      ${buildInfoLine('所有者', sel.ownerName)}
+      ${buildInfoLine('密码保护', sel.isPasswordProtected ? '是' : '否')}
+    </div>
+  `;
+  content.appendChild(scroll);
+}
+
+function buildInfoLine(label, value) {
+  return `<div class="info-row">
+    <span class="info-label">${label}</span>
+    <span class="info-value">${value}</span>
+  </div>`;
+}
+
+// ── 创建面板 ──
+function renderCreate(content) {
+  const scroll = document.createElement('div');
+  scroll.className = 'scroll-box';
+  scroll.innerHTML = `
+    <div class="edit-form">
+      <div class="field-row">
+        <span class="field-label">名称</span>
+        <input type="text" id="createNameInput" placeholder="输入网络名称..." maxlength="64">
+      </div>
+      ${selectedSecurity === 'ENCRYPTED' ? `
+      <div class="field-row">
+        <span class="field-label">密码</span>
+        <input type="password" id="createPasswordInput" placeholder="设置密码..." maxlength="64">
+      </div>` : ''}
+      <div class="field-row">
+        <span class="field-label">安全级别</span>
+        <div class="readonly-field">${secName(selectedSecurity)}</div>
+      </div>
+      <div style="color:var(--text-label);font-weight:700;">颜色</div>
+      <div class="color-palette" id="colorPaletteCreate">
+        ${PALETTE_COLORS.map(c => {
+          const sel2 = (c & 0xFFFFFF) === (selectedColor & 0xFFFFFF);
+          return buildColorSwatch(c, sel2);
+        }).join('')}
+      </div>
+      <div class="preview-bar" id="previewBarCreate" style="border-color:${'#'+(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')};">
+        ${buildColorSwatch(selectedColor, false, 12)}
+        <span class="preview-name" style="color:#${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')};">
+          新网络名称</span>
+        ${buildBadge(secName(selectedSecurity), secColor(selectedSecurity))}
+      </div>
+    </div>
+  `;
+  content.appendChild(scroll);
+
+  scroll.querySelectorAll('.swatch').forEach((sw, i) => {
+    sw.addEventListener('click', () => {
+      selectedColor = PALETTE_COLORS[i] & 0xFFFFFF;
+      render();
+    });
+  });
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  actions.innerHTML = `
+    <button class="btn btn-xs" id="cycleSecurityCreateBtn">切换安全级别</button>
+    <button class="btn btn-xs" id="confirmCreateBtn">确认创建</button>
+  `;
+  content.appendChild(actions);
+
+  document.getElementById('cycleSecurityCreateBtn').addEventListener('click', () => {
+    const vals = Object.keys(SECURITY);
+    const idx = vals.indexOf(selectedSecurity);
+    selectedSecurity = vals[(idx + 1) % vals.length];
+    render();
+  });
+  document.getElementById('confirmCreateBtn').addEventListener('click', () => {
+    const name = document.getElementById('createNameInput').value.trim();
+    if (!name) { alert('请输入网络名称'); return; }
+    alert(`[模拟] 创建网络: "${name}"\n颜色: #${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')}\n安全级别: ${selectedSecurity}`);
+    document.getElementById('createNameInput').value = '';
+    selectedNetworkID = 1;
+    panel = PANEL.SELECTION;
+    render();
+  });
+  document.getElementById('createNameInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('confirmCreateBtn').click();
+  });
+}
+
+// ── 初始化 ──
+render();
+</script>
+
+</body>
+</html>

@@ -4,11 +4,14 @@ import static appeng.util.item.AEFluidStackType.FLUID_STACK_TYPE;
 import static appeng.util.item.AEItemStackType.ITEM_STACK_TYPE;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import net.minecraft.inventory.IInventory;
@@ -23,6 +26,7 @@ import com.github.singularityme.proxy.CommonProxy;
 import appeng.api.AEApi;
 import appeng.api.config.AccessRestriction;
 import appeng.api.config.ActionItems;
+import appeng.api.config.Actionable;
 import appeng.api.config.ExtractionMode;
 import appeng.api.config.FuzzyMode;
 import appeng.api.config.IncludeExclude;
@@ -32,9 +36,13 @@ import appeng.api.config.Upgrades;
 import appeng.api.config.YesNo;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.events.MENetworkCellArrayUpdate;
+import appeng.api.networking.events.MENetworkChannelsChanged;
+import appeng.api.networking.events.MENetworkEventSubscribe;
+import appeng.api.networking.events.MENetworkPowerStatusChange;
 import appeng.api.networking.security.BaseActionSource;
 import appeng.api.networking.security.MachineSource;
 import appeng.api.networking.storage.IBaseMonitor;
+import appeng.api.networking.ticking.ITickManager;
 import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.networking.ticking.TickingRequest;
 import appeng.api.parts.IStorageBus;
@@ -42,6 +50,7 @@ import appeng.api.storage.IExternalStorageHandler;
 import appeng.api.storage.IMEInventory;
 import appeng.api.storage.IMEInventoryHandler;
 import appeng.api.storage.IMEMonitor;
+import appeng.api.storage.IMENetworkInventory;
 import appeng.api.storage.IStorageBusMonitor;
 import appeng.api.storage.StorageName;
 import appeng.api.storage.data.IAEItemStack;
@@ -68,8 +77,9 @@ import appeng.tile.inventory.InvOperation;
 import appeng.util.ConfigManager;
 import appeng.util.IConfigManagerHost;
 import appeng.util.InventoryAdaptor;
+import appeng.util.IterationCounter;
 import appeng.util.Platform;
-import appeng.util.inv.ItemSlot;
+import appeng.util.item.PrioritizedNetworkItemList;
 import appeng.util.prioitylist.FuzzyPriorityList;
 import appeng.util.prioitylist.OreFilteredList;
 import appeng.util.prioitylist.PrecisePriorityList;
@@ -84,8 +94,8 @@ import buildcraft.api.transport.IPipeTile.PipeType;
  * Storage Bus: external storage registry first, StorageBusInventoryHandler wrapping, then
  * item-inventory fallback.
  */
-public class TileSingularityStorageBus extends AENetworkInvTile
-    implements IStorageBus, IConfigurableObject, IConfigManagerHost {
+public class TileSingularityStorageBus extends AENetworkInvTile implements IStorageBus, IConfigurableObject,
+    IConfigManagerHost, ISingularityContributionHost, ISingularityNetworkDevice {
 
     private static final String FLUID_PACKET_CLASS = "com.glodblock.github.common.item.ItemFluidPacket";
 
@@ -103,8 +113,20 @@ public class TileSingularityStorageBus extends AENetworkInvTile
     private boolean needSyncGUI = false;
     private String oreFilterString = "";
     private String previousOreFilterString = "";
+    private boolean contributionRetired = true;
+    private boolean bypassStorageAccessGuard = false;
+    /** Per-player network index. 0 = unassigned. */
+    private int networkID = 0;
+    private int gridOwnerPlayerID = -1;
+    private boolean defaultNetworkApplied = false;
 
     public TileSingularityStorageBus() {
+        this.getProxy()
+            .setFlags();
+        this.getProxy()
+            .setValidSides(EnumSet.noneOf(ForgeDirection.class));
+        this.getProxy()
+            .setIdlePowerUsage(1.0);
         cm.registerSetting(Settings.ACCESS, AccessRestriction.READ_WRITE);
         cm.registerSetting(Settings.FUZZY_MODE, FuzzyMode.IGNORE_ALL);
         cm.registerSetting(Settings.STORAGE_FILTER, StorageFilter.EXTRACTABLE_ONLY);
@@ -138,22 +160,24 @@ public class TileSingularityStorageBus extends AENetworkInvTile
         invalidateStorageHandler();
     }
 
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     public void partitionFilterFromAdjacentInventory() {
-        InventoryAdaptor adj = getAdjacentAdaptor();
-        if (adj == null) return;
+        if (getInstalledUpgrades(Upgrades.ORE_FILTER) > 0) return;
+
+        final MEInventoryHandler cellInv = getInternalHandler();
+        if (cellInv == null) return;
+
+        cellInv.setPartitionList(new PrecisePriorityList<>(getItemList()));
+        final IItemList list = cellInv.getAvailableItems(getItemList(), IterationCounter.fetchNewId());
 
         int slot = 0;
         final int maxSlots = getAvailableFilterSlots();
-        for (ItemSlot itemSlot : adj) {
+        for (final Object obj : list) {
             if (slot >= maxSlots) break;
-
-            ItemStack stack = itemSlot.getItemStack();
-            if (stack != null) {
-                IAEItemStack ae = appeng.util.item.AEItemStack.create(stack);
-                if (ae != null) {
-                    ae.setStackSize(1);
-                    filterInv.putAEStackInSlot(slot++, ae);
-                }
+            if (obj instanceof IAEStack<?>stack) {
+                final IAEStack<?> copy = stack.copy();
+                copy.setStackSize(1);
+                filterInv.putAEStackInSlot(slot++, copy);
             }
         }
 
@@ -167,7 +191,70 @@ public class TileSingularityStorageBus extends AENetworkInvTile
         invalidateStorageHandler();
     }
 
+    public void onAdjacentStorageChanged() {
+        if (worldObj == null || worldObj.isRemote) return;
+        invalidateStorageHandler();
+    }
+
+    private boolean isStorageAccessible() {
+        return !this.contributionRetired && this.getProxy()
+            .isActive()
+            && this.isHostStillLoaded()
+            && this.isTargetStillLoaded()
+            && this.isHostChunkNetworkAccessible()
+            && this.isTargetChunkNetworkAccessible();
+    }
+
+    public boolean isHostStillLoaded() {
+        return SingularityChunkAccess.isTileStillLoaded(this);
+    }
+
+    public boolean isTargetChunkLoaded() {
+        if (this.worldObj == null || !this.isHostStillLoaded()) return false;
+        final ForgeDirection facing = getTargetSide();
+        return this.worldObj
+            .blockExists(this.xCoord + facing.offsetX, this.yCoord + facing.offsetY, this.zCoord + facing.offsetZ);
+    }
+
+    public boolean isTargetStillLoaded() {
+        return getLoadedTargetTile() != null;
+    }
+
+    public boolean isHostChunkNetworkAccessible() {
+        return SingularityChunkAccess.isHostChunkNetworkAccessible(this);
+    }
+
+    public boolean isTargetChunkNetworkAccessible() {
+        final ForgeDirection facing = getTargetSide();
+        return SingularityChunkAccess.isAdjacentTargetChunkNetworkAccessible(this, facing);
+    }
+
+    private void retireAndUnregisterIfHostUnavailable() {
+        if (this.contributionRetired || this.isHostStillLoaded()) return;
+        retireSingularityContribution();
+        unregister(false);
+    }
+
     private void invalidateStorageHandler() {
+        retireAndUnregisterIfHostUnavailable();
+        if (this.contributionRetired) {
+            clearStorageHandlerCaches(!storageBusMonitors.isEmpty());
+            return;
+        }
+        final boolean hadMonitor = !storageBusMonitors.isEmpty();
+        final List<IAEStackType<?>> affectedTypes = new ArrayList<>(handlers.keySet());
+        final Map<IAEStackType<?>, IItemList> beforeByType = captureAvailableItemsFromHandlers(handlers);
+
+        clearStorageHandlerCaches(hadMonitor);
+
+        final Map<IAEStackType<?>, IItemList> afterByType = captureAvailableItemsFromCurrentTarget(affectedTypes);
+        postAvailableItemDiffs(beforeByType, afterByType);
+
+        markDirty();
+        postCellArrayUpdate();
+    }
+
+    private void clearStorageHandlerCaches(final boolean hadMonitor) {
         for (IMEMonitor<?> monitor : monitorHandlers.keySet()) {
             monitor.removeListener(this);
         }
@@ -176,8 +263,112 @@ public class TileSingularityStorageBus extends AENetworkInvTile
         monitorHandlers.clear();
         monitorTypes.clear();
         handlerHash = 0;
-        markDirty();
-        postCellArrayUpdate();
+        syncTickSleepState(hadMonitor, false);
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private Map<IAEStackType<?>, IItemList> captureAvailableItemsFromHandlers(
+        final Map<IAEStackType<?>, MEInventoryHandler<?>> sourceHandlers) {
+        final Map<IAEStackType<?>, IItemList> out = new HashMap<>();
+        if (worldObj == null || worldObj.isRemote || !getProxy().isActive() || !isHostStillLoaded()) return out;
+
+        for (final Map.Entry<IAEStackType<?>, MEInventoryHandler<?>> entry : sourceHandlers.entrySet()) {
+            final IAEStackType stackType = entry.getKey();
+            final IItemList list = stackType.createList();
+            final MEInventoryHandler handler = entry.getValue();
+            if (handler != null) {
+                this.bypassStorageAccessGuard = this.isTargetStillLoaded();
+                try {
+                    handler.getAvailableItems(list, IterationCounter.fetchNewId());
+                } finally {
+                    this.bypassStorageAccessGuard = false;
+                }
+            }
+            out.put(entry.getKey(), list);
+        }
+        return out;
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private Map<IAEStackType<?>, IItemList> captureAvailableItemsFromCurrentTarget(
+        final List<IAEStackType<?>> stackTypes) {
+        final Map<IAEStackType<?>, IItemList> out = new HashMap<>();
+        if (worldObj == null || worldObj.isRemote || !isStorageAccessible()) return out;
+
+        for (final IAEStackType<?> stackTypeKey : stackTypes) {
+            final IAEStackType stackType = stackTypeKey;
+            final IItemList list = stackType.createList();
+            final MEInventoryHandler handler = getInternalHandler(stackTypeKey);
+            if (handler != null) {
+                handler.getAvailableItems(list, IterationCounter.fetchNewId());
+            }
+            out.put(stackTypeKey, list);
+        }
+        return out;
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private void postAvailableItemDiffs(final Map<IAEStackType<?>, IItemList> beforeByType,
+        final Map<IAEStackType<?>, IItemList> afterByType) {
+        if (beforeByType.isEmpty() || worldObj == null || worldObj.isRemote) return;
+
+        try {
+            for (final Map.Entry<IAEStackType<?>, IItemList> entry : beforeByType.entrySet()) {
+                final IAEStackType stackType = entry.getKey();
+                final IItemList before = entry.getValue();
+                IItemList after = afterByType.get(entry.getKey());
+                if (after == null) {
+                    after = stackType.createList();
+                }
+
+                final List changes = buildAvailableItemDiff(before, after);
+                if (!changes.isEmpty()) {
+                    getProxy().getStorage()
+                        .postAlterationOfStoredItems(stackType, changes, mySrc);
+                }
+            }
+        } catch (GridAccessException ignored) {}
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private List<IAEStack<?>> buildAvailableItemDiff(final IItemList before, final IItemList after) {
+        final List<IAEStack<?>> changes = new ArrayList<>();
+
+        for (final Object obj : before) {
+            final IAEStack stack = (IAEStack) obj;
+            stack.setStackSize(-stack.getStackSize());
+        }
+
+        for (final Object obj : after) {
+            before.add((IAEStack) obj);
+        }
+
+        for (final Object obj : before) {
+            final IAEStack stack = (IAEStack) obj;
+            if (stack.getStackSize() != 0) {
+                changes.add(stack);
+            }
+        }
+
+        return changes;
+    }
+
+    private void syncTickSleepState(final boolean hadMonitor) {
+        syncTickSleepState(hadMonitor, !storageBusMonitors.isEmpty());
+    }
+
+    private void syncTickSleepState(final boolean hadMonitor, final boolean hasMonitor) {
+        if (worldObj == null || worldObj.isRemote || hadMonitor == hasMonitor) return;
+        try {
+            final ITickManager tickManager = getProxy().getTick();
+            final IGridNode node = getProxy().getNode();
+            if (node == null) return;
+            if (hasMonitor) {
+                tickManager.wakeDevice(node);
+            } else {
+                tickManager.sleepDevice(node);
+            }
+        } catch (GridAccessException ignored) {}
     }
 
     private void postCellArrayUpdate() {
@@ -201,6 +392,31 @@ public class TileSingularityStorageBus extends AENetworkInvTile
 
     public int getPriorityValue() {
         return getPriority();
+    }
+
+    public int getNetworkID() {
+        return this.networkID;
+    }
+
+    @Override
+    public int getGridOwnerPlayerID() {
+        return this.gridOwnerPlayerID;
+    }
+
+    public void setNetworkID(final int newNetworkID) {
+        if (this.networkID == newNetworkID) return;
+        this.unregister(true);
+        this.networkID = newNetworkID;
+        this.gridOwnerPlayerID = -1;
+        this.defaultNetworkApplied = true;
+        this.markDirty();
+        if (this.worldObj != null && !this.worldObj.isRemote) {
+            final GridNode node = (GridNode) getProxy().getNode();
+            if (node != null && node.getPlayerID() >= 0) {
+                this.gridOwnerPlayerID = SingularityNetworkManager.INSTANCE
+                    .registerNode(node.getPlayerID(), this.networkID, node);
+            }
+        }
     }
 
     public void setPriorityValue(final int p) {
@@ -233,6 +449,7 @@ public class TileSingularityStorageBus extends AENetworkInvTile
     }
 
     public int getAvailableFilterSlots() {
+        if (getInstalledUpgrades(Upgrades.ORE_FILTER) > 0) return 0;
         return Math.min(18 + getInstalledUpgrades(Upgrades.CAPACITY) * 9, 63);
     }
 
@@ -258,32 +475,80 @@ public class TileSingularityStorageBus extends AENetworkInvTile
 
     @Override
     public void onReady() {
+        this.contributionRetired = false;
+        this.getProxy()
+            .setFlags();
+        this.getProxy()
+            .setValidSides(EnumSet.noneOf(ForgeDirection.class));
         super.onReady();
         if (worldObj.isRemote) return;
         GridNode node = (GridNode) getProxy().getNode();
         if (node != null && node.getPlayerID() >= 0) {
-            SingularityNetworkManager.INSTANCE.registerNode(node.getPlayerID(), node);
+            this.applyDefaultNetwork(node.getPlayerID());
+            if (this.networkID != 0) {
+                this.gridOwnerPlayerID = SingularityNetworkManager.INSTANCE
+                    .registerNode(node.getPlayerID(), this.networkID, node);
+            }
         }
     }
 
     @Override
     public void onChunkUnload() {
-        unregister();
+        retireSingularityContribution();
+        unregister(false);
         super.onChunkUnload();
     }
 
     @Override
     public void invalidate() {
-        unregister();
+        retireSingularityContribution();
+        unregister(true);
         super.invalidate();
     }
 
-    private void unregister() {
+    @Override
+    public void retireSingularityContribution() {
+        if (this.contributionRetired) return;
+        if (worldObj == null || worldObj.isRemote) {
+            this.contributionRetired = true;
+            clearStorageHandlerCaches(!storageBusMonitors.isEmpty());
+            return;
+        }
+
+        final boolean hadMonitor = !storageBusMonitors.isEmpty();
+        final Map<IAEStackType<?>, IItemList> beforeByType = captureAvailableItemsFromHandlers(handlers);
+        this.contributionRetired = true;
+        clearStorageHandlerCaches(hadMonitor);
+        postAvailableItemDiffs(beforeByType, Collections.emptyMap());
+        markDirty();
+        postCellArrayUpdate();
+    }
+
+    private void unregister(final boolean permanent) {
         if (worldObj == null || worldObj.isRemote) return;
         GridNode node = (GridNode) getProxy().getNode();
         if (node != null) {
-            SingularityNetworkManager.INSTANCE.unregisterNode(node.getPlayerID(), node);
+            final int ownerID = this.gridOwnerPlayerID >= 0 ? this.gridOwnerPlayerID : node.getPlayerID();
+            SingularityNetworkManager.INSTANCE.unregisterNodeForOwner(ownerID, this.networkID, node, permanent);
+            this.gridOwnerPlayerID = -1;
         }
+    }
+
+    /**
+     * AE2 networks reshuffle cell arrays whenever channel availability or power state changes.
+     * Mirror that here so the Storage Bus rebuilds its handler — this matches AE2's
+     * {@code PartStorageBus.updateChannels()} / {@code updatePowerStatus()} hooks.
+     */
+    @MENetworkEventSubscribe
+    public void onChannelsChanged(final MENetworkChannelsChanged ev) {
+        if (worldObj == null || worldObj.isRemote) return;
+        invalidateStorageHandler();
+    }
+
+    @MENetworkEventSubscribe
+    public void onPowerStatusChanged(final MENetworkPowerStatusChange ev) {
+        if (worldObj == null || worldObj.isRemote) return;
+        invalidateStorageHandler();
     }
 
     @TileEvent(TileEventType.WORLD_NBT_WRITE)
@@ -294,6 +559,9 @@ public class TileSingularityStorageBus extends AENetworkInvTile
         tag.setInteger("priority", priority);
         tag.setString("filter", oreFilterString);
         tag.setString("previousFilter", previousOreFilterString);
+        tag.setInteger("singularityNetworkID", this.networkID);
+        tag.setInteger("singularityGridOwner", this.gridOwnerPlayerID);
+        tag.setBoolean(SingularityNetworkDefaults.NBT_KEY, this.defaultNetworkApplied);
     }
 
     @TileEvent(TileEventType.WORLD_NBT_READ)
@@ -304,16 +572,47 @@ public class TileSingularityStorageBus extends AENetworkInvTile
         priority = tag.getInteger("priority");
         oreFilterString = tag.getString("filter");
         previousOreFilterString = tag.getString("previousFilter");
+        this.networkID = tag.hasKey("singularityNetworkID") ? tag.getInteger("singularityNetworkID") : 0;
+        this.gridOwnerPlayerID = tag.hasKey("singularityGridOwner") ? tag.getInteger("singularityGridOwner") : -1;
+        this.defaultNetworkApplied = tag.hasKey(SingularityNetworkDefaults.NBT_KEY)
+            ? tag.getBoolean(SingularityNetworkDefaults.NBT_KEY)
+            : true;
+    }
+
+    private void applyDefaultNetwork(final int playerID) {
+        if (this.defaultNetworkApplied) return;
+        if (this.networkID == 0) {
+            this.networkID = SingularityNetworkDefaults.resolveDefaultNetworkID(this, playerID);
+        }
+        this.defaultNetworkApplied = true;
+        this.markDirty();
     }
 
     @Override
     public TickingRequest getTickingRequest(final IGridNode node) {
-        return new TickingRequest(5, 40, true, true);
+        return new TickingRequest(5, 40, storageBusMonitors.isEmpty(), true);
     }
 
     @Override
     public TickRateModulation tickingRequest(final IGridNode node, final int ticksSinceLastCall) {
-        TileEntity target = getAdjacentTile();
+        retireAndUnregisterIfHostUnavailable();
+        if (this.contributionRetired) return TickRateModulation.SLEEP;
+
+        if (!isHostChunkNetworkAccessible() || !isTargetChunkNetworkAccessible()) {
+            if (!handlers.isEmpty() || handlerHash != 0) {
+                invalidateStorageHandler();
+            }
+            return TickRateModulation.SLOWER;
+        }
+
+        if (!isTargetStillLoaded()) {
+            if (!handlers.isEmpty() || handlerHash != 0) {
+                invalidateStorageHandler();
+            }
+            return TickRateModulation.SLOWER;
+        }
+
+        TileEntity target = getLoadedTargetTile();
         int newHash = Platform.generateTileHash(target);
         if (newHash != handlerHash) {
             invalidateStorageHandler();
@@ -327,13 +626,14 @@ public class TileSingularityStorageBus extends AENetworkInvTile
                 modulation = next;
             }
         }
-        return storageBusMonitors.isEmpty() ? TickRateModulation.SLOWER : modulation;
+        return storageBusMonitors.isEmpty() ? TickRateModulation.SLEEP : modulation;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public List<IMEInventoryHandler> getCellArray(final IAEStackType<?> type) {
-        if (!getProxy().isActive()) {
+        retireAndUnregisterIfHostUnavailable();
+        if (!isStorageAccessible()) {
             return Collections.emptyList();
         }
         MEInventoryHandler<?> out = getInternalHandler(type);
@@ -357,16 +657,22 @@ public class TileSingularityStorageBus extends AENetworkInvTile
 
     @Override
     public MEInventoryHandler<?> getInternalHandler() {
+        retireAndUnregisterIfHostUnavailable();
+        if (!isStorageAccessible()) return null;
         return getInternalHandler(getStackType());
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private MEInventoryHandler<?> getInternalHandler(final IAEStackType<?> type) {
-        TileEntity target = getAdjacentTile();
+        retireAndUnregisterIfHostUnavailable();
+        if (!isStorageAccessible()) return null;
+        boolean hadMonitor = !storageBusMonitors.isEmpty();
+        TileEntity target = getLoadedTargetTile();
         int newHandlerHash = Platform.generateTileHash(target);
         boolean canReuseHandler = handlerHash != 0 && handlerHash == newHandlerHash;
         if (!handlers.isEmpty() && !canReuseHandler) {
             invalidateStorageHandler();
+            hadMonitor = !storageBusMonitors.isEmpty();
         }
         handlerHash = newHandlerHash;
 
@@ -414,7 +720,7 @@ public class TileSingularityStorageBus extends AENetworkInvTile
 
         checkInterfaceVsStorageBus(target, targetSide);
 
-        MEInventoryHandler handler = new StorageBusInventoryHandler(inv, type);
+        MEInventoryHandler handler = new GuardedStorageBusInventoryHandler(inv, type);
         configureHandler(handler, type);
         handlers.put(type, handler);
 
@@ -424,6 +730,7 @@ public class TileSingularityStorageBus extends AENetworkInvTile
             monitorTypes.put(monitor, type);
         }
 
+        syncTickSleepState(hadMonitor);
         return handler;
     }
 
@@ -507,8 +814,8 @@ public class TileSingularityStorageBus extends AENetworkInvTile
 
     @Override
     public void setFilter(final String filter) {
-        oreFilterString = filter == null ? "" : filter;
         previousOreFilterString = oreFilterString;
+        oreFilterString = filter == null ? "" : filter;
         invalidateStorageHandler();
     }
 
@@ -522,6 +829,10 @@ public class TileSingularityStorageBus extends AENetworkInvTile
         return ITEM_STACK_TYPE;
     }
 
+    public IItemList<IAEItemStack> getItemList() {
+        return ITEM_STACK_TYPE.createList();
+    }
+
     @Override
     public boolean isValid(final Object verificationToken) {
         return handlers.containsValue(verificationToken);
@@ -531,7 +842,8 @@ public class TileSingularityStorageBus extends AENetworkInvTile
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public void postChange(final IBaseMonitor<IAEStack<?>> monitor, final Iterable<IAEStack<?>> change,
         final BaseActionSource source) {
-        if (!getProxy().isActive()) return;
+        retireAndUnregisterIfHostUnavailable();
+        if (!isStorageAccessible()) return;
         MEInventoryHandler handler = monitorHandlers.get(monitor);
         IAEStackType type = monitorTypes.get(monitor);
         if (handler == null || type == null) return;
@@ -572,8 +884,13 @@ public class TileSingularityStorageBus extends AENetworkInvTile
     }
 
     @Override
+    public IGridNode getGridNode(final ForgeDirection dir) {
+        return SingularityPhysicalIsolation.getGridNode(this, dir);
+    }
+
+    @Override
     public AECableType getCableConnectionType(final ForgeDirection dir) {
-        return AECableType.SMART;
+        return AECableType.NONE;
     }
 
     @Override
@@ -581,15 +898,19 @@ public class TileSingularityStorageBus extends AENetworkInvTile
         return new DimensionalCoord(this);
     }
 
-    private TileEntity getAdjacentTile() {
-        ForgeDirection facing = getTargetSide();
-        return worldObj.getTileEntity(xCoord + facing.offsetX, yCoord + facing.offsetY, zCoord + facing.offsetZ);
+    private TileEntity getLoadedTargetTile() {
+        if (this.contributionRetired || this.worldObj == null || !isHostStillLoaded()) return null;
+        final ForgeDirection facing = getTargetSide();
+        return SingularityChunkAccess.getLoadedAdjacentTile(this, facing);
     }
 
-    private InventoryAdaptor getAdjacentAdaptor() {
-        TileEntity te = getAdjacentTile();
-        if (te == null) return null;
-        return InventoryAdaptor.getAdaptor(te, getTargetSide().getOpposite());
+    private TileEntity getAdjacentTile() {
+        return getLoadedTargetTile();
+    }
+
+    @Override
+    public boolean isContributionLoaded() {
+        return !this.contributionRetired;
     }
 
     private ForgeDirection getTargetSide() {
@@ -612,6 +933,76 @@ public class TileSingularityStorageBus extends AENetworkInvTile
                 interfaceHost.getActionableNode()
                     .getPlayerID(),
                 appeng.core.stats.Achievements.Recursive.getAchievement());
+        }
+    }
+
+    private final class GuardedStorageBusInventoryHandler<T extends IAEStack<T>> extends StorageBusInventoryHandler<T> {
+
+        private GuardedStorageBusInventoryHandler(final IMEInventory<T> inventory, final IAEStackType<T> type) {
+            super(inventory, type);
+        }
+
+        private boolean canUseStorage() {
+            return TileSingularityStorageBus.this.bypassStorageAccessGuard
+                || TileSingularityStorageBus.this.isStorageAccessible();
+        }
+
+        @Override
+        public T injectItems(final T input, final Actionable type, final BaseActionSource src) {
+            return canUseStorage() ? super.injectItems(input, type, src) : input;
+        }
+
+        @Override
+        public T extractItems(final T request, final Actionable type, final BaseActionSource src) {
+            return canUseStorage() ? super.extractItems(request, type, src) : null;
+        }
+
+        @Override
+        public IItemList<T> getAvailableItems(final IItemList<T> out, final int iteration) {
+            return canUseStorage() ? super.getAvailableItems(out, iteration) : out;
+        }
+
+        @Override
+        public IItemList<T> getAvailableItems(final IItemList<T> out, final int iteration,
+            final Optional<Predicate<T>> preFilter) {
+            return canUseStorage() ? super.getAvailableItems(out, iteration, preFilter) : out;
+        }
+
+        @Override
+        public T getAvailableItem(final T request, final int iteration) {
+            return canUseStorage() ? super.getAvailableItem(request, iteration) : null;
+        }
+
+        @Override
+        public boolean canAccept(final T input) {
+            return canUseStorage() && super.canAccept(input);
+        }
+
+        @Override
+        public boolean isPrioritized(final T input) {
+            return canUseStorage() && super.isPrioritized(input);
+        }
+
+        @Override
+        public AccessRestriction getAccess() {
+            return canUseStorage() ? super.getAccess() : AccessRestriction.NO_ACCESS;
+        }
+
+        @Override
+        public boolean validForPass(final int pass) {
+            return canUseStorage() && super.validForPass(pass);
+        }
+
+        @Override
+        public IMENetworkInventory<T> getExternalNetworkInventory() {
+            return canUseStorage() ? super.getExternalNetworkInventory() : null;
+        }
+
+        @Override
+        public PrioritizedNetworkItemList<T> getAvailableItemsWithPriority(final int iteration) {
+            if (canUseStorage()) return super.getAvailableItemsWithPriority(iteration);
+            final IMENetworkInventory<T> external = super.getExternalNetworkInventory();
+            return external == null ? null : new PrioritizedNetworkItemList<>(external);
         }
     }
 }

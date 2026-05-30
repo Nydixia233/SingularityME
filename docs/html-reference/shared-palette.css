@@ -1,0 +1,215 @@
+/* ============================================================
+   Singularity ME — 共享调色板 (提取自 QzNetworkUiKit.Palette)
+   与 Java 源码中 Palette 常量一一对应
+   ============================================================ */
+
+:root {
+  /* ── 背景色 ── */
+  --bg-panel:         #141923;  /* 0xEE141923 → 不透明度 EE */
+  --bg-list:          #0D1219;  /* 0xFF0D1219 */
+  --bg-row:           #151D27;  /* 0xFF151D27 */
+  --bg-input:         #0D1117;  /* 0xFF0D1117 */
+  --bg-overlay:       #05070B;  /* 0xAA05070B → 不透明度 AA */
+  --bg-id-pill:       #0B1016;  /* 0xFF0B1016 */
+
+  /* ── 边框色 ── */
+  --border-panel:      #536B7F;  /* 0xFF536B7F */
+  --border-list:       #2C3846;  /* 0xFF2C3846 */
+  --border-row:        #263240;  /* 0xFF263240 */
+  --border-input:      #354451;  /* 0xFF354451 */
+  --border-input-focus:#6AA1D2;  /* 0xFF6AA1D2 */
+  --border-swatch:     #0A0D10;  /* 0xFF0A0D10 */
+
+  /* ── 文字色 ── */
+  --text-primary:      #EAF2F8;  /* 0xFFEAF2F8 */
+  --text-secondary:    #D7E0EA;  /* 0xFFD7E0EA */
+  --text-muted:        #9FB0BF;  /* 0xFF9FB0BF */
+  --text-empty:        #8996A3;  /* 0xFF8996A3 */
+  --text-label:        #AFC0CC;  /* 0xFFAFC0CC */
+  --text-badge:        #FFFFFF;  /* 0xFFFFFFFF */
+  --text-input:        #EAF2F8;  /* 0xFFEAF2F8 */
+  --text-placeholder:  #748392;  /* 0xFF748392 */
+  --text-disabled:     #5C6770;  /* 0xFF5C6770 */
+
+  /* ── 按钮色 ── */
+  --btn-normal:       #2F6F95;  /* 0xFF2F6F95 */
+  --btn-active:       #255878;  /* 0xFF255878 */
+  --btn-disabled:     #33414E;  /* 0xFF33414E */
+  --btn-focus-border: #9ED0FF;  /* 0xFF9ED0FF */
+  --btn-danger:       #8C3D3D;  /* 0xFF8C3D3D */
+  --btn-danger-active:#6F3030;  /* 0xFF6F3030 */
+
+  /* ── 安全级别色 ── */
+  --security-public:   #2F8C52;  /* 0xFF2F8C52 */
+  --security-encrypted:#C48A32;  /* 0xFFC48A32 */
+  --security-private:  #7055A8;  /* 0xFF7055A8 */
+
+  /* ── 访问级别色 ── */
+  --access-owner:     #3D78C2;  /* 0xFF3D78C2 */
+  --access-admin:     #5E7FC7;  /* 0xFF5E7FC7 */
+  --access-member:    #4D8F8A;  /* 0xFF4D8F8A */
+  --access-blocked:   #9A3C3C;  /* 0xFF9A3C3C */
+  --access-none:      #5D6875;  /* 0xFF5D6875 */
+
+  /* ── 标记色 ── */
+  --badge-current:    #2F8C52;  /* * 当前网络 */
+  --badge-default:    #446EAA;  /* D 默认网络 */
+  --badge-inactive:   #5D6875;
+  --color-unassigned: #777777;  /* 未分配 */
+
+  /* ── 尺寸 ── */
+  --row-h:              36px;
+  --badge-h:            22px;
+  --badge-min-w:        24px;
+  --badge-padding-h:    5px;
+  --radius-panel:       6px;
+  --radius-row:         4px;
+  --radius-badge:       3px;
+  --radius-swatch:      2px;
+  --id-pill-w:          48px;
+  --id-pill-h:          22px;
+
+  /* ── 间距 ── */
+  --gap-sm:  6px;
+  --gap-md:  8px;
+  --gap-lg:  10px;
+  --pad-sm:  6px;
+  --pad-md:  8px;
+  --pad-lg:  12px;
+  --pad-xl:  14px;
+}
+
+/* ── 全局 Reset ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #0A0D10;
+  color: var(--text-primary);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 通用组件 ── */
+
+/* 色块 (colorSwatch) */
+.swatch {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-swatch);
+  border-radius: var(--radius-swatch);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.swatch:hover { transform: scale(1.25); }
+.swatch.selected { width: 18px; height: 18px; }
+
+/* 徽章 (badge) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--badge-min-w);
+  height: var(--badge-h);
+  padding: 0 var(--badge-padding-h);
+  border-radius: var(--radius-badge);
+  color: var(--text-badge);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ID 胶囊 (idPill) */
+.id-pill {
+  width: var(--id-pill-w);
+  height: var(--id-pill-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-id-pill);
+  border-radius: var(--radius-badge);
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #2C3846;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: #3D4E60; }
+
+/* 输入框 */
+input[type="text"], input[type="password"] {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-row);
+  color: var(--text-input);
+  padding: 0 var(--pad-md);
+  height: var(--row-h);
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+}
+input::placeholder { color: var(--text-placeholder); }
+input:focus { border-color: var(--border-input-focus); }
+
+/* 按钮 */
+button, .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--row-h);
+  padding: 0 14px;
+  background: var(--btn-normal);
+  color: var(--text-badge);
+  border: 1px solid transparent;
+  border-radius: var(--radius-row);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+button:hover, .btn:hover { background: var(--btn-active); }
+button:disabled, .btn:disabled {
+  background: var(--btn-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+button:focus-visible, .btn:focus-visible {
+  border-color: var(--btn-focus-border);
+  outline: none;
+}
+.btn-danger {
+  background: var(--btn-danger);
+}
+.btn-danger:hover { background: var(--btn-danger-active); }
+
+/* readOnly 字段 */
+.readonly-field {
+  flex: 1;
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--pad-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-row);
+  color: var(--text-muted);
+  min-width: 0;
+}

@@ -1,5 +1,6 @@
 package com.github.singularityme.tile;
 
+import java.util.EnumSet;
 import java.util.function.Predicate;
 
 import net.minecraft.inventory.IInventory;
@@ -13,9 +14,9 @@ import com.github.singularityme.grid.SingularityGrid;
 import com.github.singularityme.proxy.CommonProxy;
 import com.google.common.collect.ImmutableSet;
 
-import appeng.api.AEApi;
 import appeng.api.config.Actionable;
 import appeng.api.config.FuzzyMode;
+import appeng.api.config.InsertionMode;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.config.RedstoneMode;
 import appeng.api.config.SchedulingMode;
@@ -70,8 +71,9 @@ import appeng.util.prioitylist.OreFilteredList;
  * items/tick), FUZZY (ignore NBT/damage), CRAFTING (submit crafting job when item absent),
  * and REDSTONE/SCHEDULING control.
  */
-public class TileSingularityExportBus extends AENetworkInvTile implements IGridTickable, IConfigurableObject,
-    IConfigManagerHost, IUpgradeableHost, IIAEStackInventory, ICraftingRequester, IOreFilterable {
+public class TileSingularityExportBus extends AENetworkInvTile
+    implements IGridTickable, IConfigurableObject, IConfigManagerHost, IUpgradeableHost, IIAEStackInventory,
+    ICraftingRequester, IOreFilterable, ISingularityContributionHost, ISingularityNetworkDevice {
 
     private final BaseActionSource mySrc = new MachineSource(this);
 
@@ -95,8 +97,21 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
 
     private String oreFilterString = "";
     private Predicate<IAEItemStack> filterPredicate = null;
+    private long itemToSend = 1;
+    private boolean didSomething = false;
+    private boolean contributionRetired = true;
+    /** Per-player network index. 0 = unassigned. */
+    private int networkID = 0;
+    private int gridOwnerPlayerID = -1;
+    private boolean defaultNetworkApplied = false;
 
     public TileSingularityExportBus() {
+        this.getProxy()
+            .setFlags();
+        this.getProxy()
+            .setValidSides(EnumSet.noneOf(ForgeDirection.class));
+        this.getProxy()
+            .setIdlePowerUsage(1.0);
         cm.registerSetting(Settings.REDSTONE_CONTROLLED, RedstoneMode.IGNORE);
         cm.registerSetting(Settings.SCHEDULING_MODE, SchedulingMode.DEFAULT);
         cm.registerSetting(Settings.FUZZY_MODE, FuzzyMode.IGNORE_ALL);
@@ -130,6 +145,31 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
     @Override
     public IInventory getInventoryByName(final String name) {
         return "upgrades".equals(name) ? upgradesInv : null;
+    }
+
+    public int getNetworkID() {
+        return this.networkID;
+    }
+
+    @Override
+    public int getGridOwnerPlayerID() {
+        return this.gridOwnerPlayerID;
+    }
+
+    public void setNetworkID(final int newNetworkID) {
+        if (this.networkID == newNetworkID) return;
+        this.unregister(true);
+        this.networkID = newNetworkID;
+        this.gridOwnerPlayerID = -1;
+        this.defaultNetworkApplied = true;
+        this.markDirty();
+        if (this.worldObj != null && !this.worldObj.isRemote) {
+            final GridNode node = (GridNode) getProxy().getNode();
+            if (node != null && node.getPlayerID() >= 0) {
+                this.gridOwnerPlayerID = SingularityNetworkManager.INSTANCE
+                    .registerNode(node.getPlayerID(), this.networkID, node);
+            }
+        }
     }
 
     // ---- IIAEStackInventory ----
@@ -177,32 +217,20 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
 
     @Override
     public IAEItemStack injectCraftedItems(final ICraftingLink link, final IAEItemStack items, final Actionable mode) {
-        InventoryAdaptor adaptor = getAdjacentAdaptor();
-        if (adaptor != null && getProxy().isActive()) {
-            IEnergyGrid energy;
-            try {
-                energy = getProxy().getEnergy();
-            } catch (GridAccessException ignored) {
-                return items;
+        if (!this.isBusAccessible()) return items;
+        final InventoryAdaptor adaptor = getAdjacentAdaptor();
+        try {
+            if (adaptor != null && getProxy().isActive()) {
+                final IEnergyGrid energy = getProxy().getEnergy();
+                final double power = (double) items.getStackSize() / items.getAmountPerUnit();
+                if (energy.extractAEPower(power, mode, PowerMultiplier.CONFIG) > power - 0.01) {
+                    final IAEStack<?> leftover = mode == Actionable.MODULATE
+                        ? adaptor.addStack(items, InsertionMode.DEFAULT)
+                        : adaptor.simulateAddStack(items, InsertionMode.DEFAULT);
+                    return leftover instanceof IAEItemStack itemLeftover ? itemLeftover : null;
+                }
             }
-            final double power = (double) items.getStackSize() / items.getAmountPerUnit();
-            if (energy.extractAEPower(power, mode, PowerMultiplier.CONFIG) <= power - 0.01) {
-                return items;
-            }
-            if (mode == Actionable.SIMULATE) {
-                ItemStack notFit = adaptor.simulateAdd(items.getItemStack());
-                if (notFit == null) return null;
-                IAEItemStack leftover = items.copy();
-                leftover.setStackSize(notFit.stackSize);
-                return leftover;
-            } else {
-                ItemStack excess = adaptor.addItems(items.getItemStack());
-                if (excess == null) return null;
-                IAEItemStack leftover = items.copy();
-                leftover.setStackSize(excess.stackSize);
-                return leftover;
-            }
-        }
+        } catch (final GridAccessException ignored) {}
         return items;
     }
 
@@ -215,31 +243,44 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
 
     @Override
     public void onReady() {
+        this.contributionRetired = false;
+        this.getProxy()
+            .setFlags();
+        this.getProxy()
+            .setValidSides(EnumSet.noneOf(ForgeDirection.class));
         super.onReady();
         if (worldObj.isRemote) return;
         GridNode node = (GridNode) getProxy().getNode();
         if (node != null && node.getPlayerID() >= 0) {
-            SingularityNetworkManager.INSTANCE.registerNode(node.getPlayerID(), node);
+            this.applyDefaultNetwork(node.getPlayerID());
+            if (this.networkID != 0) {
+                this.gridOwnerPlayerID = SingularityNetworkManager.INSTANCE
+                    .registerNode(node.getPlayerID(), this.networkID, node);
+            }
         }
     }
 
     @Override
     public void onChunkUnload() {
-        unregister();
+        retireSingularityContribution();
+        unregister(false);
         super.onChunkUnload();
     }
 
     @Override
     public void invalidate() {
-        unregister();
+        retireSingularityContribution();
+        unregister(true);
         super.invalidate();
     }
 
-    private void unregister() {
+    private void unregister(final boolean permanent) {
         if (worldObj == null || worldObj.isRemote) return;
         GridNode node = (GridNode) getProxy().getNode();
         if (node != null) {
-            SingularityNetworkManager.INSTANCE.unregisterNode(node.getPlayerID(), node);
+            final int ownerID = this.gridOwnerPlayerID >= 0 ? this.gridOwnerPlayerID : node.getPlayerID();
+            SingularityNetworkManager.INSTANCE.unregisterNodeForOwner(ownerID, this.networkID, node, permanent);
+            this.gridOwnerPlayerID = -1;
         }
     }
 
@@ -254,6 +295,9 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
         tag.setBoolean("lastRedstone", lastRedstone);
         tag.setInteger("nextSlot", nextSlot);
         tag.setString("filter", oreFilterString);
+        tag.setInteger("singularityNetworkID", this.networkID);
+        tag.setInteger("singularityGridOwner", this.gridOwnerPlayerID);
+        tag.setBoolean(SingularityNetworkDefaults.NBT_KEY, this.defaultNetworkApplied);
     }
 
     @TileEvent(TileEventType.WORLD_NBT_READ)
@@ -265,6 +309,20 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
         lastRedstone = tag.getBoolean("lastRedstone");
         nextSlot = tag.getInteger("nextSlot");
         setFilter(tag.getString("filter"));
+        this.networkID = tag.hasKey("singularityNetworkID") ? tag.getInteger("singularityNetworkID") : 0;
+        this.gridOwnerPlayerID = tag.hasKey("singularityGridOwner") ? tag.getInteger("singularityGridOwner") : -1;
+        this.defaultNetworkApplied = tag.hasKey(SingularityNetworkDefaults.NBT_KEY)
+            ? tag.getBoolean(SingularityNetworkDefaults.NBT_KEY)
+            : true;
+    }
+
+    private void applyDefaultNetwork(final int playerID) {
+        if (this.defaultNetworkApplied) return;
+        if (this.networkID == 0) {
+            this.networkID = SingularityNetworkDefaults.resolveDefaultNetworkID(this, playerID);
+        }
+        this.defaultNetworkApplied = true;
+        this.markDirty();
     }
 
     // ---- IGridTickable ----
@@ -276,52 +334,77 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
 
     @Override
     public TickRateModulation tickingRequest(final IGridNode node, final int ticksSinceLastCall) {
+        if (this.contributionRetired) return TickRateModulation.SLEEP;
         if (!getProxy().isActive()) return TickRateModulation.IDLE;
+        if (!this.isBusAccessible()) {
+            this.itemToSend = 0;
+            this.didSomething = false;
+            return TickRateModulation.SLOWER;
+        }
+        if (isBlockedByRedstone()) return TickRateModulation.SLOWER;
+        return doBusWork();
+    }
 
-        // Redstone control
-        RedstoneMode rm = (RedstoneMode) cm.getSetting(Settings.REDSTONE_CONTROLLED);
-        boolean powered = worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord, zCoord);
+    /**
+     * Reads the configured redstone mode and the block's current redstone signal.
+     * Updates {@link #lastRedstone} as a side-effect (needed for SIGNAL_PULSE detection).
+     *
+     * @return true if the bus should NOT operate this tick (blocked by redstone configuration).
+     */
+    private boolean isBlockedByRedstone() {
+        final RedstoneMode rm = (RedstoneMode) cm.getSetting(Settings.REDSTONE_CONTROLLED);
+        final boolean powered = worldObj.isBlockIndirectlyGettingPowered(xCoord, yCoord, zCoord);
         if (rm == RedstoneMode.LOW_SIGNAL && powered) {
             lastRedstone = powered;
-            return TickRateModulation.SLOWER;
+            return true;
         }
         if (rm == RedstoneMode.HIGH_SIGNAL && !powered) {
             lastRedstone = powered;
-            return TickRateModulation.SLOWER;
+            return true;
         }
         if (rm == RedstoneMode.SIGNAL_PULSE) {
             if (!powered || lastRedstone) {
                 lastRedstone = powered;
-                return TickRateModulation.SLOWER;
+                return true;
             }
             lastRedstone = true;
         } else {
             lastRedstone = powered;
         }
+        return false;
+    }
 
-        if (filterInv.isEmpty()) return TickRateModulation.SLOWER;
+    /**
+     * Main bus work — analogous to AE2's {@code PartBaseExportBus.doBusWork()}.
+     * Pulls items from the SingularityGrid into the adjacent inventory, dispatching to
+     * {@link #exportOreFiltered} or {@link #exportWithScheduling} depending on whether
+     * an ore filter is active.
+     */
+    private TickRateModulation doBusWork() {
+        this.itemToSend = calculateMaxItems();
+        this.didSomething = false;
 
-        IMEMonitor<IAEItemStack> gridInv = getGridItemInventory();
+        final IMEMonitor<IAEItemStack> gridInv = getGridItemInventory();
         if (gridInv == null) return TickRateModulation.IDLE;
 
-        InventoryAdaptor adaptor = getAdjacentAdaptor();
-        if (adaptor == null) return TickRateModulation.SLOWER;
+        final InventoryAdaptor adaptor = getAdjacentAdaptor();
+        if (adaptor == null) return TickRateModulation.SLEEP;
 
         // Upgrade card effects
-        int capacityCards = getInstalledUpgrades(Upgrades.CAPACITY);
-        int availSlots = Math.min(1 + capacityCards * 4, 9);
-        int maxItems = calculateMaxItems();
-        boolean fuzzy = getInstalledUpgrades(Upgrades.FUZZY) > 0;
-        boolean crafting = getInstalledUpgrades(Upgrades.CRAFTING) > 0;
-        boolean craftOnly = crafting && cm.getSetting(Settings.CRAFT_ONLY) == YesNo.YES;
-        FuzzyMode fuzzyMode = fuzzy ? (FuzzyMode) cm.getSetting(Settings.FUZZY_MODE) : FuzzyMode.IGNORE_ALL;
-        boolean oreFilter = getInstalledUpgrades(Upgrades.ORE_FILTER) > 0 && !oreFilterString.isEmpty();
+        final int capacityCards = getInstalledUpgrades(Upgrades.CAPACITY);
+        final int availSlots = Math.min(1 + capacityCards * 4, 9);
+        final int maxItems = (int) Math.min(Integer.MAX_VALUE, this.itemToSend);
+        final boolean fuzzy = getInstalledUpgrades(Upgrades.FUZZY) > 0;
+        final boolean crafting = getInstalledUpgrades(Upgrades.CRAFTING) > 0;
+        final boolean craftOnly = crafting && cm.getSetting(Settings.CRAFT_ONLY) == YesNo.YES;
+        final FuzzyMode fuzzyMode = fuzzy ? (FuzzyMode) cm.getSetting(Settings.FUZZY_MODE) : FuzzyMode.IGNORE_ALL;
+        final boolean oreFilter = getInstalledUpgrades(Upgrades.ORE_FILTER) > 0 && !oreFilterString.isEmpty();
 
-        SchedulingMode sched = (SchedulingMode) cm.getSetting(Settings.SCHEDULING_MODE);
+        final SchedulingMode sched = (SchedulingMode) cm.getSetting(Settings.SCHEDULING_MODE);
         if (oreFilter) {
             return exportOreFiltered(gridInv, adaptor, maxItems);
         }
-        return exportWithScheduling(
+        final TickRateModulation modulation = exportWithScheduling(
             gridInv,
             adaptor,
             sched,
@@ -331,6 +414,7 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
             fuzzyMode,
             crafting,
             craftOnly);
+        return this.didSomething ? TickRateModulation.FASTER : modulation;
     }
 
     private TickRateModulation exportOreFiltered(final IMEMonitor<IAEItemStack> gridInv, final InventoryAdaptor adaptor,
@@ -407,7 +491,9 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
         if (!(filterStack instanceof IAEItemStack wanted)) return 0;
 
         if (craftOnly) {
-            submitCraftingRequest(i, wanted);
+            if (canInjectStackToTarget(adaptor, wanted)) {
+                submitCraftingRequest(i, wanted, maxItems);
+            }
             return 0;
         }
 
@@ -423,8 +509,8 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
 
         if (inGrid == null || inGrid.getStackSize() <= 0) {
             // Try crafting if card installed
-            if (crafting) {
-                submitCraftingRequest(i, wanted);
+            if (crafting && canInjectStackToTarget(adaptor, wanted)) {
+                submitCraftingRequest(i, wanted, maxItems);
             }
             return 0;
         }
@@ -444,12 +530,10 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
 
     private int exportStack(final IMEMonitor<IAEItemStack> gridInv, final InventoryAdaptor adaptor,
         final IAEItemStack stack, final int maxItems) {
-        ItemStack probe = stack.getItemStack();
-        int canMove = (int) Math.min(stack.getStackSize(), Math.min(probe.getMaxStackSize(), maxItems));
-        probe = probe.copy();
-        probe.stackSize = canMove;
-        ItemStack notFit = adaptor.simulateAdd(probe);
-        int canFit = canMove - (notFit == null ? 0 : notFit.stackSize);
+        final IAEItemStack probe = stack.copy();
+        probe.setStackSize(Math.min(stack.getStackSize(), maxItems));
+        final IAEStack<?> notFit = adaptor.simulateAddStack(probe, InsertionMode.DEFAULT);
+        long canFit = probe.getStackSize() - (notFit == null ? 0 : notFit.getStackSize());
         if (canFit <= 0) return 0;
 
         IAEItemStack toExtract = stack.copy();
@@ -462,59 +546,63 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
         }
         if (extracted == null || extracted.getStackSize() <= 0) return 0;
 
-        ItemStack toAdd = extracted.getItemStack();
-        ItemStack excess = adaptor.addItems(toAdd);
+        final IAEStack<?> excess = adaptor.addStack(extracted, InsertionMode.DEFAULT);
 
-        if (excess != null && excess.stackSize > 0) {
-            IAEItemStack returnStack = AEApi.instance()
-                .storage()
-                .createItemStack(excess);
-            gridInv.injectItems(returnStack, Actionable.MODULATE, mySrc);
+        if (excess != null && excess.getStackSize() > 0) {
+            toExtract.setStackSize(excess.getStackSize());
+            gridInv.injectItems(toExtract, Actionable.MODULATE, mySrc);
+            return (int) (extracted.getStackSize() - excess.getStackSize());
         }
+        this.didSomething = true;
         return (int) extracted.getStackSize();
     }
 
-    private void submitCraftingRequest(final int slot, final IAEItemStack wanted) {
+    private boolean canInjectStackToTarget(final InventoryAdaptor adaptor, final IAEItemStack wanted) {
+        return wanted != null && adaptor.simulateAddStack(wanted, InsertionMode.DEFAULT) == null;
+    }
+
+    private void submitCraftingRequest(final int slot, final IAEItemStack wanted, final long amount) {
         try {
             IGrid grid = getProxy().getGrid();
             ICraftingGrid cg = getProxy().getCrafting();
-            craftingTracker.handleCrafting(slot, wanted.getStackSize(), wanted, worldObj, grid, cg, mySrc);
+            this.didSomething = craftingTracker.handleCrafting(slot, amount, wanted, worldObj, grid, cg, mySrc)
+                || this.didSomething;
         } catch (GridAccessException ignored) {}
     }
 
     // ---- helpers ----
 
     private int calculateMaxItems() {
-        int amount = switch (getInstalledUpgrades(Upgrades.SPEED)) {
+        long amount = switch (getInstalledUpgrades(Upgrades.SPEED)) {
             case 1:
-                yield 8;
+                yield 8L;
             case 2:
-                yield 32;
+                yield 32L;
             case 3:
-                yield 64;
+                yield 64L;
             case 4:
-                yield 96;
+                yield 96L;
             default:
-                yield 1;
+                yield 1L;
         };
 
         amount += switch (getInstalledUpgrades(Upgrades.SUPERSPEED)) {
-            case 1 -> 16;
-            case 2 -> 16 * 8;
-            case 3 -> 16 * 8 * 8;
-            case 4 -> 16 * 8 * 8 * 8;
-            default -> 0;
+            case 1 -> 16L;
+            case 2 -> 16L * 8L;
+            case 3 -> 16L * 8L * 8L;
+            case 4 -> 16L * 8L * 8L * 8L;
+            default -> 0L;
         };
 
         amount += switch (getInstalledUpgrades(Upgrades.SUPERLUMINALSPEED)) {
-            case 1 -> 131_072;
-            case 2 -> 131_072 * 8;
-            case 3 -> 131_072 * 8 * 8;
-            case 4 -> 131_072 * 8 * 8 * 8;
-            default -> 0;
+            case 1 -> 131_072L;
+            case 2 -> 131_072L * 8L;
+            case 3 -> 131_072L * 8L * 8L;
+            case 4 -> 131_072L * 8L * 8L * 8L;
+            default -> 0L;
         };
 
-        return amount;
+        return amount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) amount;
     }
 
     private Predicate<IAEItemStack> getOreFilterPredicate() {
@@ -541,8 +629,13 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
     }
 
     @Override
+    public IGridNode getGridNode(final ForgeDirection dir) {
+        return SingularityPhysicalIsolation.getGridNode(this, dir);
+    }
+
+    @Override
     public AECableType getCableConnectionType(final ForgeDirection dir) {
-        return AECableType.SMART;
+        return AECableType.NONE;
     }
 
     @Override
@@ -551,20 +644,45 @@ public class TileSingularityExportBus extends AENetworkInvTile implements IGridT
     }
 
     private IMEMonitor<IAEItemStack> getGridItemInventory() {
+        if (!SingularityChunkAccess.isHostChunkNetworkAccessible(this)) return null;
         GridNode node = (GridNode) getProxy().getNode();
         if (node == null) return null;
-        SingularityGrid sg = SingularityNetworkManager.INSTANCE.getGridForPlayer(node.getPlayerID());
+        final int ownerID = this.gridOwnerPlayerID >= 0 ? this.gridOwnerPlayerID : node.getPlayerID();
+        SingularityGrid sg = SingularityNetworkManager.INSTANCE.getGridForPlayer(ownerID, this.networkID);
         if (sg == null) return null;
         IStorageGrid storage = sg.getCache(IStorageGrid.class);
         return storage == null ? null : storage.getItemInventory();
     }
 
     private InventoryAdaptor getAdjacentAdaptor() {
-        int meta = worldObj.getBlockMetadata(xCoord, yCoord, zCoord);
-        ForgeDirection facing = ForgeDirection.getOrientation(meta);
-        TileEntity te = worldObj
-            .getTileEntity(xCoord + facing.offsetX, yCoord + facing.offsetY, zCoord + facing.offsetZ);
+        final ForgeDirection facing = this.getTargetSide();
+        final TileEntity te = SingularityChunkAccess.getLoadedAdjacentTileIfAccessible(this, facing);
         if (te == null) return null;
-        return InventoryAdaptor.getAdaptor(te, facing.getOpposite());
+        return InventoryAdaptor
+            .getAdaptor(te, facing.getOpposite(), InventoryAdaptor.ALLOW_ITEMS | InventoryAdaptor.FOR_INSERTS);
+    }
+
+    private boolean isBusAccessible() {
+        if (this.worldObj == null || this.worldObj.isRemote) return false;
+        final ForgeDirection facing = this.getTargetSide();
+        return !this.contributionRetired && SingularityChunkAccess.isHostChunkNetworkAccessible(this)
+            && SingularityChunkAccess.isAdjacentTargetChunkNetworkAccessible(this, facing);
+    }
+
+    private ForgeDirection getTargetSide() {
+        final int meta = this.worldObj.getBlockMetadata(this.xCoord, this.yCoord, this.zCoord);
+        return ForgeDirection.getOrientation(meta);
+    }
+
+    @Override
+    public void retireSingularityContribution() {
+        this.contributionRetired = true;
+        this.itemToSend = 0;
+        this.didSomething = false;
+    }
+
+    @Override
+    public boolean isContributionLoaded() {
+        return !this.contributionRetired;
     }
 }

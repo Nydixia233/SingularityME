@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Singularity ME — UI 预览</title>
+<link rel="stylesheet" href="shared-palette.css">
+<style>
+  .page {
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 24px;
+    padding: 40px 20px;
+  }
+  h1 {
+    color: var(--text-primary);
+    font-size: 24px; font-weight: 700;
+    text-align: center;
+  }
+  .subtitle {
+    color: var(--text-muted);
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .cards {
+    display: flex; gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .card {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 12px;
+    width: 280px;
+    padding: 24px;
+    background: rgba(20, 25, 35, 0.93);
+    border: 1px solid var(--border-panel);
+    border-radius: var(--radius-panel);
+    text-decoration: none;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover {
+    border-color: var(--btn-normal);
+    transform: translateY(-2px);
+  }
+  .card .icon {
+    font-size: 40px;
+  }
+  .card h2 {
+    color: var(--text-primary);
+    font-size: 16px; font-weight: 700;
+  }
+  .card p {
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .footer {
+    margin-top: 32px;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .files {
+    margin-top: 24px;
+    display: flex; flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .files span { font-family: 'Consolas', 'Courier New', monospace; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>🧬 Singularity ME — UI 预览</h1>
+  <p class="subtitle">从 Qz UILib Java API 提取的 HTML/CSS 预览<br>可直接在浏览器中调试，清洗后嵌入 Mod</p>
+
+  <div class="cards">
+    <a class="card" href="network-tab.html">
+      <span class="icon">🌐</span>
+      <h2>网络标签页</h2>
+      <p>QzNetworkTabScreens<br>设备网络分配、加密网络加入</p>
+    </a>
+    <a class="card" href="network-terminal.html">
+      <span class="icon">🖥️</span>
+      <h2>网络终端</h2>
+      <p>QzNetworkTerminalScreens<br>5 面板：选择/成员/设置/信息/创建</p>
+    </a>
+  </div>
+
+  <div class="files">
+    <p>对应 Java 源文件 → HTML 映射：</p>
+    <span>QzNetworkUiKit.java</span> → shared-palette.css
+    <span>QzNetworkTabScreens.java</span> → network-tab.html
+    <span>QzNetworkTerminalScreens.java</span> → network-terminal.html
+  </div>
+
+  <p class="footer">
+    Palette 颜色值、尺寸常量、组件语义与原 Java 代码一一对应
+  </p>
+</div>
+</body>
+</html>

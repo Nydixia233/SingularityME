@@ -31,3 +31,6 @@ Thumbs.db
 # Logs
 *.log
 build_out.txt
+
+# Gradle daemon local JVM config
+gradle/gradle-daemon-jvm.properties

@@ -2,10 +2,10 @@
     {
         "modid": "${modId}",
         "name": "${modName}",
-        "description": "A global, cross-dimensional AE2 network for GTNH. All ME devices owned by the same player share one unified network — no cables, no channels, no limits.",
+        "description": "A global, cross-dimensional AE2 network for GTNH. All ME devices owned by the same player share one unified network: no cables, no channels, no limits.",
         "version": "${modVersion}",
         "mcversion": "${minecraftVersion}",
-        "url": "https://github.com/GTNewHorizons/Singularity-ME",
+        "url": "https://github.com/Nydixia233/SingularityME",
         "updateUrl": "",
         "authorList": [],
         "credits": "",

@@ -14,7 +14,7 @@ import appeng.container.slot.SlotRestrictedInput.PlacableItemType;
  *
  * <p>
  * Provides 10 cell slots (2 columns × 5 rows) that only accept AE2 storage cells.
- * Supports priority control via +/- buttons in the GUI.
+ * Supports priority control via AE2's priority GUI tab.
  */
 public class ContainerSingularityDrive extends AEBaseContainer {
 

@@ -1,9 +1,12 @@
 package com.github.singularityme.init;
 
+import com.github.singularityme.tile.TileSingularityCraftingCore;
+import com.github.singularityme.tile.TileSingularityCraftingTerminal;
 import com.github.singularityme.tile.TileSingularityDrive;
 import com.github.singularityme.tile.TileSingularityExportBus;
 import com.github.singularityme.tile.TileSingularityImportBus;
 import com.github.singularityme.tile.TileSingularityInterface;
+import com.github.singularityme.tile.TileSingularityPatternTerminal;
 import com.github.singularityme.tile.TileSingularityPowerCore;
 import com.github.singularityme.tile.TileSingularityProbe;
 import com.github.singularityme.tile.TileSingularityStorageBus;
@@ -38,7 +41,8 @@ public final class WailaRegistrar {
         // All other tiles: show facing direction
         for (Class<?> cls : new Class<?>[] { TileSingularityStorageBus.class, TileSingularityImportBus.class,
             TileSingularityExportBus.class, TileSingularityInterface.class, TileSingularityPowerCore.class,
-            TileSingularityDrive.class, TileSingularityTerminal.class, }) {
+            TileSingularityDrive.class, TileSingularityTerminal.class, TileSingularityCraftingTerminal.class,
+            TileSingularityPatternTerminal.class, TileSingularityCraftingCore.class, }) {
             registrar.registerBodyProvider(WailaSingularityProbeProvider.INSTANCE, cls);
             registrar.registerNBTProvider(WailaSingularityProbeProvider.INSTANCE, cls);
         }

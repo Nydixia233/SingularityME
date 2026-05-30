@@ -1,27 +1,39 @@
 package com.github.singularityme.proxy;
 
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemBlock;
 
 import com.github.singularityme.SingularityME;
+import com.github.singularityme.block.BlockSingularityCraftingCore;
+import com.github.singularityme.block.BlockSingularityCraftingTerminal;
 import com.github.singularityme.block.BlockSingularityDrive;
 import com.github.singularityme.block.BlockSingularityExportBus;
 import com.github.singularityme.block.BlockSingularityImportBus;
 import com.github.singularityme.block.BlockSingularityInterface;
+import com.github.singularityme.block.BlockSingularityNetworkTerminal;
+import com.github.singularityme.block.BlockSingularityPatternTerminal;
 import com.github.singularityme.block.BlockSingularityPowerCore;
 import com.github.singularityme.block.BlockSingularityProbe;
 import com.github.singularityme.block.BlockSingularityStorageBus;
 import com.github.singularityme.block.BlockSingularityTerminal;
 import com.github.singularityme.gui.SingularityGuiHandler;
 import com.github.singularityme.init.RecipeHandler;
+import com.github.singularityme.network.SingularityChannel;
+import com.github.singularityme.tile.TileSingularityCraftingCore;
+import com.github.singularityme.tile.TileSingularityCraftingTerminal;
 import com.github.singularityme.tile.TileSingularityDrive;
 import com.github.singularityme.tile.TileSingularityExportBus;
 import com.github.singularityme.tile.TileSingularityImportBus;
 import com.github.singularityme.tile.TileSingularityInterface;
+import com.github.singularityme.tile.TileSingularityNetworkTerminal;
+import com.github.singularityme.tile.TileSingularityPatternTerminal;
 import com.github.singularityme.tile.TileSingularityPowerCore;
 import com.github.singularityme.tile.TileSingularityProbe;
 import com.github.singularityme.tile.TileSingularityStorageBus;
 import com.github.singularityme.tile.TileSingularityTerminal;
 
+import appeng.api.AEApi;
+import appeng.core.CreativeTab;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLInterModComms;
 import cpw.mods.fml.common.event.FMLLoadCompleteEvent;
@@ -40,52 +52,75 @@ public class CommonProxy {
     public static BlockSingularityInterface blockInterface;
     public static BlockSingularityPowerCore blockPowerCore;
     public static BlockSingularityDrive blockDrive;
+    public static BlockSingularityCraftingTerminal blockCraftingTerminal;
+    public static BlockSingularityPatternTerminal blockPatternTerminal;
+    public static BlockSingularityCraftingCore blockCraftingCore;
+    public static BlockSingularityNetworkTerminal blockNetworkTerminal;
 
     public void preInit(FMLPreInitializationEvent event) {
-        // Debug probe — no crafting recipe, obtain via /give
+        // Debug probe: no crafting recipe, obtain via /give.
         blockProbe = new BlockSingularityProbe();
-        GameRegistry.registerBlock(blockProbe, ItemBlock.class, "singularity_probe");
+        registerBlock(blockProbe, "singularity_probe");
         GameRegistry.registerTileEntity(TileSingularityProbe.class, "singularityme:singularity_probe");
 
-        // Singularity Storage Bus
         blockStorageBus = new BlockSingularityStorageBus();
-        GameRegistry.registerBlock(blockStorageBus, ItemBlock.class, "singularity_storage_bus");
+        registerBlock(blockStorageBus, "singularity_storage_bus");
         GameRegistry.registerTileEntity(TileSingularityStorageBus.class, "singularityme:singularity_storage_bus");
 
-        // Singularity Terminal
         blockTerminal = new BlockSingularityTerminal();
-        GameRegistry.registerBlock(blockTerminal, ItemBlock.class, "singularity_terminal");
+        registerBlock(blockTerminal, "singularity_terminal");
         GameRegistry.registerTileEntity(TileSingularityTerminal.class, "singularityme:singularity_terminal");
 
-        // Singularity Import Bus
+        blockCraftingTerminal = new BlockSingularityCraftingTerminal();
+        registerBlock(blockCraftingTerminal, "singularity_crafting_terminal");
+        GameRegistry
+            .registerTileEntity(TileSingularityCraftingTerminal.class, "singularityme:singularity_crafting_terminal");
+
+        blockPatternTerminal = new BlockSingularityPatternTerminal();
+        registerBlock(blockPatternTerminal, "singularity_pattern_terminal");
+        GameRegistry
+            .registerTileEntity(TileSingularityPatternTerminal.class, "singularityme:singularity_pattern_terminal");
+
+        blockNetworkTerminal = new BlockSingularityNetworkTerminal();
+        registerBlock(blockNetworkTerminal, "singularity_network_terminal");
+        GameRegistry
+            .registerTileEntity(TileSingularityNetworkTerminal.class, "singularityme:singularity_network_terminal");
+
         blockImportBus = new BlockSingularityImportBus();
-        GameRegistry.registerBlock(blockImportBus, ItemBlock.class, "singularity_import_bus");
+        registerBlock(blockImportBus, "singularity_import_bus");
         GameRegistry.registerTileEntity(TileSingularityImportBus.class, "singularityme:singularity_import_bus");
 
-        // Singularity Export Bus
         blockExportBus = new BlockSingularityExportBus();
-        GameRegistry.registerBlock(blockExportBus, ItemBlock.class, "singularity_export_bus");
+        registerBlock(blockExportBus, "singularity_export_bus");
         GameRegistry.registerTileEntity(TileSingularityExportBus.class, "singularityme:singularity_export_bus");
 
-        // Singularity ME Interface
         blockInterface = new BlockSingularityInterface();
-        GameRegistry.registerBlock(blockInterface, ItemBlock.class, "singularity_interface");
+        registerBlock(blockInterface, "singularity_interface");
         GameRegistry.registerTileEntity(TileSingularityInterface.class, "singularityme:singularity_interface");
 
-        // Singularity Power Core
         blockPowerCore = new BlockSingularityPowerCore();
-        GameRegistry.registerBlock(blockPowerCore, ItemBlock.class, "singularity_power_core");
+        registerBlock(blockPowerCore, "singularity_power_core");
         GameRegistry.registerTileEntity(TileSingularityPowerCore.class, "singularityme:singularity_power_core");
 
-        // Singularity Drive
         blockDrive = new BlockSingularityDrive();
-        GameRegistry.registerBlock(blockDrive, ItemBlock.class, "singularity_drive");
+        registerBlock(blockDrive, "singularity_drive");
         GameRegistry.registerTileEntity(TileSingularityDrive.class, "singularityme:singularity_drive");
+
+        blockCraftingCore = new BlockSingularityCraftingCore();
+        registerBlock(blockCraftingCore, "singularity_crafting_core");
+        GameRegistry.registerTileEntity(TileSingularityCraftingCore.class, "singularityme:singularity_crafting_core");
+    }
+
+    private void registerBlock(final Block block, final String name) {
+        if (CreativeTab.instance != null) {
+            block.setCreativeTab(CreativeTab.instance);
+        }
+        GameRegistry.registerBlock(block, ItemBlock.class, name);
     }
 
     public void init(FMLInitializationEvent event) {
         NetworkRegistry.INSTANCE.registerGuiHandler(SingularityME.instance, SingularityGuiHandler.INSTANCE);
-        // Register WAILA tooltip provider for TileSingularityProbe
+        SingularityChannel.register();
         FMLInterModComms
             .sendMessage("Waila", "register", "com.github.singularityme.init.WailaRegistrar.callbackRegister");
     }
@@ -95,6 +130,10 @@ public class CommonProxy {
     }
 
     public void loadComplete(FMLLoadCompleteEvent event) {
+        AEApi.instance()
+            .registries()
+            .interfaceTerminal()
+            .register(TileSingularityInterface.class);
         com.github.singularityme.init.SingularityUpgradeMirror.mirrorAll();
     }
 }

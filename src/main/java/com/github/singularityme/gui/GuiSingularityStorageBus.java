@@ -6,6 +6,7 @@ import java.io.IOException;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.util.StatCollector;
 
 import org.lwjgl.input.Mouse;
 
@@ -58,6 +59,7 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
     private GuiImgButton btnExtractionMode;
     private GuiImgButton btnStorageFilter;
     private GuiTabButton btnPriority;
+    private GuiTabButton btnNetworkTab;
 
     public GuiSingularityStorageBus(final InventoryPlayer ip, final TileSingularityStorageBus te) {
         super(new ContainerSingularityStorageBus(ip, te));
@@ -123,6 +125,7 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
             2 + 4 * 16,
             GuiText.Priority.getLocal(),
             itemRender);
+        btnNetworkTab = new GuiTabButton(this.guiLeft + 154, this.guiTop + 22, 2 + 11 * 16, "Network", itemRender);
 
         this.buttonList.add(btnStorageFilter);
         this.buttonList.add(this.fuzzyMode);
@@ -132,6 +135,7 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
         this.buttonList.add(btnPartition);
         this.buttonList.add(btnClear);
         this.buttonList.add(btnPriority);
+        this.buttonList.add(btnNetworkTab);
     }
 
     @Override
@@ -172,10 +176,9 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
         }
         if (this.fuzzyMode != null) this.fuzzyMode.set(c.fzMode);
         if (this.oreFilter != null) this.oreFilter.set(ActionItems.ORE_FILTER);
-        if (btnPartition != null) btnPartition.set(ActionItems.WRENCH);
+        if (btnPartition != null) btnPartition.set(c.partitionMode);
         if (btnClear != null) btnClear.set(ActionItems.CLOSE);
 
-        this.fontRendererObj.drawString("P: " + c.getPriorityValue(), 8, 6, 0x404040);
     }
 
     @Override
@@ -202,11 +205,16 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
         final boolean backwards = Mouse.isButtonDown(1);
         try {
             if (btn == btnPartition) {
-                NetworkHandler.instance.sendToServer(new PacketValueConfig("ACTIONS", "WRENCH"));
+                NetworkHandler.instance
+                    .sendToServer(new PacketValueConfig("ACTIONS", backwards ? "NEXT_PARTITION" : "WRENCH"));
             } else if (btn == btnClear) {
                 NetworkHandler.instance.sendToServer(new PacketValueConfig("ACTIONS", "CLOSE"));
             } else if (btn == btnPriority) {
                 NetworkHandler.instance.sendToServer(new PacketSwitchGuis(GuiBridge.GUI_PRIORITY));
+            } else if (btn == btnNetworkTab) {
+                final ContainerSingularityStorageBus c = (ContainerSingularityStorageBus) this.inventorySlots;
+                final net.minecraft.tileentity.TileEntity te = c.storageBus;
+                NetworkTabClientActions.open(te);
             } else if (btn == btnRwMode) {
                 NetworkHandler.instance.sendToServer(new PacketConfigButton(btnRwMode.getSetting(), backwards));
             } else if (btn == btnExtractionMode) {
@@ -235,7 +243,7 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
 
     @Override
     protected String getName() {
-        return "Singularity Storage Bus";
+        return StatCollector.translateToLocal("tile.singularity_storage_bus.name");
     }
 
     private boolean acceptType(final VirtualMEPhantomSlot slot, final IAEStackType<?> type, final int btn) {

@@ -21,55 +21,51 @@ import appeng.api.util.DimensionalCoord;
 import appeng.me.GridNode;
 
 /**
- * Virtual anchor node that acts as the physical root of a SingularityGrid.
+ * Virtual anchor node that keeps a player's SingularityGrid alive without scanning the world.
  *
  * <p>
- * The anchor is not a real tile entity — it lives at a dummy coordinate in dim 0 and is
- * marked as NOT world-accessible so AE2 won't try to scan adjacent blocks. It carries
- * DENSE_CAPACITY so all connections through it get unlimited channels.
- *
- * <p>
- * Also implements {@link IAEPowerStorage} to provide infinite AE power so that all adopted
- * nodes see {@code isActive()=true} without physical ME cables. Phase 4 will replace this with
- * real GT EU consumption via a SingularityPowerCore tile.
+ * The anchor is not a power source. Singularity grids start at 0 AE and only become powered when
+ * Singularity Power Core tiles join the same player grid.
  */
 public class SingularityAnchorNode implements IGridBlock, IGridHost, IAEPowerStorage {
 
-    private static final EnumSet<GridFlags> FLAGS = EnumSet.of(GridFlags.DENSE_CAPACITY // unlimited channel capacity;
-                                                                                        // also implies PREFERRED
-    );
+    private static final EnumSet<GridFlags> FLAGS = EnumSet.of(GridFlags.DENSE_CAPACITY);
+    // Virtual anchors are not world-accessible; keep the dummy dimension impossible to match
+    // during vanilla AE2 WorldEvent.Unload sweeps.
+    private static final DimensionalCoord DUMMY_COORD = new DimensionalCoord(0, -256, 0, Integer.MIN_VALUE);
 
     private final SingularityGrid owner;
     private GridNode node;
+    private volatile boolean destroyed;
 
-    // Dummy location — dim 0, far underground, will never collide with real blocks
-    // Uses the (x, y, z, dim) constructor which doesn't require a World reference
-    private static final DimensionalCoord DUMMY_COORD = new DimensionalCoord(0, -256, 0, 0);
-
-    public SingularityAnchorNode(SingularityGrid owner) {
+    public SingularityAnchorNode(final SingularityGrid owner) {
         this.owner = owner;
     }
 
     public GridNode getNode() {
-        return node;
+        return this.node;
     }
 
-    public void setNode(GridNode node) {
+    public void setNode(final GridNode node) {
         this.node = node;
+        this.destroyed = false;
     }
 
     public void destroy() {
-        if (node != null) {
-            node.destroy();
-            node = null;
+        if (this.node != null) {
+            this.node.destroy();
+            this.node = null;
         }
+        this.destroyed = true;
     }
 
-    // ---- IGridBlock ----
+    public boolean isDestroyed() {
+        return this.destroyed;
+    }
 
     @Override
     public double getIdlePowerUsage() {
-        return 0.0; // energy cost handled separately by SingularityPowerDrain
+        return 0.0;
     }
 
     @Override
@@ -79,7 +75,6 @@ public class SingularityAnchorNode implements IGridBlock, IGridHost, IAEPowerSto
 
     @Override
     public boolean isWorldAccessible() {
-        // Critical: returning false prevents AE2 from scanning adjacent blocks
         return false;
     }
 
@@ -94,10 +89,10 @@ public class SingularityAnchorNode implements IGridBlock, IGridHost, IAEPowerSto
     }
 
     @Override
-    public void onGridNotification(GridNotification notification) {}
+    public void onGridNotification(final GridNotification notification) {}
 
     @Override
-    public void setNetworkStatus(IGrid grid, int channelsInUse) {}
+    public void setNetworkStatus(final IGrid grid, final int channelsInUse) {}
 
     @Override
     public EnumSet<ForgeDirection> getConnectableSides() {
@@ -117,53 +112,55 @@ public class SingularityAnchorNode implements IGridBlock, IGridHost, IAEPowerSto
         return null;
     }
 
-    // ---- IGridHost ----
-
     @Override
-    public IGridNode getGridNode(ForgeDirection dir) {
-        return node;
+    public IGridNode getGridNode(final ForgeDirection dir) {
+        return this.node;
     }
 
     @Override
-    public AECableType getCableConnectionType(ForgeDirection dir) {
+    public AECableType getCableConnectionType(final ForgeDirection dir) {
         return AECableType.DENSE;
     }
 
     @Override
     public void securityBreak() {}
 
-    // ---- IAEPowerStorage — unlimited AE power (Phase 4 will replace with GT EU) ----
+    public SingularityGrid getOwner() {
+        return this.owner;
+    }
 
     @Override
     public double injectAEPower(final double amt, final Actionable mode) {
-        // Accept all injected power (nothing left over)
-        return 0.0;
-    }
-
-    /** IEnergySource overload with PowerMultiplier — always supply the full amount. */
-    @Override
-    public double extractAEPower(final double amt, final Actionable mode, final PowerMultiplier multiplier) {
-        return multiplier.multiply(amt);
-    }
-
-    @Override
-    public double getAECurrentPower() {
-        return Double.MAX_VALUE;
+        return amt;
     }
 
     @Override
     public double getAEMaxPower() {
-        return Double.MAX_VALUE;
+        return this.owner.getVirtualAEMaxPower();
+    }
+
+    @Override
+    public double getAECurrentPower() {
+        return this.owner.getVirtualAECurrentPower();
     }
 
     @Override
     public boolean isAEPublicPowerStorage() {
-        // Must be true so EnergyGridCache.addNode() registers us as a provider
         return true;
     }
 
     @Override
     public AccessRestriction getPowerFlow() {
-        return AccessRestriction.READ_WRITE;
+        return AccessRestriction.READ;
+    }
+
+    @Override
+    public boolean isInfinite() {
+        return false;
+    }
+
+    @Override
+    public double extractAEPower(final double amt, final Actionable mode, final PowerMultiplier pm) {
+        return this.owner.extractVirtualAEPower(amt, mode, pm);
     }
 }
