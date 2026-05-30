@@ -1,18 +1,18 @@
 # Singularity ME - 简体中文
 
 # Blocks
-tile.singularity_probe.name=奇点 ME 探测器
-tile.singularity_storage_bus.name=奇点 ME 存储总线
-tile.singularity_terminal.name=奇点 ME 终端
-tile.singularity_import_bus.name=奇点 ME 输入总线
-tile.singularity_export_bus.name=奇点 ME 输出总线
-tile.singularity_interface.name=奇点 ME 接口
-tile.singularity_power_core.name=奇点 ME 能量核心
-tile.singularity_drive.name=奇点 ME 驱动器
-tile.singularity_crafting_terminal.name=奇点 ME 合成终端
-tile.singularity_pattern_terminal.name=奇点 ME 样板终端
-tile.singularity_network_terminal.name=奇点 ME 网络终端
-tile.singularity_crafting_core.name=奇点 ME 合成核心
+tile.singularity_probe.name=奇点探测器
+tile.singularity_storage_bus.name=奇点存储总线
+tile.singularity_terminal.name=奇点终端
+tile.singularity_import_bus.name=奇点输入总线
+tile.singularity_export_bus.name=奇点输出总线
+tile.singularity_interface.name=奇点接口
+tile.singularity_power_core.name=奇点能量核心
+tile.singularity_drive.name=奇点驱动器
+tile.singularity_crafting_terminal.name=奇点合成终端
+tile.singularity_pattern_terminal.name=奇点样板终端
+tile.singularity_network_terminal.name=奇点网络终端
+tile.singularity_crafting_core.name=奇点合成核心
 
 # GUI
 gui.singularityme.crafting_core=奇点合成核心

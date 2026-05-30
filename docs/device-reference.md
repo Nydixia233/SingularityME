@@ -21,7 +21,7 @@
 | 8 | 奇点样板终端 | `BlockSingularityPatternTerminal` | `TileSingularityPatternTerminal` | 0.5 AE/t | `TileSingularityTerminal` |
 | 9 | 奇点网络终端 | `BlockSingularityNetworkTerminal` | `TileSingularityNetworkTerminal` | 0.0 AE/t | `TileEntity` |
 | 10 | 奇点合成核心 | `BlockSingularityCraftingCore` | `TileSingularityCraftingCore` | 动态(见下文) | `TileCraftingStorageTile` |
-| 11 | 奇点 ME 接口 | `BlockSingularityInterface` | `TileSingularityInterface` | 1.0 AE/t | `AENetworkInvTile` |
+| 11 | 奇点接口 | `BlockSingularityInterface` | `TileSingularityInterface` | 1.0 AE/t | `AENetworkInvTile` |
 | 12 | 奇点探针 *(调试)* | `BlockSingularityProbe` | `TileSingularityProbe` | 0.0 AE/t | `AENetworkTile` |
 
 > **注**：功耗为设备待机值。网络总功耗 = 所有设备 idle 功耗之和，由 AE2 的 `EnergyGridCache` 自动计算。
@@ -205,7 +205,7 @@
 
 ---
 
-## 11. 奇点 ME 接口（Interface）
+## 11. 奇点接口（Interface）
 
 **功能**：物品缓冲与自动合成请求入口。等同于 AE2 ME Interface。
 

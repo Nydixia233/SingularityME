@@ -1,18 +1,18 @@
 # Singularity ME - English (US)
 
 # Blocks
-tile.singularity_probe.name=Singularity ME Probe
+tile.singularity_probe.name=Singularity Probe
 tile.singularity_storage_bus.name=Singularity ME Storage Bus
 tile.singularity_terminal.name=Singularity ME Terminal
 tile.singularity_import_bus.name=Singularity ME Import Bus
 tile.singularity_export_bus.name=Singularity ME Export Bus
 tile.singularity_interface.name=Singularity ME Interface
-tile.singularity_power_core.name=Singularity ME Power Core
+tile.singularity_power_core.name=Singularity Power Core
 tile.singularity_drive.name=Singularity ME Drive
 tile.singularity_crafting_terminal.name=Singularity ME Crafting Terminal
 tile.singularity_pattern_terminal.name=Singularity ME Pattern Terminal
 tile.singularity_network_terminal.name=Singularity ME Network Terminal
-tile.singularity_crafting_core.name=Singularity ME Crafting Core
+tile.singularity_crafting_core.name=Singularity Crafting Core
 
 # GUI
 gui.singularityme.crafting_core=Singularity Crafting Core

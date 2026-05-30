@@ -52,16 +52,16 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 
 | 奇点设备 | 对应 AE2 设备 | 主要功能 |
 |---------|-------------|---------|
-| 奇点存储总线 | Storage Bus | 将相邻容器的物品暴露到奇点网格 |
+| 奇点存储总线 | ME Storage Bus | 将相邻容器的物品暴露到奇点网格 |
 | 奇点终端 | ME Terminal | 访问奇点网格中的所有物品 |
-| 奇点合成终端 | Crafting Terminal | 终端内直接进行合成操作 |
-| 奇点样板终端 | Pattern Terminal | 创建和管理合成样板 |
+| 奇点合成终端 | ME Crafting Terminal | 终端内直接进行合成操作 |
+| 奇点样板终端 | ME Pattern Terminal | 创建和管理合成样板 |
 | 奇点网络终端 | — | 网络选择、成员管理、网络设置（基于 Qz UILib） |
-| 奇点输入总线 | Import Bus | 从相邻容器抽取物品存入网格 |
-| 奇点输出总线 | Export Bus | 从网格向相邻容器输出物品 |
-| 奇点 ME 接口 | ME Interface | 物品缓冲与自动合成接口 |
+| 奇点输入总线 | ME Import Bus | 从相邻容器抽取物品存入网格 |
+| 奇点输出总线 | ME Export Bus | 从网格向相邻容器输出物品 |
+| 奇点接口 | ME Interface | 物品缓冲与自动合成接口 |
 | 奇点驱动器 | ME Drive | 安装存储元件，扩展网格容量 |
-| 奇点合成核心 | Crafting Core | 提供合成 CPU 算力 |
+| 奇点合成核心 | Crafting CPU | 提供合成 CPU 算力 |
 | 奇点能量核心 | Energy Acceptor | GT EU → AE 能量转换 |
 
 ---
