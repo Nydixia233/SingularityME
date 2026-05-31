@@ -35,6 +35,7 @@ import club.heiqi.uilib.ui.style.props.UiFontWeight;
 import club.heiqi.uilib.ui.style.props.UiJustifyContent;
 import club.heiqi.uilib.ui.style.props.UiOverflow;
 import club.heiqi.uilib.ui.style.props.UiScrollbarWidth;
+import club.heiqi.uilib.ui.style.props.UiTextAlign;
 import club.heiqi.uilib.ui.style.props.UiTextOverflow;
 import club.heiqi.uilib.ui.style.props.UiWhiteSpace;
 import club.heiqi.uilib.ui.style.values.UiStyleLength;
@@ -337,7 +338,8 @@ public final class QzNetworkTabScreens {
                 empty.appendText(QzNetworkUiKit.tr("gui.singularityme.network_tab.no_networks"));
                 empty.style()
                     .setPadding(UiStyleLength.px(10))
-                    .setTextColor(Palette.TEXT_EMPTY);
+                    .setTextColor(Palette.TEXT_EMPTY)
+                    .setTextAlign(UiTextAlign.CENTER);
                 this.list.append(empty);
                 return;
             }
@@ -381,7 +383,7 @@ public final class QzNetworkTabScreens {
                 return true;
             });
 
-            row.append(QzNetworkUiKit.colorSwatch(this.document, color, 18));
+            row.append(QzNetworkUiKit.colorSwatch(this.document, color, 14));
             row.append(QzNetworkUiKit.idPill(this.document, entry.networkID));
 
             final ElementNode name = div();
@@ -585,6 +587,7 @@ public final class QzNetworkTabScreens {
                 .setWidth(UiStyleLength.px(width))
                 .setHeight(UiStyleLength.px(36))
                 .setPadding(UiStyleLength.px(6))
+                .setFontWeight(UiFontWeight.BOLD)
                 .setBorderRadius(UiStyleLength.px(Palette.BORDER_RADIUS_ROW));
             return button;
         }

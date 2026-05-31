@@ -18,6 +18,7 @@ import club.heiqi.uilib.ui.style.props.UiAlignItems;
 import club.heiqi.uilib.ui.style.props.UiBorderStyle;
 import club.heiqi.uilib.ui.style.props.UiBoxSizing;
 import club.heiqi.uilib.ui.style.props.UiDisplay;
+import club.heiqi.uilib.ui.style.props.UiFontWeight;
 import club.heiqi.uilib.ui.style.props.UiJustifyContent;
 import club.heiqi.uilib.ui.style.values.UiBoxShadow;
 import club.heiqi.uilib.ui.style.values.UiStyleLength;
@@ -153,6 +154,7 @@ public final class QzNetworkUiKit {
             .setPaddingRight(UiStyleLength.px(Palette.BADGE_PADDING_H))
             .setBackgroundColor(color)
             .setTextColor(Palette.TEXT_BADGE)
+            .setFontWeight(UiFontWeight.BOLD)
             .setBorderRadius(UiStyleLength.px(Palette.BORDER_RADIUS_BADGE))
             .setDisplay(UiDisplay.FLEX)
             .setAlignItems(UiAlignItems.CENTER)

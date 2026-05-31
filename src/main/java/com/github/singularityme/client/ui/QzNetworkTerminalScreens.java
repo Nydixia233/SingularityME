@@ -42,6 +42,7 @@ import club.heiqi.uilib.ui.style.props.UiFontWeight;
 import club.heiqi.uilib.ui.style.props.UiJustifyContent;
 import club.heiqi.uilib.ui.style.props.UiOverflow;
 import club.heiqi.uilib.ui.style.props.UiScrollbarWidth;
+import club.heiqi.uilib.ui.style.props.UiTextAlign;
 import club.heiqi.uilib.ui.style.props.UiTextOverflow;
 import club.heiqi.uilib.ui.style.props.UiWhiteSpace;
 import club.heiqi.uilib.ui.style.values.UiStyleLength;
@@ -919,7 +920,8 @@ public final class QzNetworkTerminalScreens {
                 empty.appendText(QzNetworkUiKit.tr("gui.singularityme.network_tab.no_networks"));
                 empty.style()
                     .setPadding(UiStyleLength.px(10))
-                    .setTextColor(Palette.TEXT_EMPTY);
+                    .setTextColor(Palette.TEXT_EMPTY)
+                    .setTextAlign(UiTextAlign.CENTER);
                 list.append(empty);
             } else {
                 for (final NetworkEntry entry : networks) {
@@ -963,7 +965,7 @@ public final class QzNetworkTerminalScreens {
                 return true;
             });
 
-            row.append(QzNetworkUiKit.colorSwatch(document, color, 18));
+            row.append(QzNetworkUiKit.colorSwatch(document, color, 14));
             row.append(QzNetworkUiKit.idPill(document, entry.networkID));
 
             final ElementNode name = div();
@@ -1368,6 +1370,9 @@ public final class QzNetworkTerminalScreens {
                 .setBackgroundColors(Palette.BTN_NORMAL, Palette.BTN_ACTIVE, Palette.BTN_DISABLED)
                 .setTextColors(Palette.TEXT_BADGE, Palette.TEXT_INPUT_BUTTON_DISABLED)
                 .setFocusBorderColor(Palette.BTN_FOCUS_BORDER);
+            btn.getElement()
+                .style()
+                .setFontWeight(UiFontWeight.BOLD);
             return btn;
         }
 
@@ -1380,6 +1385,9 @@ public final class QzNetworkTerminalScreens {
                 .setBackgroundColors(Palette.BTN_DANGER_NORMAL, Palette.BTN_DANGER_ACTIVE, Palette.BTN_DANGER_DISABLED)
                 .setTextColors(Palette.TEXT_BADGE, Palette.TEXT_INPUT_BUTTON_DISABLED)
                 .setFocusBorderColor(Palette.BTN_FOCUS_BORDER);
+            btn.getElement()
+                .style()
+                .setFontWeight(UiFontWeight.BOLD);
             return btn;
         }
 
