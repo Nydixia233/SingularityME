@@ -112,6 +112,7 @@ public final class QzNetworkTerminalScreens {
         List<NetworkEntry> networks = new ArrayList<>();
         ElementNode nav;
         ElementNode content;
+        ElementNode contentBottom;
         ElementNode networkBarNode;
         ElementNode selectionSummaryNode;
         ElementNode selectionActionsRow;
@@ -208,6 +209,13 @@ public final class QzNetworkTerminalScreens {
                 .setBoxSizing(UiBoxSizing.BORDER_BOX);
             frame.append(content);
 
+            // 底部操作栏：独立容器，flex-shrink:0 保证永不被挤出
+            contentBottom = div();
+            contentBottom.style()
+                .setFlexShrink(0.0F)
+                .setBoxSizing(UiBoxSizing.BORDER_BOX);
+            frame.append(contentBottom);
+
             createNameInput = input(QzNetworkUiKit.tr("gui.singularityme.network_terminal.create.name_placeholder"));
             createPasswordInput = input(
                 QzNetworkUiKit.tr("gui.singularityme.network_terminal.create.password_placeholder"));
@@ -251,6 +259,7 @@ public final class QzNetworkTerminalScreens {
             final ElementNode focused = focusedInput();
             renderNav();
             content.clearChildren();
+            contentBottom.clearChildren();
             content.append(networkBar());
             switch (panel) {
                 case SELECTION:
@@ -370,7 +379,7 @@ public final class QzNetworkTerminalScreens {
         void renderSelection() {
             content.append(listMeta());
             content.append(scrollBox(networkList()));
-            content.append(selectionSummary());
+            contentBottom.append(selectionSummary());
 
             final ElementNode actions = div();
             actions.style()
@@ -378,12 +387,13 @@ public final class QzNetworkTerminalScreens {
                 .setFlexDirection(UiFlexDirection.ROW)
                 .setAlignItems(UiAlignItems.CENTER)
                 .setFlexShrink(0.0F)
+                .setFlexWrap(UiFlexWrap.WRAP)
                 .setBoxSizing(UiBoxSizing.BORDER_BOX)
                 .setPaddingLeft(UiStyleLength.px(12))
                 .setPaddingRight(UiStyleLength.px(12))
                 .setPaddingBottom(UiStyleLength.px(10))
                 .setGap(UiStyleLength.px(8));
-            content.append(actions);
+            contentBottom.append(actions);
             this.selectionActionsRow = actions;
             renderSelectionActions();
         }
@@ -525,7 +535,7 @@ public final class QzNetworkTerminalScreens {
                 .setPaddingTop(UiStyleLength.px(6))
                 .setPaddingBottom(UiStyleLength.px(6))
                 .setGap(UiStyleLength.px(8));
-            content.append(addRow);
+            contentBottom.append(addRow);
 
             memberNameInput.getElement()
                 .style()
@@ -560,7 +570,7 @@ public final class QzNetworkTerminalScreens {
                 .setPaddingRight(UiStyleLength.px(12))
                 .setPaddingBottom(UiStyleLength.px(10))
                 .setGap(UiStyleLength.px(8));
-            content.append(roleRow);
+            contentBottom.append(roleRow);
             this.memberActionsRow = roleRow;
             renderMemberActions();
         }
@@ -711,7 +721,7 @@ public final class QzNetworkTerminalScreens {
                 .setPaddingRight(UiStyleLength.px(12))
                 .setPaddingBottom(UiStyleLength.px(10))
                 .setGap(UiStyleLength.px(8));
-            content.append(btnRow);
+            contentBottom.append(btnRow);
 
             final DocumentButtonControl cycleSecBtn = button(
                 QzNetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_security"));
@@ -768,7 +778,7 @@ public final class QzNetworkTerminalScreens {
                 .setPaddingRight(UiStyleLength.px(12))
                 .setPaddingBottom(UiStyleLength.px(10))
                 .setGap(UiStyleLength.px(8));
-            content.append(btnRow);
+            contentBottom.append(btnRow);
 
             final DocumentButtonControl cycleSecBtn = button(
                 QzNetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_security"));
