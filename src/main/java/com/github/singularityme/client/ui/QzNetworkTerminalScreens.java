@@ -158,13 +158,15 @@ public final class QzNetworkTerminalScreens {
                 .setBackgroundColor(Palette.BG_OVERLAY);
 
             // 对应 HTML .frame: width: min(92vw, 760px); height: min(92vh, 520px); overflow: hidden
+            // maxWidth/maxHeight 按 guiScale 动态计算，保证逻辑像素大小一致
+            final int guiScale = Math.max(1, Minecraft.getMinecraft().gameSettings.guiScale);
             final ElementNode frame = div();
             frame.style()
                 .setBoxSizing(UiBoxSizing.BORDER_BOX)
                 .setWidth(UiStyleLength.percent(0.92F))
-                .setMaxWidth(UiStyleLength.px(760))
+                .setMaxWidth(UiStyleLength.px(600 * guiScale))
                 .setHeight(UiStyleLength.percent(0.92F))
-                .setMaxHeight(UiStyleLength.px(520))
+                .setMaxHeight(UiStyleLength.px(380 * guiScale))
                 .setDisplay(UiDisplay.FLEX)
                 .setFlexDirection(UiFlexDirection.COLUMN)
                 .setOverflowX(UiOverflow.HIDDEN)
@@ -377,6 +379,7 @@ public final class QzNetworkTerminalScreens {
                 .setFlexDirection(UiFlexDirection.ROW)
                 .setAlignItems(UiAlignItems.CENTER)
                 .setFlexShrink(0.0F)
+                .setFlexWrap(UiFlexWrap.WRAP)
                 .setBoxSizing(UiBoxSizing.BORDER_BOX)
                 .setPaddingLeft(UiStyleLength.px(12))
                 .setPaddingRight(UiStyleLength.px(12))
@@ -1113,7 +1116,6 @@ public final class QzNetworkTerminalScreens {
                 .setFlexGrow(1.0F)
                 .setFlexShrink(1.0F)
                 .setFlexBasis(UiStyleLength.px(0))
-                .setHeight(UiStyleLength.auto())
                 .setMinHeight(UiStyleLength.px(120))
                 .setOverflowX(UiOverflow.HIDDEN)
                 .setOverflowY(UiOverflow.SCROLL)
