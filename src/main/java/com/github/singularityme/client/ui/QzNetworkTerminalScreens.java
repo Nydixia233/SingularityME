@@ -158,15 +158,14 @@ public final class QzNetworkTerminalScreens {
                 .setBackgroundColor(Palette.BG_OVERLAY);
 
             // 对应 HTML .frame: width: min(92vw, 760px); height: min(92vh, 520px); overflow: hidden
-            // maxWidth/maxHeight 按 guiScale 动态计算，保证逻辑像素大小一致
-            final int guiScale = Math.max(1, Minecraft.getMinecraft().gameSettings.guiScale);
+            // Qz-UILib 布局引擎已工作在 Minecraft GUI 坐标空间，无需手动乘 guiScale
             final ElementNode frame = div();
             frame.style()
                 .setBoxSizing(UiBoxSizing.BORDER_BOX)
                 .setWidth(UiStyleLength.percent(0.92F))
-                .setMaxWidth(UiStyleLength.px(600 * guiScale))
+                .setMaxWidth(UiStyleLength.px(760))
                 .setHeight(UiStyleLength.percent(0.92F))
-                .setMaxHeight(UiStyleLength.px(380 * guiScale))
+                .setMaxHeight(UiStyleLength.px(520))
                 .setDisplay(UiDisplay.FLEX)
                 .setFlexDirection(UiFlexDirection.COLUMN)
                 .setOverflowX(UiOverflow.HIDDEN)
