@@ -10,9 +10,9 @@
 | 模组总览 | `docs/singularity-me-overview.md` |
 | 架构设计 | `docs/singularity-me-architecture-whitepaper.md` |
 | 兼容配置 | `docs/compat-profile.md` |
-| 审查报告 | `docs/SingularityME-审查报告-20260528-三层深度审计.md` |
+| Qz vs HTML 样式差异研究 | `docs/qz-vs-html-style-research.md` |
+| HTML → Qz-UILib API 对照 | `docs/HTML-to-Qz-UILib-Reference.md` |
 | 错误记录索引 | `docs/errors/README.md` |
-| 三种 AI 角色定义 | `prompts/architect.md` |
 
 ## 项目定位
 
@@ -38,7 +38,6 @@
 - 涉及 AE2 兼容 → 先读 `docs/compat-profile.md`
 - 涉及 UI 布局 → 参考 `client/ui/` 下 Java 文件 + `docs/html-reference/` 下 HTML 预览
 - 涉及网络协议 → 先读 `network/packet/` 下的包定义
-- 涉及审查结论 → 先读审查报告
 - 需要具体类/入口/目录位置 → 用 Glob/Grep/Read 现查，不在本文件维护索引
 
 ## 运行与验证
