@@ -4,6 +4,8 @@
 >
 > **版本**：基于 Qz-UILib 4.1.3-LTS
 > **最后更新**：2026-05-31
+>
+> **姊妹文档**：如需本项目实际样式迁移案例与差异分析，请参阅 [`qz-vs-html-style-research.md`](./qz-vs-html-style-research.md)
 
 ---
 
@@ -313,7 +315,7 @@ Qz-UILib 使用 **ARGB int**（`0xAARRGGBB`），不是 CSS 字符串。
 | `box-shadow` | `setBoxShadow(UiBoxShadow)` | 单值 | **不支持多重阴影** |
 | `text-shadow` | `setTextShadow(UiTextShadow)` | 单值 | **不支持多重阴影** |
 | `outline` | `setOutline(UiOutline)` | 轮廓样式 | |
-| `visibility` | `setVisibility(...)` | `UiVisibility.VISIBLE`, `HIDDEN`, `COLLAPSE` | `hidden` 保留空间但不可见、不响应命中 |
+| `visibility` | `setVisibility(...)` | `UiVisibility.VISIBLE`, `HIDDEN` | `hidden` 保留空间但不可见、不响应命中 |
 | `cursor` | `setCursor(...)` | `UiCursor.DEFAULT`, `POINTER`, `TEXT`, `MOVE`, `NOT_ALLOWED`, `WAIT`, `CROSSHAIR`, `NONE` 等 | 无自定义图片光标 |
 | `object-fit` | `setObjectFit(...)` | `UiObjectFit.FILL`, `CONTAIN`, `COVER`, `SCALE_DOWN`, `NONE` | 仅 `<img>` 有效 |
 | `backdrop-filter: blur()` | `setBackdropBlurRadius(UiStyleLength)` | px | 仅 blur；无其他 filter |
@@ -332,7 +334,7 @@ Qz-UILib 使用 **ARGB int**（`0xAARRGGBB`），不是 CSS 字符串。
 | `font-style` | `setFontStyle(...)` | `UiFontStyle.NORMAL`, `ITALIC` | **继承属性** |
 | `font-family` | **不支持** | — | 使用 Minecraft 默认字体 |
 | `font-size` | **不支持** | — | 字体大小由 Minecraft 渲染管线决定 |
-| `text-align` | `setTextAlign(...)` | `UiTextAlign.LEFT`, `CENTER`, `RIGHT`, `JUSTIFY` | **继承属性** |
+| `text-align` | `setTextAlign(...)` | `UiTextAlign.START`, `CENTER`, `END` | **继承属性** |
 | `text-decoration` | `setTextDecoration(...)` | `UiTextDecoration.NONE`, `UNDERLINE`, `OVERLINE`, `LINE_THROUGH` | |
 | `text-overflow` | `setTextOverflow(...)` | `UiTextOverflow.CLIP`, `ELLIPSIS` | 需配合 `overflow: hidden` |
 | `white-space` | `setWhiteSpace(...)` | `UiWhiteSpace.NORMAL`, `NOWRAP`, `PRE`, `PRE_WRAP`, `PRE_LINE` | **继承属性** |
@@ -341,7 +343,7 @@ Qz-UILib 使用 **ARGB int**（`0xAARRGGBB`），不是 CSS 字符串。
 | `text-transform` | `setTextTransform(...)` | `UiTextTransform.NONE`, `UPPERCASE`, `LOWERCASE`, `CAPITALIZE` | **继承属性** |
 | `text-indent` | `setTextIndent(UiStyleLength)` | px | **继承属性** |
 | `word-break` | `setWordBreak(...)` | `UiWordBreak.NORMAL`, `BREAK_ALL`, `KEEP_ALL` | **继承属性** |
-| `overflow-wrap` | `setOverflowWrap(...)` | `UiOverflowWrap.NORMAL`, `BREAK_WORD` | **继承属性** |
+| `overflow-wrap` | `setOverflowWrap(...)` | `UiOverflowWrap.NORMAL`, `BREAK_WORD`, `ANYWHERE` | **继承属性** |
 
 ### 4d. 动画与过渡
 
