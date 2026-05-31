@@ -379,7 +379,6 @@ public final class QzNetworkTerminalScreens {
                 .setFlexDirection(UiFlexDirection.ROW)
                 .setAlignItems(UiAlignItems.CENTER)
                 .setFlexShrink(0.0F)
-                .setFlexWrap(UiFlexWrap.WRAP)
                 .setBoxSizing(UiBoxSizing.BORDER_BOX)
                 .setPaddingLeft(UiStyleLength.px(12))
                 .setPaddingRight(UiStyleLength.px(12))
@@ -1031,7 +1030,8 @@ public final class QzNetworkTerminalScreens {
             lbl.style()
                 .setWidth(UiStyleLength.px(80))
                 .setFlexShrink(0.0F)
-                .setTextColor(Palette.TEXT_LABEL);
+                .setTextColor(Palette.TEXT_LABEL)
+                .setTextAlign(UiTextAlign.END);
             row.append(lbl);
             row.append(field);
             return row;
@@ -1116,6 +1116,7 @@ public final class QzNetworkTerminalScreens {
                 .setFlexGrow(1.0F)
                 .setFlexShrink(1.0F)
                 .setFlexBasis(UiStyleLength.px(0))
+                .setHeight(UiStyleLength.auto())
                 .setMinHeight(UiStyleLength.px(120))
                 .setOverflowX(UiOverflow.HIDDEN)
                 .setOverflowY(UiOverflow.SCROLL)
