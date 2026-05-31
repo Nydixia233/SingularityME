@@ -881,28 +881,28 @@ public final class QzNetworkTerminalScreens {
                 content.append(emptyState());
                 return;
             }
-            final ElementNode box = scrollBox(null);
-            box.append(infoLine(QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.id"), "#" + sel.networkID));
-            box.append(infoLine(QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
-            box.append(
+            final ElementNode infoContent = div();
+            infoContent.append(infoLine(QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.id"), "#" + sel.networkID));
+            infoContent.append(infoLine(QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
+            infoContent.append(
                 infoLine(
                     QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.security"),
                     QzNetworkUiKit.securityName(sel)));
-            box.append(
+            infoContent.append(
                 infoLine(
                     QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
                     QzNetworkUiKit.accessName(sel)));
-            box.append(
+            infoContent.append(
                 infoLine(
                     QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.members"),
                     String.valueOf(sel.adminPlayerIDs.size() + sel.memberPlayerIDs.size())));
-            box.append(infoLine(QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
-            box.append(
+            infoContent.append(infoLine(QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
+            infoContent.append(
                 infoLine(
                     QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.password"),
                     sel.isPasswordProtected ? QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.password_yes")
                         : QzNetworkUiKit.tr("gui.singularityme.network_terminal.info.password_no")));
-            content.append(box);
+            content.append(scrollBox(infoContent));
         }
 
         ElementNode networkList() {
@@ -1110,14 +1110,26 @@ public final class QzNetworkTerminalScreens {
             return row;
         }
 
+        /**
+         * 创建两层滚动容器：外层占据 flex 剩余空间（不设 height:auto 避免 Qz 误判），
+         * 内层以 height:auto 填满外层并独立驱动 overflow-y:scroll。
+         */
         ElementNode scrollBox(final ElementNode child) {
-            final ElementNode box = div();
-            box.style()
+            // 外层：只负责 flex-grow 占据剩余空间，height 设为 px(1) 确保非 auto
+            final ElementNode outer = div();
+            outer.style()
                 .setFlexGrow(1.0F)
                 .setFlexShrink(1.0F)
                 .setFlexBasis(UiStyleLength.px(0))
-                .setHeight(UiStyleLength.auto())
+                .setHeight(UiStyleLength.px(1))
                 .setMinHeight(UiStyleLength.px(120))
+                .setOverflowX(UiOverflow.HIDDEN)
+                .setOverflowY(UiOverflow.HIDDEN)
+                .setBoxSizing(UiBoxSizing.BORDER_BOX);
+            // 内层：填满外层，height:auto 独立生效驱动滚动
+            final ElementNode inner = div();
+            inner.style()
+                .setHeight(UiStyleLength.auto())
                 .setOverflowX(UiOverflow.HIDDEN)
                 .setOverflowY(UiOverflow.SCROLL)
                 .setScrollbarWidth(UiScrollbarWidth.THIN)
@@ -1126,8 +1138,9 @@ public final class QzNetworkTerminalScreens {
                 .setPaddingRight(UiStyleLength.px(18))
                 .setPaddingTop(UiStyleLength.px(6))
                 .setPaddingBottom(UiStyleLength.px(6));
-            if (child != null) box.append(child);
-            return box;
+            if (child != null) inner.append(child);
+            outer.append(inner);
+            return outer;
         }
 
         ElementNode emptyState() {
