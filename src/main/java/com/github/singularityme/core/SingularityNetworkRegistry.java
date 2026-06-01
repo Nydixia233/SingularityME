@@ -255,8 +255,7 @@ public class SingularityNetworkRegistry extends WorldSavedData {
                 ? SecurityLevel.fromOrdinal(tag.getInteger("security"))
                 : SecurityLevel.PRIVATE;
             final String passwordHash = tag.hasKey("passwordHash") ? cleanHash(tag.getString("passwordHash")) : null;
-            final long now = System.currentTimeMillis();
-            final long createdAt = tag.hasKey("createdAtMillis") ? tag.getLong("createdAtMillis") : now;
+            final long createdAt = tag.hasKey("createdAtMillis") ? tag.getLong("createdAtMillis") : 0L;
             final long lastModifiedAt = tag.hasKey("lastModifiedMillis") ? tag.getLong("lastModifiedMillis") : createdAt;
             final List<Integer> admins = readIntList(tag, "admins");
             final List<Integer> members = readIntList(tag, "members");
@@ -398,7 +397,7 @@ public class SingularityNetworkRegistry extends WorldSavedData {
             this.blockedPlayerIDs = blockedPlayerIDs;
         }
 
-        /** 标记用户可见的网络元数据已经变更。 */
+        /** 标记名称、颜色、安全级别、密码等网络元数据已经变更；成员关系变化不刷新该时间。 */
         void touch() {
             lastModifiedMillis = Math.max(lastModifiedMillis, System.currentTimeMillis());
         }

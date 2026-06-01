@@ -599,6 +599,7 @@ public final class NetworkTerminalUI {
             for (int i = 0; i < COLOR_PRESETS.length; i++) {
                 if ((COLOR_PRESETS[i] & 0xFFFFFF) == (selectedColor & 0xFFFFFF)) { idx = i; break; }
             }
+            // 自定义颜色不在预设表中时，从第一个预设重新开始循环。
             selectedColor = COLOR_PRESETS[(idx + 1) % COLOR_PRESETS.length];
             renderContent();
         }
@@ -860,7 +861,11 @@ public final class NetworkTerminalUI {
                 .overlay(IKey.str(text))
                 .width(w).height(Palette.ROW_H).padding(0, 12)
                 .background(Styles.rowBg(enabled ? Palette.BTN_NORMAL : Palette.BTN_DISABLED))
-                .onMousePressed(mb -> { if (enabled) action.run(); return true; });
+                .onMousePressed(mb -> {
+                    if (!enabled) return false;
+                    action.run();
+                    return true;
+                });
         }
 
         private static ButtonWidget<?> makeDangerBtn(String text, int w, Runnable action) {

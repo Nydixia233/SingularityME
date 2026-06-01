@@ -125,7 +125,7 @@ public class PacketNetworkTabData implements IMessage {
             final int security = buf.readInt();
             final int access = buf.readInt();
             final boolean passwordProtected = buf.readBoolean();
-            final int nameLen = buf.readShort();
+            final int nameLen = safeLength(buf.readShort());
             final byte[] nameBytes = new byte[nameLen];
             buf.readBytes(nameBytes);
             final String name = new String(nameBytes, java.nio.charset.StandardCharsets.UTF_8);
@@ -205,10 +205,14 @@ public class PacketNetworkTabData implements IMessage {
     }
 
     private static String readString(final ByteBuf buf) {
-        final int len = buf.readShort();
+        final int len = safeLength(buf.readShort());
         final byte[] bytes = new byte[len];
         buf.readBytes(bytes);
         return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static int safeLength(final int len) {
+        return Math.max(0, len);
     }
 
     private static void writeString(final ByteBuf buf, final String value) {

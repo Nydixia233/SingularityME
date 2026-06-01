@@ -112,9 +112,10 @@ public final class NetworkUiKit {
      * @return 压暗后的 ARGB 颜色值（alpha 固定为 0xFF）
      */
     public static int darken(final int color, final float factor) {
-        final int r = Math.max(0, Math.min(255, (int) (((color >> 16) & 0xFF) * factor)));
-        final int g = Math.max(0, Math.min(255, (int) (((color >> 8) & 0xFF) * factor)));
-        final int b = Math.max(0, Math.min(255, (int) ((color & 0xFF) * factor)));
+        final float clamped = Math.max(0.0f, Math.min(1.0f, factor));
+        final int r = (int) (((color >> 16) & 0xFF) * clamped);
+        final int g = (int) (((color >> 8) & 0xFF) * clamped);
+        final int b = (int) ((color & 0xFF) * clamped);
         return 0xFF000000 | r << 16 | g << 8 | b;
     }
 

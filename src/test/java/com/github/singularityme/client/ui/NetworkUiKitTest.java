@@ -24,4 +24,11 @@ public class NetworkUiKitTest {
         assertEquals(0xFF7F7F7F, NetworkUiKit.lighten(0xFF000000, 0.5f));
         assertEquals(0xFFFFFFFF, NetworkUiKit.lighten(0xFFFFFFFF, 0.5f));
     }
+
+    /** 压暗系数应限制在 0~1，避免越界调用产生反直觉颜色。 */
+    @Test
+    public void clampsDarkenFactor() {
+        assertEquals(0xFFFFFFFF, NetworkUiKit.darken(0xFFFFFFFF, 2.0f));
+        assertEquals(0xFF000000, NetworkUiKit.darken(0xFFFFFFFF, -1.0f));
+    }
 }

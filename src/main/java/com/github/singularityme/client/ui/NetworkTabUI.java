@@ -139,7 +139,7 @@ public final class NetworkTabUI {
 
             // 按钮
             selectBtn = makeBtn(NetworkUiKit.tr("gui.singularityme.network_tab.select"),
-                180, Palette.BTN_NORMAL, this::onSelect);
+                180, Palette.BTN_NORMAL, this::onSelect, false);
             joinBtn = makeBtn(NetworkUiKit.tr("gui.singularityme.network_tab.join"),
                 110, Palette.BTN_NORMAL, this::onJoin);
             cancelBtn = makeBtn(NetworkUiKit.tr("gui.singularityme.network_tab.cancel"),
@@ -194,11 +194,17 @@ public final class NetworkTabUI {
         // ---- 按钮工厂 ----
 
         private static ButtonWidget<?> makeBtn(String text, int w, int bg, Runnable action) {
-            return new ButtonWidget<>()
+            return makeBtn(text, w, bg, action, true);
+        }
+
+        private static ButtonWidget<?> makeBtn(String text, int w, int bg, Runnable action, boolean enabled) {
+            final ButtonWidget<?> button = new ButtonWidget<>()
                 .overlay(IKey.str(text))
                 .width(w).height(36)
                 .background(Styles.rowBg(bg))
                 .onMousePressed(mb -> { action.run(); return true; });
+            button.setEnabled(enabled);
+            return button;
         }
 
         // ---- 交互 ----
