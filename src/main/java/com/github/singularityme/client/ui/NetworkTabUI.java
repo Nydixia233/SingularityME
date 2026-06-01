@@ -147,7 +147,8 @@ public final class NetworkTabUI {
             passwordField = new TextFieldWidget()
                 .value(passwordValue)
                 .widthRel(1f).height(36)
-                .background(new Rectangle().color(Palette.BG_INPUT));
+                .background(new Rectangle().color(Palette.BG_INPUT))
+                .autoUpdateOnChange(true);
 
             bottomArea = Flow.column().childPadding(8).widthRel(1f);
             root.child(bottomArea);
@@ -160,16 +161,32 @@ public final class NetworkTabUI {
             return Flow.row()
                 .childPadding(10)
                 .widthRel(1f).height(56)
-                .child(summaryBox(NetworkUiKit.tr("gui.singularityme.network_tab.device")))
-                .child(summaryBox(NetworkUiKit.tr("gui.singularityme.network_tab.default_network")));
+                .child(summaryBox(NetworkUiKit.tr("gui.singularityme.network_tab.device"), true))
+                .child(summaryBox(NetworkUiKit.tr("gui.singularityme.network_tab.default_network"), false));
         }
 
-        private Flow summaryBox(String label) {
+        private Flow summaryBox(String label, boolean isDevice) {
             return Flow.column()
                 .expanded().padding(10)
                 .background(new Rectangle().color(NetworkUiKit.darken(Palette.COLOR_UNASSIGNED, 0.18f)))
                 .child(new TextWidget(IKey.str(label)).color(Palette.TEXT_MUTED))
-                .child(new TextWidget(IKey.str("-")).color(Palette.TEXT_PRIMARY));
+                .child(new TextWidget(IKey.dynamicKey(() ->
+                    IKey.str(isDevice ? displayDeviceName() : displayDefaultName())))
+                    .color(Palette.TEXT_PRIMARY));
+        }
+
+        private String displayDeviceName() {
+            for (final NetworkEntry e : networks) {
+                if (e.networkID == deviceNetworkID) return e.name;
+            }
+            return deviceNetworkID == 0 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : "#" + deviceNetworkID;
+        }
+
+        private String displayDefaultName() {
+            for (final NetworkEntry e : networks) {
+                if (e.networkID == defaultNetworkID) return e.name;
+            }
+            return defaultNetworkID == 0 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : "#" + defaultNetworkID;
         }
 
         // ---- 按钮工厂 ----
@@ -298,21 +315,29 @@ public final class NetworkTabUI {
             final boolean isDefault = entry.networkID != 0 && entry.networkID == defaultNetworkID;
             final int color = NetworkUiKit.entryColor(entry);
             final int bg = selected ? NetworkUiKit.darken(color, 0.32f) : Palette.BG_ROW;
-
             final String name = entry.networkID == 0
                 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : entry.name;
 
-            final StringBuilder sb = new StringBuilder();
-            sb.append("\u25A0 ");
-            sb.append(entry.networkID == 0 ? "-" : "#" + entry.networkID);
-            sb.append("  ").append(name);
-            sb.append("  [").append(NetworkUiKit.securityShort(entry)).append("]");
-            sb.append(" [").append(NetworkUiKit.accessShort(entry)).append("]");
-            if (current) sb.append(" *");
-            if (isDefault) sb.append(" D");
+            final TextWidget nameWidget = new TextWidget(IKey.str(name))
+                .color(selected ? 0xFFFFFFFF : Palette.TEXT_SECONDARY);
+            nameWidget.expanded();
+
+            final Flow rowContent = Flow.row()
+                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(6)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .child(new TextWidget(IKey.str("\u25A0")).color(color))
+                .child(new TextWidget(IKey.str(entry.networkID == 0 ? "-" : "#" + entry.networkID))
+                    .color(Palette.TEXT_MUTED))
+                .child(nameWidget);
+            rowContent.child(new TextWidget(IKey.str(NetworkUiKit.securityShort(entry)))
+                .color(NetworkUiKit.securityColor(entry)));
+            rowContent.child(new TextWidget(IKey.str(NetworkUiKit.accessShort(entry)))
+                .color(NetworkUiKit.accessColor(entry)));
+            if (current) rowContent.child(new TextWidget(IKey.str("*")).color(Palette.BADGE_CURRENT));
+            if (isDefault) rowContent.child(new TextWidget(IKey.str("D")).color(Palette.BADGE_DEFAULT));
 
             return new ButtonWidget<>()
-                .overlay(IKey.str(sb.toString()))
+                .child(rowContent)
                 .widthRel(1f).height(Palette.ROW_H)
                 .background(new Rectangle().color(bg))
                 .disableHoverBackground()

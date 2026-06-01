@@ -107,7 +107,7 @@ waila.singularityme.storage_bus.target_accessible=Target network accessible: %s
 waila.singularityme.probe.stale_nodes=Stale nodes: %s (last prune: %s)
 waila.singularityme.probe.storage_bus_contributions=Storage Bus loaded/retired: %s / %s
 
-# Qz Network UI
+# Network UI
 gui.singularityme.network_tab.title=网络分配
 gui.singularityme.network_tab.default=未分配
 gui.singularityme.network_tab.new_name=新网络名称

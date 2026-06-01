@@ -92,6 +92,8 @@ public final class NetworkTerminalUI {
         Panel currentPanel = Panel.SELECTION;
         int selectedColor = 0x4A90E2;
         SecurityLevel selectedSecurity = SecurityLevel.PRIVATE;
+        /** 当前面板是否首次渲染（用于区分主动切换 vs 数据刷新触发） */
+        boolean panelFirstRender = true;
 
         ModularPanel panel;
         Flow navBar;
@@ -173,6 +175,7 @@ public final class NetworkTerminalUI {
                 navBar.child(makeNavBtn(panelTitle(p), active, () -> {
                     if (currentPanel != p) {
                         currentPanel = p;
+                        panelFirstRender = true;
                         buildNavButtons();
                         renderContent();
                     }
@@ -202,6 +205,7 @@ public final class NetworkTerminalUI {
                 case INFO -> renderInfo();
                 case CREATE -> renderCreate();
             }
+            panelFirstRender = false;
         }
 
         // ---- 网络信息栏 ----
@@ -287,16 +291,25 @@ public final class NetworkTerminalUI {
             final String name = entry.networkID == 0
                 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : entry.name;
 
-            final StringBuilder sb = new StringBuilder();
-            sb.append("\u25A0 ");
-            sb.append(entry.networkID == 0 ? "-" : "#" + entry.networkID);
-            sb.append("  ").append(name);
-            sb.append("  [").append(NetworkUiKit.securityShort(entry)).append("]");
-            sb.append(" [").append(NetworkUiKit.accessShort(entry)).append("]");
-            if (def) sb.append(" D");
+            final TextWidget nameWidget = new TextWidget(IKey.str(name))
+                .color(sel ? 0xFFFFFFFF : Palette.TEXT_SECONDARY);
+            nameWidget.expanded();
+
+            final Flow rowContent = Flow.row()
+                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(6)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .child(new TextWidget(IKey.str("\u25A0")).color(c))
+                .child(new TextWidget(IKey.str(entry.networkID == 0 ? "-" : "#" + entry.networkID))
+                    .color(Palette.TEXT_MUTED))
+                .child(nameWidget);
+            rowContent.child(new TextWidget(IKey.str(NetworkUiKit.securityShort(entry)))
+                .color(NetworkUiKit.securityColor(entry)));
+            rowContent.child(new TextWidget(IKey.str(NetworkUiKit.accessShort(entry)))
+                .color(NetworkUiKit.accessColor(entry)));
+            if (def) rowContent.child(new TextWidget(IKey.str("D")).color(Palette.BADGE_DEFAULT));
 
             return new ButtonWidget<>()
-                .overlay(IKey.str(sb.toString()))
+                .child(rowContent)
                 .widthRel(1f).height(Palette.ROW_H)
                 .background(new Rectangle().color(bg))
                 .disableHoverBackground()
@@ -358,8 +371,18 @@ public final class NetworkTerminalUI {
             final int rc = NetworkUiKit.accessColor(role);
             final int bg = sel ? NetworkUiKit.darken(rc, 0.25f) : Palette.BG_ROW;
 
+            final TextWidget memberNameW = new TextWidget(IKey.str(pname))
+                .color(Palette.TEXT_PRIMARY);
+            memberNameW.expanded();
+
+            final Flow rowContent = Flow.row()
+                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(6)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .child(new TextWidget(IKey.str(NetworkUiKit.roleName(role))).color(rc))
+                .child(memberNameW);
+
             final ButtonWidget<?> row = new ButtonWidget<>()
-                .overlay(IKey.str("[" + NetworkUiKit.roleName(role) + "] " + pname))
+                .child(rowContent)
                 .widthRel(1f).height(Palette.ROW_H)
                 .background(new Rectangle().color(bg))
                 .disableHoverBackground();
@@ -390,11 +413,22 @@ public final class NetworkTerminalUI {
             final NetworkEntry sel = selectedEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
 
-            settingsNameVal.setStringValue(sel.name);
+            // 首次进入 SETTINGS 面板时从已选网络读取真实值
+            if (panelFirstRender) {
+                selectedColor = sel.color;
+                selectedSecurity = SecurityLevel.fromOrdinal(sel.securityOrdinal);
+            }
+
+            // 名称只在首次渲染时重置，避免数据刷新覆盖用户编辑
+            if (panelFirstRender) {
+                settingsNameVal.setStringValue(sel.name);
+            }
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.name"), settingsNameInput));
 
-            settingsPwVal.setStringValue("");
+            if (panelFirstRender) {
+                settingsPwVal.setStringValue("");
+            }
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.password"), settingsPasswordInput));
 
@@ -410,7 +444,9 @@ public final class NetworkTerminalUI {
 
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_security"),
-                    180, this::cycleSecurity))
+                    120, this::cycleSecurity))
+                .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_color"),
+                    120, this::cycleColor))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.apply"),
                     140, this::applySettings)));
 
@@ -429,6 +465,20 @@ public final class NetworkTerminalUI {
         void cycleSecurity() {
             final SecurityLevel[] vals = SecurityLevel.values();
             selectedSecurity = vals[(selectedSecurity.ordinal() + 1) % vals.length];
+            renderContent();
+        }
+
+        /** GTNH 网络 8 色调色板循环 */
+        void cycleColor() {
+            final int[] palette = {
+                0x4A90E2, 0xE24A4A, 0x4AE24A, 0xE2E24A,
+                0xE24AE2, 0x4AE2E2, 0xE28E4A, 0xFFFFFF
+            };
+            int idx = -1;
+            for (int i = 0; i < palette.length; i++) {
+                if ((palette[i] & 0xFFFFFF) == (selectedColor & 0xFFFFFF)) { idx = i; break; }
+            }
+            selectedColor = palette[(idx + 1) % palette.length];
             renderContent();
         }
 
@@ -479,11 +529,13 @@ public final class NetworkTerminalUI {
         void renderCreate() {
             bottomArea.removeAll();
 
-            createNameVal.setStringValue("");
+            if (panelFirstRender) {
+                createNameVal.setStringValue("");
+                createPwVal.setStringValue("");
+            }
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.create.name"), createNameInput));
 
-            createPwVal.setStringValue("");
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.create.password"), createPasswordInput));
 
@@ -499,7 +551,9 @@ public final class NetworkTerminalUI {
 
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_security"),
-                    180, this::cycleSecurity))
+                    120, this::cycleSecurity))
+                .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_color"),
+                    120, this::cycleColor))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.create.confirm"),
                     140, this::confirmCreate)));
         }
@@ -566,7 +620,8 @@ public final class NetworkTerminalUI {
             return new TextFieldWidget()
                 .value(val)
                 .height(Palette.ROW_H).expanded()
-                .background(new Rectangle().color(Palette.BG_INPUT));
+                .background(new Rectangle().color(Palette.BG_INPUT))
+                .autoUpdateOnChange(true);
         }
 
         // ---- 数据刷新 ----

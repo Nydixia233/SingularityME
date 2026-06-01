@@ -49,7 +49,8 @@ import cpw.mods.fml.common.network.IGuiHandler;
  * <li>4 — Singularity Export Bus (custom ContainerSingularityExportBus / GuiSingularityExportBus)</li>
  * <li>5 — Singularity Drive (custom ContainerSingularityDrive / GuiSingularityDrive)</li>
  * <li>6 — Singularity Import Bus (custom ContainerSingularityImportBus / GuiSingularityImportBus)</li>
- * <li>10 — Network Tab (ContainerSingularityNetworkTab / QzNetworkTabScreens)</li>
+ * <li>10 — Network Tab (ContainerSingularityNetworkTab / NetworkTabUI)</li>
+ * <li>11 — Network Terminal (ContainerSingularityNetworkTerminal / NetworkTerminalUI)</li>
  * </ul>
  */
 public class SingularityGuiHandler implements IGuiHandler {
