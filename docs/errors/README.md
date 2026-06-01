@@ -38,3 +38,4 @@
 
 | 日期 | 简述 | 文件 |
 |------|------|------|
+| 2026-06-01 | MUI2 TextWidget SIZING padding 溢出（非致命） | `ERROR-20260601-mui2-sizing-padding-overflow.md` |

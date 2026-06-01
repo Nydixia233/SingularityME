@@ -10,8 +10,7 @@
 | 模组总览 | `docs/singularity-me-overview.md` |
 | 架构设计 | `docs/singularity-me-architecture-whitepaper.md` |
 | 兼容配置 | `docs/compat-profile.md` |
-| Qz vs HTML 样式差异研究 | `docs/qz-vs-html-style-research.md` |
-| HTML → Qz-UILib API 对照 | `docs/HTML-to-Qz-UILib-Reference.md` |
+| MUI2 集成方式 | `docs/internal/` 本文件"ModularUI2 集成"章节 |
 | 错误记录索引 | `docs/errors/README.md` |
 
 ## 项目定位
@@ -22,14 +21,15 @@
 - 设计原则：加法而非修改——不改动 AE2 现有行为，只新增平行设备体系。
 - 核心概念：玩家可创建多张奇点网格（SingularityGrid），以网络 ID 区分；设备即放即用、破坏即注销。
 - 网格在服务端启动时从 WorldSavedData 预恢复，或设备分配网络后创建。
-- UI 层基于 Qz UILib 4.1.3-LTS，同时包含 AE2 原生 GUI（`GuiUpgradeable`、`GuiMEMonitorable` 等）。
+- UI 层基于 GTNH ModularUI2 2.3.63，同时包含 AE2 原生 GUI（`GuiUpgradeable`、`GuiMEMonitorable` 等）。
+- 网络 UI（Network Tab + Network Terminal）使用 ModularUI2 `ModularScreen` + `GuiScreenWrapper`，纯客户端面板，不走 MUI2 sync handler。
 
 ## 对外入口边界
 
 - `SingularityME.java` — `@Mod` 主类，preInit/init/postInit 生命周期入口
 - 方块注册在 `block/`（11 种设备 + 1 调试探针），TileEntity 在 `tile/`
-- GUI 分两类：AE2 原版 GUI（`gui/`，继承 `GuiUpgradeable`）和 Qz UILib 网页式 UI（`client/ui/`）
-- UI 通过 `UiDocumentScreens.createDocumentScreen()` 创建（网络终端、网络标签页）
+- GUI 分两类：AE2 原版 GUI（`gui/`，继承 `GuiUpgradeable`）和 MUI2 网络 UI（`client/ui/`，`NetworkTabUI` + `NetworkTerminalUI`）
+- 网络 UI 通过 `ModularScreen` + `GuiScreenWrapper` 创建，保留 `static GuiScreen create(TileEntity)` 和 `static boolean receiveNetworkData(PacketNetworkTabData)` 静态接口
 - 核心逻辑在 `core/`：SingularityNetworkManager、SingularityGrid、SecurityLevel、AccessLevel
 - 能量模型：`SingularityAnchorNode` 作为结构性锚点，实际能量由 `TileSingularityPowerCore` 通过元件叠加提供（普通 200k AE/个、致密 1.6M AE/个、创造无限）
 
@@ -50,29 +50,49 @@
   - Spotless：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat spotlessJavaCheck`
   - 部署：`./deploy-mod.bat -Once`
   - 目标实例：`$env:APPDATA\PrismLauncher\instances\<实例名>\.minecraft\mods`
-- Qz UILib 依赖通过本地 Maven 仓库解析（`mavenLocal()`），官方 JAR 名 `qz_uilib-4.1.3-LTS.jar`
-- 修复后的 Qz UILib 在实例 mods 文件夹中，如需重新修补参考本文件末尾的已知问题列表
+- ModularUI2 依赖通过 GTNH Maven 仓库解析，`dependencies.gradle` 中声明 `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`
+- 目标实例：`GTNH290配方`（`$env:APPDATA\PrismLauncher\instances\GTNH290配方\.minecraft\mods`）
 
-## 已知的 Qz UILib 问题与 workaround
+## ModularUI2 集成
 
-| 问题 | 根因代码 | 状态 |
+- 包名：`com.cleanroommc.modularui`（GTNH fork）
+- 网络 UI 走 **client-only screen** 路线：`ModularScreen` + `GuiScreenWrapper`（非 `GuiContainer`），不使用 MUI2 sync handler
+- 创建屏幕配方：  
+  ```java
+  ModularScreen screen = new ModularScreen("singularityme",
+      (ModularGuiContext ctx) -> buildPanel(te));  // 返回 ModularPanel
+  screen.getContext().setSettings(new UISettings());
+  return new GuiScreenWrapper(screen);
+  ```
+- `GuiScreenWrapper` 构造时 `screen.construct(this)` 跳过 `ModularContainer` 初始化，纯客户端面板无需 sync
+- 数据刷新沿用旧 packet 流程：`PacketNetworkTabData.Handler.onMessage` → client 线程 `func_152344_a` → `receiveNetworkData(packet)` → 重建 widget 子树
+
+### 已知的 MUI2 API 陷阱
+
+| 问题 | 说明 | 状态 |
+|------|------|------|
+| `Widget.width(int)` 返回 `IPositioned` 而非 `W` | 不能在 `.width()` 后链式调用 `.background()`/`.color()` 等 Widget 方法 | 已规避：分步调用或先设 background 再 sizing |
+| `TextWidget.expanded()` 返回 `IPositioned` | 不能在 `.expanded()` 后继续链式调用 | 已规避：移除或分步 |
+| `ListWidget` sizing 方法返回 `IPositioned` | `.widthRel()`/`.expanded()` 后链断裂 | 已规避：raw type + 分步赋值 |
+| `Rectangle` 不支持圆角+边框并存 | 原 Qz UI 大量圆角+边框效果丢失 | 接受直角边框 |
+| MUI2 无内建密码掩码 | `TextFieldWidget` 无 password mode | 当前明文显示密码 |
+| SIZING TextWidget padding overflow | 见下方已知问题 | 待修复 |
+
+### 已知的 MUI2 SIZING 问题
+
+| 问题 | 根因 | 状态 |
+|------|------|------|
+| TextWidget `margin/padding set on both sides on axis Y exceeds parent size` | row 固定高度（24px）内 TextWidget 的 padding 与主题默认 padding 叠加导致垂直溢出 | 日志报错但未阻断渲染，待排查修复 |
+
+## Qz UILib 遗留问题（已通过迁移消除）
+
+以下问题随 Qz UILib 弃用而永久消除，仅保留作历史记录：
 |------|----------|------|
 | flex 子元素 maxWidth/minWidth 不生效 | `FlexLayoutHelper.resolveContentMainSize()` 未调用 `applyWidthConstraints` | Qz 源码已修补 |
 | 列 flex 用自然内容高度覆盖 flex-basis | `FlexLayoutHelper.layoutColumnFlexChildren()` L228-232 | Qz 源码已修补 |
 | 框架给根元素默认 `overflow-y:auto` | `UiDocumentScreens` 文档注释 | Java 侧显式设 `overflow:hidden` |
 | 滚动容器需 `height:auto()` 而非 `px(0)` | `UiStyleLength.Type` 区分 PIXEL/AUTO | Java 侧 `scrollBox()` 使用 `auto()` |
 | Plan B 双层滚动在小视口下失效 | 外层 `height:px(1)` → flex-grow 后可能极小，内层 `height:auto` 溢出被外层 clip | 待决策：回退单层或修补 Qz |
-
-## Qz 布局可视化工具
-
-- `tools/LayoutVisualizer.java` — V2 重写：盒模型分层（margin/border/padding/content）、文本内容显示、Flex/Scroll/Button 类型着色、溢出警告、悬浮信息浮层、多视口标签页
-- `tools/LayoutPreview.java` — V2 重写：匹配游戏 `QzNetworkTerminalScreens` 真实 UI 结构（色块、徽章、ID 胶囊、安全/访问指示器、10 行数据）、基于游戏 `QzNetworkUiKit.Palette` 的完整调色板
-- `tools/qz-visualize.bat` — 一键运行脚本
-- 编译方式：`javac -cp qz_uilib.jar -d build/tmp/qz-visualizer tools/LayoutVisualizer.java tools/LayoutPreview.java`
-- 运行方式：`java -cp qz_uilib.jar;log4j-api.jar;build/tmp/qz-visualizer LayoutPreview`
-- 输出文件：`docs/html-reference/qz-layout-terminal.html`（单页含 3 视口标签页：427×240、854×480、1280×720）
-- 图例：黄=margin 蓝=border 绿=padding 红点=content | ⚠=溢出 | ↕=滚动容器 | ⇲=Flex | btn=按钮
-- 已知限制：TextMeasureService 固定 6px/字符；当前实例 JAR 不含 FlexLayoutHelper flexGrow 修复，scrollBox 在大内容量时仍显 auto-height 溢出
 
 ## 设计决策
 
