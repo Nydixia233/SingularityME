@@ -191,6 +191,10 @@ public class SingularityGrid implements IGrid {
         return new ArrayList<>(adoptedNodes);
     }
 
+    public synchronized List<PhantomSingularityNode> getPhantomNodeSnapshot() {
+        return new ArrayList<>(phantomNodes.values());
+    }
+
     public synchronized double getVirtualAEMaxPower() {
         return effectivePowerCore == null ? 0.0 : effectivePowerCore.getConfiguredPowerCapacity();
     }

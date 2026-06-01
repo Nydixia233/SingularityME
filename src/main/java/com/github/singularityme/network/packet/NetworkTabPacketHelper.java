@@ -1,16 +1,26 @@
 package com.github.singularityme.network.packet;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 import net.minecraftforge.common.DimensionManager;
 
+import com.github.singularityme.core.SingularityNetworkManager;
 import com.github.singularityme.core.SingularityNetworkRegistry;
+import com.github.singularityme.core.SingularityNetworkRegistry.NetworkMeta;
+import com.github.singularityme.grid.PhantomSingularityNode;
+import com.github.singularityme.grid.SingularityGrid;
 import com.github.singularityme.network.SingularityChannel;
 import com.github.singularityme.tile.ISingularityNetworkDevice;
 
 import appeng.api.AEApi;
+import appeng.api.networking.IGridHost;
+import appeng.me.GridNode;
 
 public final class NetworkTabPacketHelper {
 
@@ -63,5 +73,74 @@ public final class NetworkTabPacketHelper {
         final World world = getLoadedWorld(dim);
         final TileEntity te = getTileEntityIfLoaded(world, x, y, z);
         sendNetworkTabData(player, getDeviceNetworkID(te));
+    }
+
+    public static void sendNetworkStatus(final EntityPlayerMP player, final int networkID) {
+        final int playerID = getPlayerID(player);
+        if (playerID < 0) return;
+
+        final SingularityNetworkRegistry registry = getRegistry(player);
+        final SingularityGrid grid;
+        if (networkID == 0) {
+            grid = SingularityNetworkManager.INSTANCE.getGridForPlayer(playerID);
+        } else {
+            if (!registry.canAccess(networkID, playerID)) {
+                sendEmptyNetworkStatus(player, networkID);
+                return;
+            }
+            final NetworkMeta meta = registry.getNetwork(networkID);
+            if (meta == null) {
+                sendEmptyNetworkStatus(player, networkID);
+                return;
+            }
+            grid = SingularityNetworkManager.INSTANCE.getGridForPlayer(meta.ownerPlayerID, networkID);
+        }
+
+        if (grid == null) {
+            sendEmptyNetworkStatus(player, networkID);
+            return;
+        }
+
+        final List<PacketNetworkStatus.DeviceInfo> devices = new ArrayList<>();
+        for (final GridNode node : grid.getAdoptedNodeSnapshot()) {
+            final IGridHost machine = node.getMachine();
+            if (!(machine instanceof TileEntity te)) continue;
+            final World world = te.getWorldObj();
+            final int dim = world == null || world.provider == null ? 0 : world.provider.dimensionId;
+            devices.add(
+                new PacketNetworkStatus.DeviceInfo(
+                    machine.getClass()
+                        .getSimpleName(),
+                    te.xCoord,
+                    te.yCoord,
+                    te.zCoord,
+                    dim,
+                    true));
+        }
+        for (final PhantomSingularityNode phantom : grid.getPhantomNodeSnapshot()) {
+            devices.add(
+                new PacketNetworkStatus.DeviceInfo(
+                    phantom.deviceType,
+                    phantom.x,
+                    phantom.y,
+                    phantom.z,
+                    phantom.dim,
+                    false));
+        }
+        devices.sort(
+            Comparator.comparing((PacketNetworkStatus.DeviceInfo info) -> !info.loaded)
+                .thenComparing(info -> info.type)
+                .thenComparingInt(info -> info.dim)
+                .thenComparingInt(info -> info.x)
+                .thenComparingInt(info -> info.y)
+                .thenComparingInt(info -> info.z));
+
+        SingularityChannel.CHANNEL.sendTo(
+            new PacketNetworkStatus(networkID, grid.getVirtualAECurrentPower(), grid.getVirtualAEMaxPower(), devices),
+            player);
+    }
+
+    private static void sendEmptyNetworkStatus(final EntityPlayerMP player, final int networkID) {
+        SingularityChannel.CHANNEL.sendTo(new PacketNetworkStatus(networkID, 0.0, 0.0, new ArrayList<>()), player);
     }
 }

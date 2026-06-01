@@ -122,6 +122,49 @@ public final class NetworkUiKit {
         return entry.networkID == 0 ? Palette.COLOR_UNASSIGNED : 0xFF000000 | entry.color;
     }
 
+    // ---- 设备类型 ----
+
+    /** 返回设备类型的本地化显示名；未知类型保留原 simpleName。 */
+    public static String deviceTypeLabel(final String simpleName) {
+        final String suffix = deviceTypeSuffix(simpleName);
+        return suffix == null ? (simpleName == null ? "" : simpleName)
+            : tr("gui.singularityme.network_terminal.device_type." + suffix);
+    }
+
+    /** 返回设备类型在状态页中的强调色。 */
+    public static int deviceTypeColor(final String simpleName) {
+        final String suffix = deviceTypeSuffix(simpleName);
+        if (suffix == null) return Palette.TEXT_MUTED;
+        return switch (suffix) {
+            case "power_core" -> Palette.SECURITY_ENCRYPTED;
+            case "drive" -> Palette.ACCESS_MEMBER;
+            case "terminal", "crafting_terminal", "pattern_terminal", "network_terminal" -> Palette.ACCESS_ADMIN;
+            case "storage_bus", "import_bus", "export_bus", "interface" -> Palette.BTN_NORMAL;
+            case "crafting_core" -> Palette.SECURITY_PRIVATE;
+            case "probe" -> Palette.ACCESS_NONE;
+            default -> Palette.TEXT_MUTED;
+        };
+    }
+
+    private static String deviceTypeSuffix(final String simpleName) {
+        if (simpleName == null) return null;
+        return switch (simpleName) {
+            case "TileSingularityStorageBus" -> "storage_bus";
+            case "TileSingularityImportBus" -> "import_bus";
+            case "TileSingularityExportBus" -> "export_bus";
+            case "TileSingularityInterface" -> "interface";
+            case "TileSingularityTerminal" -> "terminal";
+            case "TileSingularityCraftingTerminal" -> "crafting_terminal";
+            case "TileSingularityPatternTerminal" -> "pattern_terminal";
+            case "TileSingularityNetworkTerminal" -> "network_terminal";
+            case "TileSingularityDrive" -> "drive";
+            case "TileSingularityPowerCore" -> "power_core";
+            case "TileSingularityCraftingCore" -> "crafting_core";
+            case "TileSingularityProbe" -> "probe";
+            default -> null;
+        };
+    }
+
     // ---- 安全级别 ----
 
     /** 返回安全级别的完整显示名（用于按钮文字、readOnly 字段）。 */

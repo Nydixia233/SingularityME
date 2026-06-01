@@ -4,9 +4,11 @@ import com.github.singularityme.network.packet.PacketAddMemberByName;
 import com.github.singularityme.network.packet.PacketCreateNetwork;
 import com.github.singularityme.network.packet.PacketDeleteNetwork;
 import com.github.singularityme.network.packet.PacketJoinEncryptedNetwork;
+import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkTabData;
 import com.github.singularityme.network.packet.PacketOpenNetworkTab;
 import com.github.singularityme.network.packet.PacketRenameNetwork;
+import com.github.singularityme.network.packet.PacketRequestNetworkStatus;
 import com.github.singularityme.network.packet.PacketRequestNetworkTabData;
 import com.github.singularityme.network.packet.PacketSetDefaultNetwork;
 import com.github.singularityme.network.packet.PacketSetDeviceNetwork;
@@ -50,5 +52,8 @@ public final class SingularityChannel {
         CHANNEL.registerMessage(PacketDeleteNetwork.Handler.class, PacketDeleteNetwork.class, id++, Side.SERVER);
         CHANNEL.registerMessage(PacketSetMemberRole.Handler.class, PacketSetMemberRole.class, id++, Side.SERVER);
         CHANNEL.registerMessage(PacketAddMemberByName.Handler.class, PacketAddMemberByName.class, id++, Side.SERVER);
+        CHANNEL
+            .registerMessage(PacketRequestNetworkStatus.Handler.class, PacketRequestNetworkStatus.class, id++, Side.SERVER);
+        CHANNEL.registerMessage(PacketNetworkStatus.Handler.class, PacketNetworkStatus.class, id++, Side.CLIENT);
     }
 }
