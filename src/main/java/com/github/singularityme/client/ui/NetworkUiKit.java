@@ -2,6 +2,11 @@ package com.github.singularityme.client.ui;
 
 import net.minecraft.util.StatCollector;
 
+import com.cleanroommc.modularui.api.drawable.IDrawable;
+import com.cleanroommc.modularui.drawable.Circle;
+import com.cleanroommc.modularui.drawable.Rectangle;
+import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
@@ -10,8 +15,8 @@ import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry
  * 网络 UI 公共工具类，供 {@link NetworkTabUI} 和 {@link NetworkTerminalUI} 共用。
  *
  * <p>
- * 包含：颜色/尺寸常量（{@link Palette}）、颜色计算、安全/访问级别展示、
- * 权限判断、i18n 工具。零 GUI 框架依赖，纯逻辑层。
+ * 包含：颜色/尺寸常量（{@link Palette}）、MUI2 样式工厂、颜色计算、
+ * 安全/访问级别展示、权限判断、i18n 工具。
  * </p>
  */
 public final class NetworkUiKit {
@@ -84,6 +89,8 @@ public final class NetworkUiKit {
 
         // 尺寸
         public static final int ROW_H = 36;
+        /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
+        public static final int TEXT_ROW_H = 20;
         public static final int BADGE_H = 22;
         public static final int BADGE_MIN_W = 24;
         public static final int BADGE_PADDING_H = 5;
@@ -109,6 +116,101 @@ public final class NetworkUiKit {
         final int g = Math.max(0, Math.min(255, (int) (((color >> 8) & 0xFF) * factor)));
         final int b = Math.max(0, Math.min(255, (int) ((color & 0xFF) * factor)));
         return 0xFF000000 | r << 16 | g << 8 | b;
+    }
+
+    /**
+     * 将颜色按比例提亮到白色。
+     *
+     * @param color  ARGB 颜色值
+     * @param factor 提亮系数（0.0~1.0）
+     * @return 提亮后的 ARGB 颜色值（alpha 固定为 0xFF）
+     */
+    public static int lighten(final int color, final float factor) {
+        final float clamped = Math.max(0.0f, Math.min(1.0f, factor));
+        final int r = (int) (((color >> 16) & 0xFF) + (255 - ((color >> 16) & 0xFF)) * clamped);
+        final int g = (int) (((color >> 8) & 0xFF) + (255 - ((color >> 8) & 0xFF)) * clamped);
+        final int b = (int) ((color & 0xFF) + (255 - (color & 0xFF)) * clamped);
+        return 0xFF000000 | r << 16 | g << 8 | b;
+    }
+
+    // ---- MUI2 样式工厂 ----
+
+    /** 集中生成 MUI2 drawable；每次返回新实例，避免可变 drawable 状态串扰。 */
+    public static final class Styles {
+
+        private Styles() {}
+
+        /** 主面板背景。 */
+        public static IDrawable panelBg() {
+            return new Rectangle()
+                .cornerRadius(Palette.BORDER_RADIUS_PANEL)
+                .verticalGradient(lighten(Palette.BG_PANEL, 0.08f), Palette.BG_PANEL);
+        }
+
+        /** 次级卡片背景。 */
+        public static IDrawable cardBg() {
+            return new Rectangle()
+                .cornerRadius(Palette.BORDER_RADIUS_ROW)
+                .verticalGradient(lighten(Palette.BG_ROW, 0.06f), Palette.BG_ROW);
+        }
+
+        /** 列表容器背景。 */
+        public static IDrawable listBg() {
+            return new Rectangle()
+                .cornerRadius(Palette.BORDER_RADIUS_ROW)
+                .color(Palette.BG_LIST);
+        }
+
+        /** 列表行或按钮背景。 */
+        public static IDrawable rowBg(final int color) {
+            return new Rectangle()
+                .cornerRadius(Palette.BORDER_RADIUS_ROW)
+                .verticalGradient(lighten(color, 0.08f), color);
+        }
+
+        /** 输入框背景。 */
+        public static IDrawable inputBg() {
+            return new Rectangle()
+                .cornerRadius(Palette.BORDER_RADIUS_ROW)
+                .color(Palette.BG_INPUT);
+        }
+
+        /** 顶部导航背景。 */
+        public static IDrawable headerGradient(final int color) {
+            return new Rectangle()
+                .cornerRadius(Palette.BORDER_RADIUS_ROW)
+                .verticalGradient(lighten(color, 0.16f), color);
+        }
+
+        /** 颜色块背景。 */
+        public static IDrawable swatch(final int color) {
+            return new Rectangle()
+                .cornerRadius(Palette.BORDER_RADIUS_SWATCH)
+                .color(0xFF000000 | color);
+        }
+
+        /** 状态圆点。 */
+        public static IDrawable statusDot(final int color) {
+            return new Circle()
+                .color(color)
+                .segments(12);
+        }
+    }
+
+    /** 创建自适应文本行，避免 TextWidget 在固定高度内触发垂直 padding 溢出。 */
+    public static Flow textRow() {
+        return Flow.row()
+            .coverChildrenHeight()
+            .margin(2, 0)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER);
+    }
+
+    /** 创建固定高度行，仅保留水平 padding。 */
+    public static Flow fixedRow(final int height) {
+        return Flow.row()
+            .height(height)
+            .padding(0, 12)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER);
     }
 
     /**

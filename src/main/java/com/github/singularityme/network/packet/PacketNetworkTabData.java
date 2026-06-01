@@ -82,7 +82,9 @@ public class PacketNetworkTabData implements IMessage {
                     resolvePlayerName(meta.ownerPlayerID),
                     resolvePlayerNames(meta.getAdmins()),
                     resolvePlayerNames(meta.getMembers()),
-                    resolvePlayerNames(meta.getBlocked())));
+                    resolvePlayerNames(meta.getBlocked()),
+                    meta.createdAtMillis,
+                    meta.lastModifiedMillis));
         }
     }
 
@@ -134,6 +136,8 @@ public class PacketNetworkTabData implements IMessage {
             final List<String> adminNames = readStringList(buf);
             final List<String> memberNames = readStringList(buf);
             final List<String> blockedNames = readStringList(buf);
+            final long createdAtMillis = buf.readLong();
+            final long lastModifiedMillis = buf.readLong();
             this.networks.add(
                 new NetworkEntry(
                     nid,
@@ -150,7 +154,9 @@ public class PacketNetworkTabData implements IMessage {
                     ownerName,
                     adminNames,
                     memberNames,
-                    blockedNames));
+                    blockedNames,
+                    createdAtMillis,
+                    lastModifiedMillis));
         }
     }
 
@@ -177,6 +183,8 @@ public class PacketNetworkTabData implements IMessage {
             writeStringList(buf, e.adminNames);
             writeStringList(buf, e.memberNames);
             writeStringList(buf, e.blockedNames);
+            buf.writeLong(e.createdAtMillis);
+            buf.writeLong(e.lastModifiedMillis);
         }
     }
 
@@ -243,6 +251,10 @@ public class PacketNetworkTabData implements IMessage {
         public final List<Integer> blockedPlayerIDs;
         /** 网络 owner 的玩家名；离线时为 "#id"。 */
         public final String ownerName;
+        /** 网络创建时间戳（毫秒）。0 表示旧数据或未分配网络无时间戳。 */
+        public final long createdAtMillis;
+        /** 网络最后修改时间戳（毫秒）。0 表示旧数据或未分配网络无时间戳。 */
+        public final long lastModifiedMillis;
         /** admins 对应的玩家名列表，顺序与 adminPlayerIDs 一致。 */
         public final List<String> adminNames;
         /** members 对应的玩家名列表，顺序与 memberPlayerIDs 一致。 */
@@ -268,7 +280,9 @@ public class PacketNetworkTabData implements IMessage {
                 "#" + ownerPlayerID,
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyList());
+                Collections.emptyList(),
+                0L,
+                0L);
         }
 
         public NetworkEntry(final int networkID, final int ownerPlayerID, final boolean isOwner, final String name,
@@ -290,7 +304,9 @@ public class PacketNetworkTabData implements IMessage {
                 "#" + ownerPlayerID,
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyList());
+                Collections.emptyList(),
+                0L,
+                0L);
         }
 
         public NetworkEntry(final int networkID, final int ownerPlayerID, final boolean isOwner, final String name,
@@ -298,6 +314,32 @@ public class PacketNetworkTabData implements IMessage {
             final List<Integer> adminPlayerIDs, final List<Integer> memberPlayerIDs,
             final List<Integer> blockedPlayerIDs, final String ownerName, final List<String> adminNames,
             final List<String> memberNames, final List<String> blockedNames) {
+            this(
+                networkID,
+                ownerPlayerID,
+                isOwner,
+                name,
+                color,
+                securityOrdinal,
+                accessLevelOrdinal,
+                isPasswordProtected,
+                adminPlayerIDs,
+                memberPlayerIDs,
+                blockedPlayerIDs,
+                ownerName,
+                adminNames,
+                memberNames,
+                blockedNames,
+                0L,
+                0L);
+        }
+
+        public NetworkEntry(final int networkID, final int ownerPlayerID, final boolean isOwner, final String name,
+            final int color, final int securityOrdinal, final int accessLevelOrdinal, final boolean isPasswordProtected,
+            final List<Integer> adminPlayerIDs, final List<Integer> memberPlayerIDs,
+            final List<Integer> blockedPlayerIDs, final String ownerName, final List<String> adminNames,
+            final List<String> memberNames, final List<String> blockedNames, final long createdAtMillis,
+            final long lastModifiedMillis) {
             this.networkID = networkID;
             this.ownerPlayerID = ownerPlayerID;
             this.isOwner = isOwner;
@@ -310,6 +352,8 @@ public class PacketNetworkTabData implements IMessage {
             this.memberPlayerIDs = new ArrayList<>(memberPlayerIDs);
             this.blockedPlayerIDs = new ArrayList<>(blockedPlayerIDs);
             this.ownerName = ownerName != null ? ownerName : "#" + ownerPlayerID;
+            this.createdAtMillis = createdAtMillis;
+            this.lastModifiedMillis = Math.max(createdAtMillis, lastModifiedMillis);
             this.adminNames = new ArrayList<>(adminNames);
             this.memberNames = new ArrayList<>(memberNames);
             this.blockedNames = new ArrayList<>(blockedNames);

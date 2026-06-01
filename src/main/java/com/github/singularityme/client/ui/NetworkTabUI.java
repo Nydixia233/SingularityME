@@ -9,7 +9,6 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.tileentity.TileEntity;
 
 import com.cleanroommc.modularui.api.drawable.IKey;
-import com.cleanroommc.modularui.drawable.Rectangle;
 import com.cleanroommc.modularui.screen.GuiScreenWrapper;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.ModularScreen;
@@ -23,6 +22,7 @@ import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
+import com.github.singularityme.client.ui.NetworkUiKit.Styles;
 import com.github.singularityme.core.SingularityNetworkRegistry;
 import com.github.singularityme.network.SingularityChannel;
 import com.github.singularityme.network.packet.PacketJoinEncryptedNetwork;
@@ -103,12 +103,12 @@ public final class NetworkTabUI {
 
             panel = new ModularPanel("network_tab")
                 .size(panelW, panelH)
-                .background(new Rectangle().color(Palette.BG_PANEL));
+                .background(new ShadowDrawable(Styles.panelBg(), 5, 0x80000000));
 
             final Flow root = Flow.column()
                 .childPadding(10)
                 .widthRel(1f).heightRel(1f)
-                .padding(14);
+                .padding(0, 14).margin(14, 0);
 
             // 标题
             root.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.title")))
@@ -120,7 +120,8 @@ public final class NetworkTabUI {
             // 列表头
             root.child(Flow.row()
                 .mainAxisAlignment(Alignment.MainAxis.SPACE_BETWEEN)
-                .widthRel(1f).height(24)
+                .widthRel(1f).height(Palette.TEXT_ROW_H)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(new TextWidget(IKey.str(
                     NetworkUiKit.trf("gui.singularityme.network_tab.sort_by",
                         NetworkUiKit.tr("gui.singularityme.network_tab.name"))))
@@ -131,7 +132,7 @@ public final class NetworkTabUI {
 
             // 网络列表
             networkList = new ListWidget();
-            networkList.background(new Rectangle().color(Palette.BG_LIST));
+            networkList.background(Styles.listBg());
             networkList.widthRel(1f);
             networkList.expanded();
             root.child(networkList);
@@ -147,7 +148,7 @@ public final class NetworkTabUI {
             passwordField = new TextFieldWidget()
                 .value(passwordValue)
                 .widthRel(1f).height(36)
-                .background(new Rectangle().color(Palette.BG_INPUT))
+                .background(Styles.inputBg())
                 .autoUpdateOnChange(true);
 
             bottomArea = Flow.column().childPadding(8).widthRel(1f);
@@ -167,8 +168,9 @@ public final class NetworkTabUI {
 
         private Flow summaryBox(String label, boolean isDevice) {
             return Flow.column()
-                .expanded().padding(10)
-                .background(new Rectangle().color(NetworkUiKit.darken(Palette.COLOR_UNASSIGNED, 0.18f)))
+                .expanded().heightRel(1f).padding(0, 10)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .background(Styles.cardBg())
                 .child(new TextWidget(IKey.str(label)).color(Palette.TEXT_MUTED))
                 .child(new TextWidget(IKey.dynamicKey(() ->
                     IKey.str(isDevice ? displayDeviceName() : displayDefaultName())))
@@ -195,7 +197,7 @@ public final class NetworkTabUI {
             return new ButtonWidget<>()
                 .overlay(IKey.str(text))
                 .width(w).height(36)
-                .background(new Rectangle().color(bg))
+                .background(Styles.rowBg(bg))
                 .onMousePressed(mb -> { action.run(); return true; });
         }
 
@@ -287,8 +289,9 @@ public final class NetworkTabUI {
                 : NetworkUiKit.trf("gui.singularityme.network_tab.selected", displayEntry(sel));
 
             bottomArea.child(Flow.row()
-                .height(38).widthRel(1f).padding(8)
-                .background(new Rectangle().color(Palette.BG_LIST))
+                .height(38).widthRel(1f).padding(0, 8)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .background(Styles.cardBg())
                 .child(new TextWidget(IKey.str(barText))
                     .color(Palette.TEXT_SECONDARY)));
 
@@ -325,7 +328,7 @@ public final class NetworkTabUI {
             nameWidget.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(6)
+                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(new TextWidget(IKey.str("\u25A0")).color(color))
                 .child(new TextWidget(IKey.str(entry.networkID == 0 ? "-" : "#" + entry.networkID))
@@ -341,7 +344,7 @@ public final class NetworkTabUI {
             return new ButtonWidget<>()
                 .child(rowContent)
                 .widthRel(1f).height(Palette.ROW_H)
-                .background(new Rectangle().color(bg))
+                .background(Styles.rowBg(bg))
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
                     selectedNetworkID = entry.networkID;

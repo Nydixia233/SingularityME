@@ -17,4 +17,11 @@ public class NetworkUiKitTest {
         assertEquals(Palette.BTN_NORMAL, NetworkUiKit.deviceTypeColor("TileSingularityStorageBus"));
         assertEquals(Palette.TEXT_MUTED, NetworkUiKit.deviceTypeColor("UnmappedDevice"));
     }
+
+    /** 提亮颜色时保留 alpha，并按比例靠近白色。 */
+    @Test
+    public void lightensColorTowardWhite() {
+        assertEquals(0xFF7F7F7F, NetworkUiKit.lighten(0xFF000000, 0.5f));
+        assertEquals(0xFFFFFFFF, NetworkUiKit.lighten(0xFFFFFFFF, 0.5f));
+    }
 }

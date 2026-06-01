@@ -34,18 +34,18 @@
 
 4. **MUI2 机制**：`Box.padding(vertical, horizontal)` 和 `Box.margin` 与 widget 的默认 min height（18px）以及主题 padding 叠加时，如果总和超过父容器分配高度，MUI2 报 SIZING 错误但**不阻断布局**——widget 仍会渲染，只是尺寸被裁剪。
 
-## 修复方向（未实施）
+## 修复方案
 
-- 减少固定高度 row 上的 padding 值，或使用相对高度
-- 将部分 padding 移到 row 内部子元素而非 row 自身
-- 对导航按钮等固定高度 widget 使用 `margin` 替代 `padding`（margin 不计入内容尺寸）
-- 使用 `Box.all(0)` 显式清零不必要的 padding
+- 固定高度行只保留水平 padding，避免 `TextWidget` 垂直 padding 与主题默认值叠加。
+- `NetworkUiKit.fixedRow(int)` / `textRow()` 作为后续 UI 行布局的推荐入口。
+- 导航按钮、列表行、底部栏等热点位置已将 `padding(vertical, horizontal)` 改为 `padding(0, horizontal)` 或 `margin`。
+- 视觉背景集中到 `NetworkUiKit.Styles`，避免后续新增控件时继续散落平涂矩形和不一致 padding。
 
 ## 影响评估
 
 - **严重程度**：低 — 日志报错但 GUI 正常渲染，不影响交互
 - **用户体验**：无明显视觉异常
-- **建议**：后续迭代修复，当前可接受发布
+- **建议**：新增 MUI2 固定高度行时，优先复用 `NetworkUiKit.fixedRow(int)` / `textRow()`；如需垂直留白，优先放到父容器 margin 或更高层布局，不直接给固定高度 `TextWidget` 行加垂直 padding。
 
 ## 相关提交
 

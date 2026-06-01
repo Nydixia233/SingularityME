@@ -62,6 +62,7 @@ public class SingularityNetworkRegistry extends WorldSavedData {
     public synchronized int createNetwork(final int ownerPlayerID, final String name, final int color,
         final SecurityLevel security, final String passwordHash) {
         final int id = nextNetworkID++;
+        final long now = System.currentTimeMillis();
         networks.put(
             id,
             new NetworkMeta(
@@ -72,7 +73,9 @@ public class SingularityNetworkRegistry extends WorldSavedData {
                 cleanHash(passwordHash),
                 new ArrayList<>(),
                 new ArrayList<>(),
-                new ArrayList<>()));
+                new ArrayList<>(),
+                now,
+                now));
         markDirty();
         LOG.info("[SingularityME] Created network id={} name='{}' owner={}", id, name, ownerPlayerID);
         return id;
@@ -93,6 +96,7 @@ public class SingularityNetworkRegistry extends WorldSavedData {
         final NetworkMeta meta = networks.get(networkID);
         if (meta == null || !meta.canEdit(requestingPlayerID)) return false;
         meta.name = newName;
+        meta.touch();
         markDirty();
         return true;
     }
@@ -104,6 +108,7 @@ public class SingularityNetworkRegistry extends WorldSavedData {
         meta.color = color & 0xFFFFFF;
         meta.security = security == null ? SecurityLevel.PRIVATE : security;
         meta.passwordHash = cleanHash(passwordHash);
+        meta.touch();
         markDirty();
         return true;
     }
@@ -250,10 +255,25 @@ public class SingularityNetworkRegistry extends WorldSavedData {
                 ? SecurityLevel.fromOrdinal(tag.getInteger("security"))
                 : SecurityLevel.PRIVATE;
             final String passwordHash = tag.hasKey("passwordHash") ? cleanHash(tag.getString("passwordHash")) : null;
+            final long now = System.currentTimeMillis();
+            final long createdAt = tag.hasKey("createdAtMillis") ? tag.getLong("createdAtMillis") : now;
+            final long lastModifiedAt = tag.hasKey("lastModifiedMillis") ? tag.getLong("lastModifiedMillis") : createdAt;
             final List<Integer> admins = readIntList(tag, "admins");
             final List<Integer> members = readIntList(tag, "members");
             final List<Integer> blocked = readIntList(tag, "blocked");
-            networks.put(id, new NetworkMeta(owner, name, color, security, passwordHash, admins, members, blocked));
+            networks.put(
+                id,
+                new NetworkMeta(
+                    owner,
+                    name,
+                    color,
+                    security,
+                    passwordHash,
+                    admins,
+                    members,
+                    blocked,
+                    createdAt,
+                    lastModifiedAt));
         }
         if (nbt.hasKey("playerDefaults")) {
             final NBTTagList defaults = nbt.getTagList("playerDefaults", 10);
@@ -285,6 +305,8 @@ public class SingularityNetworkRegistry extends WorldSavedData {
             tag.setString("name", meta.name);
             tag.setInteger("color", meta.color & 0xFFFFFF);
             tag.setInteger("security", meta.security.ordinal());
+            tag.setLong("createdAtMillis", meta.createdAtMillis);
+            tag.setLong("lastModifiedMillis", meta.lastModifiedMillis);
             if (meta.passwordHash != null) {
                 tag.setString("passwordHash", meta.passwordHash);
             }
@@ -355,21 +377,30 @@ public class SingularityNetworkRegistry extends WorldSavedData {
         public int color;
         public SecurityLevel security;
         public String passwordHash;
+        public final long createdAtMillis;
+        public long lastModifiedMillis;
         public final List<Integer> adminPlayerIDs;
         public final List<Integer> memberPlayerIDs;
         public final List<Integer> blockedPlayerIDs;
 
         NetworkMeta(final int ownerPlayerID, final String name, final int color, final SecurityLevel security,
             final String passwordHash, final List<Integer> adminPlayerIDs, final List<Integer> memberPlayerIDs,
-            final List<Integer> blockedPlayerIDs) {
+            final List<Integer> blockedPlayerIDs, final long createdAtMillis, final long lastModifiedMillis) {
             this.ownerPlayerID = ownerPlayerID;
             this.name = name;
             this.color = color & 0xFFFFFF;
             this.security = security == null ? SecurityLevel.PRIVATE : security;
             this.passwordHash = cleanHash(passwordHash);
+            this.createdAtMillis = createdAtMillis;
+            this.lastModifiedMillis = Math.max(createdAtMillis, lastModifiedMillis);
             this.adminPlayerIDs = adminPlayerIDs;
             this.memberPlayerIDs = memberPlayerIDs;
             this.blockedPlayerIDs = blockedPlayerIDs;
+        }
+
+        /** 标记用户可见的网络元数据已经变更。 */
+        void touch() {
+            lastModifiedMillis = Math.max(lastModifiedMillis, System.currentTimeMillis());
         }
 
         public AccessLevel getAccessLevel(final int playerID) {
