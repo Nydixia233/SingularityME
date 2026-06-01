@@ -198,11 +198,16 @@ public final class NetworkTabUI {
         }
 
         private static ButtonWidget<?> makeBtn(String text, int w, int bg, Runnable action, boolean enabled) {
-            final ButtonWidget<?> button = new ButtonWidget<>()
-                .overlay(IKey.str(text))
-                .width(w).height(36)
-                .background(Styles.rowBg(bg))
-                .onMousePressed(mb -> { action.run(); return true; });
+            final ButtonWidget<?> button = new ButtonWidget<>();
+            button.overlay(IKey.str(text));
+            button.width(w);
+            button.height(36);
+            button.background(Styles.rowBg(bg));
+            button.onMousePressed(mb -> {
+                if (!button.isEnabled()) return false;
+                action.run();
+                return true;
+            });
             button.setEnabled(enabled);
             return button;
         }
