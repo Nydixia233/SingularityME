@@ -253,7 +253,7 @@ public final class NetworkTerminalUI {
                 networkBar.child(new TextWidget(IKey.str(sel.networkID == 0 ? "-" : "#" + sel.networkID))
                     .color(Palette.TEXT_MUTED));
                 if (sel.networkID != 0 && sel.networkID == defaultNetworkID) {
-                    networkBar.child(new TextWidget(IKey.str("D")).color(Palette.BADGE_DEFAULT));
+                    networkBar.child(NetworkUiKit.defaultBadge());
                 }
             }
         }
@@ -337,17 +337,13 @@ public final class NetworkTerminalUI {
             contentArea.child(list);
 
             final NetworkEntry sel = selectedEntry();
-            contentArea.child(Flow.row()
-                .widthRel(1f).height(Palette.ROW_H).padding(0, 8)
-                .margin(12, 0)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .background(Styles.cardBg())
-                .child(new TextWidget(IKey.str(sel == null
-                    ? NetworkUiKit.tr("gui.singularityme.network_tab.no_selection")
-                    : NetworkUiKit.trf("gui.singularityme.network_tab.selected",
-                        "#" + sel.networkID + " " + sel.name + " "
-                            + NetworkUiKit.securityName(sel) + " " + NetworkUiKit.accessMark(sel))))
-                    .color(Palette.TEXT_SECONDARY)));
+            final String barText = sel == null
+                ? NetworkUiKit.tr("gui.singularityme.network_tab.no_selection")
+                : NetworkUiKit.trf("gui.singularityme.network_tab.selected",
+                    "#" + sel.networkID + " " + sel.name + " "
+                        + NetworkUiKit.securityName(sel) + " " + NetworkUiKit.accessMark(sel));
+            final int accentColor = sel == null ? Palette.TEXT_MUTED : 0xFF000000 | sel.color;
+            contentArea.child(NetworkUiKit.selectionBar(barText, accentColor).margin(12, 0));
 
             final boolean isDefault = sel != null && sel.networkID != 0 && sel.networkID == defaultNetworkID;
             final String btnText = isDefault
@@ -355,7 +351,7 @@ public final class NetworkTerminalUI {
                 : NetworkUiKit.tr("gui.singularityme.network_terminal.selection.set_default");
             final boolean canSet = sel != null && sel.networkID != 0 && NetworkUiKit.canAccess(sel);
 
-            bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
+            bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .child(makeBtn(btnText, 180, () -> {
                     if (sel == null) return;
                     final int nd = isDefault ? 0 : sel.networkID;
@@ -380,15 +376,16 @@ public final class NetworkTerminalUI {
             final Flow rowContent = Flow.row()
                 .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str("\u25A0")).color(c))
-                .child(new TextWidget(IKey.str(entry.networkID == 0 ? "-" : "#" + entry.networkID))
-                    .color(Palette.TEXT_MUTED))
-                .child(nameWidget);
-            rowContent.child(new TextWidget(IKey.str(NetworkUiKit.securityShort(entry)))
-                .color(NetworkUiKit.securityColor(entry)));
-            rowContent.child(new TextWidget(IKey.str(NetworkUiKit.accessShort(entry)))
-                .color(NetworkUiKit.accessColor(entry)));
-            if (def) rowContent.child(new TextWidget(IKey.str("D")).color(Palette.BADGE_DEFAULT));
+                .child(new TextWidget(IKey.str("\u25A0")).color(c));
+            if (entry.networkID != 0) {
+                rowContent.child(NetworkUiKit.idPill(entry.networkID));
+            } else {
+                rowContent.child(new TextWidget(IKey.str("-")).color(Palette.TEXT_MUTED));
+            }
+            rowContent.child(nameWidget);
+            rowContent.child(NetworkUiKit.securityBadge(entry));
+            rowContent.child(NetworkUiKit.accessBadge(entry));
+            if (def) rowContent.child(NetworkUiKit.defaultBadge());
 
             return new ButtonWidget<>()
                 .child(rowContent)
@@ -485,7 +482,7 @@ public final class NetworkTerminalUI {
                     120, this::addMember)));
 
             if (sel.isOwner && selectedMemberID >= 0) {
-                bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
+                bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                     .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.promote"),
                         140, () -> setMemberRole(sel.networkID, selectedMemberID, AccessLevel.ADMIN)))
                     .child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.demote"),
@@ -507,7 +504,7 @@ public final class NetworkTerminalUI {
             final Flow rowContent = Flow.row()
                 .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str(NetworkUiKit.roleName(role))).color(rc))
+                .child(NetworkUiKit.badge(NetworkUiKit.roleName(role), rc))
                 .child(memberNameW);
 
             final ButtonWidget<?> row = new ButtonWidget<>()
@@ -572,7 +569,7 @@ public final class NetworkTerminalUI {
                     .color(0xFF000000 | selectedColor)));
             contentArea.child(colorSwatchRow());
 
-            bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
+            bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_security"),
                     120, this::cycleSecurity))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_color"),
@@ -581,7 +578,7 @@ public final class NetworkTerminalUI {
                     140, this::applySettings)));
 
             if (sel.isOwner) {
-                bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
+                bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                     .child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.delete"),
                         140, () -> showDeleteConfirm(sel))));
             }
@@ -708,11 +705,7 @@ public final class NetworkTerminalUI {
         }
 
         private Flow infoRow(String label, String value) {
-            return Flow.row().childPadding(8).widthRel(1f)
-                .height(Palette.TEXT_ROW_H)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL))
-                .child(new TextWidget(IKey.str(value)).color(Palette.TEXT_PRIMARY));
+            return NetworkUiKit.infoRowFixed(label, value);
         }
 
         private Flow statusText(final String text) {
@@ -743,22 +736,10 @@ public final class NetworkTerminalUI {
         };
 
         private Flow colorSwatchRow() {
-            final Flow row = Flow.row()
-                .childPadding(6).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER);
-            for (final int color : COLOR_PRESETS) {
-                final boolean selected = (selectedColor & 0xFFFFFF) == (color & 0xFFFFFF);
-                row.child(new ButtonWidget<>()
-                    .width(28).height(24)
-                    .background(selected ? Styles.rowBg(color) : Styles.swatch(color))
-                    .disableHoverBackground()
-                    .onMousePressed(mb -> {
-                        selectedColor = color & 0xFFFFFF;
-                        renderContent();
-                        return true;
-                    }));
-            }
-            return row;
+            return NetworkUiKit.colorSwatchRow(COLOR_PRESETS, selectedColor, c -> {
+                selectedColor = c;
+                renderContent();
+            });
         }
 
         private void showDeleteConfirm(final NetworkEntry entry) {
@@ -766,7 +747,7 @@ public final class NetworkTerminalUI {
             bottomArea.child(statusText(
                 NetworkUiKit.trf("gui.singularityme.network_terminal.confirm.delete_body", entry.name),
                 Palette.BTN_DANGER_NORMAL));
-            bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
+            bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.confirm.yes"),
                     140, () -> {
                         SingularityChannel.CHANNEL.sendToServer(new PacketDeleteNetwork(entry.networkID));
@@ -807,7 +788,7 @@ public final class NetworkTerminalUI {
                     .color(0xFF000000 | selectedColor)));
             contentArea.child(colorSwatchRow());
 
-            bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
+            bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_security"),
                     120, this::cycleSecurity))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_color"),
@@ -831,11 +812,7 @@ public final class NetworkTerminalUI {
         // ---- 表单行 ----
 
         private Flow formRow(String label, IWidget input) {
-            return Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str(label)).color(Palette.TEXT_LABEL))
-                .child(input);
+            return NetworkUiKit.formRow(label, input);
         }
 
         // ---- 空状态 ----

@@ -48,10 +48,9 @@
   - 编译：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat compileJava compileMixinJava -x spotlessJavaCheck`
   - 构建：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat build -x spotlessJavaCheck`
   - Spotless：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat spotlessJavaCheck`
-  - 部署：`./deploy-mod.bat -Once`
-  - 目标实例：`$env:APPDATA\PrismLauncher\instances\<实例名>\.minecraft\mods`
+  - 部署：`./deploy-mod.bat -Once`（自动部署到当前配置的 PrismLauncher 实例）
 - ModularUI2 依赖通过 GTNH Maven 仓库解析，`dependencies.gradle` 中声明 `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`
-- 目标实例：`GTNH290配方`（`$env:APPDATA\PrismLauncher\instances\GTNH290配方\.minecraft\mods`）
+- 目标实例名：`GTNH290配方`
 
 ## ModularUI2 集成
 

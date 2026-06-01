@@ -3,13 +3,19 @@ package com.github.singularityme.client.ui;
 import net.minecraft.util.StatCollector;
 
 import com.cleanroommc.modularui.api.drawable.IDrawable;
+import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.drawable.Circle;
 import com.cleanroommc.modularui.drawable.Rectangle;
 import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.widgets.ButtonWidget;
+import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
+
+import java.util.function.IntConsumer;
 
 /**
  * 网络 UI 公共工具类，供 {@link NetworkTabUI} 和 {@link NetworkTerminalUI} 共用。
@@ -428,5 +434,133 @@ public final class NetworkUiKit {
         final StringBuilder sb = new StringBuilder(len);
         for (int i = 0; i < len; i++) sb.append(MASK_CHAR);
         return sb.toString();
+    }
+
+    // ---- 徽章 / ID 胶囊组件 ----
+
+    /** 构建彩色圆角徽章。 */
+    @SuppressWarnings("unchecked")
+    public static Flow badge(final String text, final int bgColor) {
+        return Flow.row()
+            .coverChildrenHeight()
+            .padding(3, Palette.BADGE_PADDING_H)
+            .background(new Rectangle().cornerRadius(Palette.BORDER_RADIUS_BADGE).color(bgColor))
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .child(new TextWidget(IKey.str(text)).color(Palette.TEXT_BADGE));
+    }
+
+    /** 构建 ID 胶囊（如 #1、#42）。 */
+    @SuppressWarnings("unchecked")
+    public static Flow idPill(final int networkID) {
+        return Flow.row()
+            .width(Palette.ID_PILL_W).height(Palette.ID_PILL_H)
+            .mainAxisAlignment(Alignment.MainAxis.CENTER)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .background(new Rectangle().cornerRadius(Palette.BORDER_RADIUS_BADGE).color(Palette.BG_ID_PILL))
+            .child(new TextWidget(IKey.str("#" + networkID)).color(Palette.TEXT_MUTED));
+    }
+
+    /** 构建安全级别徽章。 */
+    public static Flow securityBadge(final NetworkEntry entry) {
+        final int color = 0xFF000000 | securityColor(entry);
+        return badge(securityShort(entry), color);
+    }
+
+    /** 构建访问级别徽章。 */
+    public static Flow accessBadge(final NetworkEntry entry) {
+        final int color = 0xFF000000 | accessColor(entry);
+        return badge(accessShort(entry), color);
+    }
+
+    /** 构建当前网络标记 "*"。 */
+    public static Flow currentBadge() {
+        return badge("*", Palette.BADGE_CURRENT);
+    }
+
+    /** 构建默认网络标记 "D"。 */
+    public static Flow defaultBadge() {
+        return badge("D", Palette.BADGE_DEFAULT);
+    }
+
+    // ---- 布局辅助组件（对齐 HTML 参考样式）----
+
+    /**
+     * 构建选中摘要栏（对应 HTML .selection-summary）。
+     * 以选中网络的标识色作为左侧 accent，浅色背景铺底。
+     */
+    @SuppressWarnings("unchecked")
+    public static Flow selectionBar(final String text, final int accentColor) {
+        final Flow bar = Flow.row()
+            .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 10)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .background(Styles.listBg());
+        // 左侧色条作为视觉 accent
+        final Flow accent = Flow.row()
+            .width(3).heightRel(0.6f)
+            .background(new Rectangle().cornerRadius(2).color(0xFF000000 | accentColor));
+        bar.child(accent);
+        bar.child(new TextWidget(IKey.str(text)).color(Palette.TEXT_SECONDARY));
+        return bar;
+    }
+
+    /**
+     * 构建固定高度信息行（对应 HTML .info-row，36px 高度）。
+     * 与 {@code fixedRow} 不同，本方法附加背景色和边框色营造卡片行效果。
+     */
+    @SuppressWarnings("unchecked")
+    public static Flow infoRowFixed(final String label, final String value) {
+        return infoRowFixed(label, value, Palette.TEXT_PRIMARY);
+    }
+
+    /** 构建固定高度信息行，可自定义值颜色。 */
+    @SuppressWarnings("unchecked")
+    public static Flow infoRowFixed(final String label, final String value, final int valueColor) {
+        final Flow row = Flow.row()
+            .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 10)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .background(Styles.rowBg(Palette.BG_ROW));
+        row.child(new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL));
+        final TextWidget val = new TextWidget(IKey.str(value)).color(valueColor);
+        val.expanded();
+        row.child(val);
+        return row;
+    }
+
+    /**
+     * 构建表单项行（对应 HTML .field-row），标签固定宽度右对齐。
+     */
+    @SuppressWarnings("unchecked")
+    public static Flow formRow(final String label, final IWidget input) {
+        final Flow row = Flow.row()
+            .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER);
+        row.child(new TextWidget(IKey.str(label)).color(Palette.TEXT_LABEL));
+        row.child(input);
+        return row;
+    }
+
+    /**
+     * 构建色块行（对应 HTML .color-palette）。
+     * 每个色块是一个小型 ButtonWidget，选中时放大以示区别。
+     */
+    @SuppressWarnings("unchecked")
+    public static Flow colorSwatchRow(final int[] presets, final int selectedColor,
+        final IntConsumer onSelect) {
+        final Flow row = Flow.row()
+            .childPadding(6).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER);
+        for (final int color : presets) {
+            final boolean selected = (selectedColor & 0xFFFFFF) == (color & 0xFFFFFF);
+            final int swatchSize = selected ? 26 : 22;
+            row.child(new ButtonWidget<>()
+                .width(swatchSize).height(swatchSize)
+                .background(selected ? Styles.rowBg(color) : Styles.swatch(color))
+                .disableHoverBackground()
+                .onMousePressed(mb -> {
+                    onSelect.accept(color & 0xFFFFFF);
+                    return true;
+                }));
+        }
+        return row;
     }
 }

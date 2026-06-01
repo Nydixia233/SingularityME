@@ -151,7 +151,7 @@ public final class NetworkTabUI {
                 .background(Styles.inputBg())
                 .autoUpdateOnChange(true);
 
-            bottomArea = Flow.column().childPadding(8).widthRel(1f);
+            bottomArea = Flow.column().childPadding(8).widthRel(1f).height(82);
             root.child(bottomArea);
 
             panel.child(root);
@@ -299,16 +299,12 @@ public final class NetworkTabUI {
                 ? NetworkUiKit.tr("gui.singularityme.network_tab.no_selection")
                 : NetworkUiKit.trf("gui.singularityme.network_tab.selected", displayEntry(sel));
 
-            bottomArea.child(Flow.row()
-                .height(38).widthRel(1f).padding(0, 8)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .background(Styles.cardBg())
-                .child(new TextWidget(IKey.str(barText))
-                    .color(Palette.TEXT_SECONDARY)));
+            final int accentColor = sel == null ? Palette.TEXT_MUTED : NetworkUiKit.entryColor(sel);
+            bottomArea.child(NetworkUiKit.selectionBar(barText, accentColor));
 
             if (passwordMode) {
                 bottomArea.child(Flow.row()
-                    .childPadding(6).widthRel(1f)
+                    .childPadding(6).widthRel(1f).height(Palette.ROW_H)
                     .child(passwordField)
                     .child(joinBtn)
                     .child(cancelBtn));
@@ -319,7 +315,7 @@ public final class NetworkTabUI {
                     && (sel.networkID == 0 || NetworkUiKit.canAccess(sel)
                         || NetworkUiKit.isEncryptedJoinRequired(sel));
                 selectBtn.setEnabled(canAssign);
-                bottomArea.child(Flow.row().childPadding(6).widthRel(1f).child(selectBtn));
+                bottomArea.child(Flow.row().childPadding(6).widthRel(1f).height(Palette.ROW_H).child(selectBtn));
             }
         }
 
@@ -341,16 +337,17 @@ public final class NetworkTabUI {
             final Flow rowContent = Flow.row()
                 .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str("\u25A0")).color(color))
-                .child(new TextWidget(IKey.str(entry.networkID == 0 ? "-" : "#" + entry.networkID))
-                    .color(Palette.TEXT_MUTED))
-                .child(nameWidget);
-            rowContent.child(new TextWidget(IKey.str(NetworkUiKit.securityShort(entry)))
-                .color(NetworkUiKit.securityColor(entry)));
-            rowContent.child(new TextWidget(IKey.str(NetworkUiKit.accessShort(entry)))
-                .color(NetworkUiKit.accessColor(entry)));
-            if (current) rowContent.child(new TextWidget(IKey.str("*")).color(Palette.BADGE_CURRENT));
-            if (isDefault) rowContent.child(new TextWidget(IKey.str("D")).color(Palette.BADGE_DEFAULT));
+                .child(new TextWidget(IKey.str("\u25A0")).color(color));
+            if (entry.networkID != 0) {
+                rowContent.child(NetworkUiKit.idPill(entry.networkID));
+            } else {
+                rowContent.child(new TextWidget(IKey.str("-")).color(Palette.TEXT_MUTED));
+            }
+            rowContent.child(nameWidget);
+            rowContent.child(NetworkUiKit.securityBadge(entry));
+            rowContent.child(NetworkUiKit.accessBadge(entry));
+            if (current) rowContent.child(NetworkUiKit.currentBadge());
+            if (isDefault) rowContent.child(NetworkUiKit.defaultBadge());
 
             return new ButtonWidget<>()
                 .child(rowContent)
