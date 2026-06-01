@@ -61,6 +61,18 @@
 | 列 flex 用自然内容高度覆盖 flex-basis | `FlexLayoutHelper.layoutColumnFlexChildren()` L228-232 | Qz 源码已修补 |
 | 框架给根元素默认 `overflow-y:auto` | `UiDocumentScreens` 文档注释 | Java 侧显式设 `overflow:hidden` |
 | 滚动容器需 `height:auto()` 而非 `px(0)` | `UiStyleLength.Type` 区分 PIXEL/AUTO | Java 侧 `scrollBox()` 使用 `auto()` |
+| Plan B 双层滚动在小视口下失效 | 外层 `height:px(1)` → flex-grow 后可能极小，内层 `height:auto` 溢出被外层 clip | 待决策：回退单层或修补 Qz |
+
+## Qz 布局可视化工具
+
+- `tools/LayoutVisualizer.java` — V2 重写：盒模型分层（margin/border/padding/content）、文本内容显示、Flex/Scroll/Button 类型着色、溢出警告、悬浮信息浮层、多视口标签页
+- `tools/LayoutPreview.java` — V2 重写：匹配游戏 `QzNetworkTerminalScreens` 真实 UI 结构（色块、徽章、ID 胶囊、安全/访问指示器、10 行数据）、基于游戏 `QzNetworkUiKit.Palette` 的完整调色板
+- `tools/qz-visualize.bat` — 一键运行脚本
+- 编译方式：`javac -cp qz_uilib.jar -d build/tmp/qz-visualizer tools/LayoutVisualizer.java tools/LayoutPreview.java`
+- 运行方式：`java -cp qz_uilib.jar;log4j-api.jar;build/tmp/qz-visualizer LayoutPreview`
+- 输出文件：`docs/html-reference/qz-layout-terminal.html`（单页含 3 视口标签页：427×240、854×480、1280×720）
+- 图例：黄=margin 蓝=border 绿=padding 红点=content | ⚠=溢出 | ↕=滚动容器 | ⇲=Flex | btn=按钮
+- 已知限制：TextMeasureService 固定 6px/字符；当前实例 JAR 不含 FlexLayoutHelper flexGrow 修复，scrollBox 在大内容量时仍显 auto-height 溢出
 
 ## 设计决策
 

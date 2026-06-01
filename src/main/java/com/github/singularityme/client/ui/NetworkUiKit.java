@@ -2,38 +2,21 @@ package com.github.singularityme.client.ui;
 
 import net.minecraft.util.StatCollector;
 
-import org.lwjgl.input.Keyboard;
-
 import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
-import club.heiqi.uilib.ui.control.DocumentTextInputControl;
-import club.heiqi.uilib.ui.dom.ElementNode;
-import club.heiqi.uilib.ui.dom.UiDocument;
-import club.heiqi.uilib.ui.event.UiKeyEvent;
-import club.heiqi.uilib.ui.style.cascade.UiStyleDeclaration;
-import club.heiqi.uilib.ui.style.cascade.UiStyleSheet;
-import club.heiqi.uilib.ui.style.props.UiAlignItems;
-import club.heiqi.uilib.ui.style.props.UiBorderStyle;
-import club.heiqi.uilib.ui.style.props.UiBoxSizing;
-import club.heiqi.uilib.ui.style.props.UiDisplay;
-import club.heiqi.uilib.ui.style.props.UiFontWeight;
-import club.heiqi.uilib.ui.style.props.UiJustifyContent;
-import club.heiqi.uilib.ui.style.values.UiBoxShadow;
-import club.heiqi.uilib.ui.style.values.UiStyleLength;
-import club.heiqi.uilib.ui.style.values.UiTransform;
-
 /**
- * 网络 UI 公共工具类，供 {@link QzNetworkTabScreens} 和 {@link QzNetworkTerminalScreens} 共用。
+ * 网络 UI 公共工具类，供 {@link NetworkTabUI} 和 {@link NetworkTerminalUI} 共用。
  *
  * <p>
- * 包含：颜色/尺寸常量（{@link Palette}）、DOM 构建工具、NetworkEntry 展示逻辑、i18n 工具。
+ * 包含：颜色/尺寸常量（{@link Palette}）、颜色计算、安全/访问级别展示、
+ * 权限判断、i18n 工具。零 GUI 框架依赖，纯逻辑层。
  * </p>
  */
-public final class QzNetworkUiKit {
+public final class NetworkUiKit {
 
-    private QzNetworkUiKit() {}
+    private NetworkUiKit() {}
 
     // ---- 颜色 / 尺寸常量 ----
 
@@ -112,113 +95,6 @@ public final class QzNetworkUiKit {
         public static final int ID_PILL_H = 22;
     }
 
-    // ---- DOM 构建工具 ----
-
-    /**
-     * 创建颜色色块元素。
-     *
-     * @param document 所属文档
-     * @param color    ARGB 颜色值
-     * @param size     宽高（正方形）
-     * @return 色块元素
-     */
-    public static ElementNode colorSwatch(final UiDocument document, final int color, final int size) {
-        final ElementNode swatch = document.div();
-        swatch.style()
-            .setWidth(UiStyleLength.px(size))
-            .setHeight(UiStyleLength.px(size))
-            .setFlexShrink(0.0F)
-            .setBackgroundColor(color)
-            .setBorderWidth(UiStyleLength.px(1))
-            .setBorderStyle(UiBorderStyle.SOLID)
-            .setBorderColor(Palette.BORDER_SWATCH)
-            .setBorderRadius(UiStyleLength.px(Palette.BORDER_RADIUS_SWATCH));
-        return swatch;
-    }
-
-    /**
-     * 创建文字徽章元素。
-     *
-     * @param document 所属文档
-     * @param text     徽章文字
-     * @param color    背景色（ARGB）
-     * @return 徽章元素
-     */
-    public static ElementNode badge(final UiDocument document, final String text, final int color) {
-        final ElementNode badge = document.div();
-        badge.appendText(text);
-        badge.style()
-            .setMinWidth(UiStyleLength.px(Palette.BADGE_MIN_W))
-            .setHeight(UiStyleLength.px(Palette.BADGE_H))
-            .setPaddingLeft(UiStyleLength.px(Palette.BADGE_PADDING_H))
-            .setPaddingRight(UiStyleLength.px(Palette.BADGE_PADDING_H))
-            .setBackgroundColor(color)
-            .setTextColor(Palette.TEXT_BADGE)
-            .setFontWeight(UiFontWeight.BOLD)
-            .setBorderRadius(UiStyleLength.px(Palette.BORDER_RADIUS_BADGE))
-            .setDisplay(UiDisplay.FLEX)
-            .setAlignItems(UiAlignItems.CENTER)
-            .setJustifyContent(UiJustifyContent.CENTER)
-            .setFlexShrink(0.0F);
-        return badge;
-    }
-
-    /**
-     * 创建网络 ID 胶囊元素（显示 "#N" 或 "-"）。
-     *
-     * @param document  所属文档
-     * @param networkID 网络 ID，0 时显示 "-"
-     * @return 胶囊元素
-     */
-    public static ElementNode idPill(final UiDocument document, final int networkID) {
-        final ElementNode pill = document.div();
-        pill.appendText(networkID == 0 ? "-" : "#" + networkID);
-        pill.style()
-            .setWidth(UiStyleLength.px(Palette.ID_PILL_W))
-            .setHeight(UiStyleLength.px(Palette.ID_PILL_H))
-            .setDisplay(UiDisplay.FLEX)
-            .setAlignItems(UiAlignItems.CENTER)
-            .setJustifyContent(UiJustifyContent.CENTER)
-            .setBoxSizing(UiBoxSizing.BORDER_BOX)
-            .setBackgroundColor(Palette.BG_ID_PILL)
-            .setBorderRadius(UiStyleLength.px(Palette.BORDER_RADIUS_BADGE))
-            .setTextColor(Palette.TEXT_MUTED);
-        return pill;
-    }
-
-    // ---- 共享样式表 ----
-
-    /**
-     * 为文档安装网络 UI 组件级样式表，提供行悬浮高亮、色块悬浮放大等交互反馈。
-     *
-     * <p>
-     * 样式表规则只补充内联样式未覆盖的属性（box-shadow、transform），
-     * 不会覆盖 Java 代码中通过 {@code .style()} 设置的动态颜色和布局。
-     * </p>
-     *
-     * @param document 目标文档
-     */
-    public static void installComponentStyleSheet(final UiDocument document) {
-        document.addStyleSheet(
-            UiStyleSheet.create()
-                // 网络行悬浮：内阴影高亮
-                .addRule(
-                    ".net-row:hover",
-                    new UiStyleDeclaration().setBoxShadow(UiBoxShadow.inset(0, 0, 0, 1, 0x18FFFFFF)))
-                // 成员行悬浮：内阴影高亮
-                .addRule(
-                    ".member-row:hover",
-                    new UiStyleDeclaration().setBoxShadow(UiBoxShadow.inset(0, 0, 0, 1, 0x18FFFFFF)))
-                // 导航按钮悬浮：内阴影浅色叠加（不覆盖内联 bg）
-                .addRule(
-                    ".nav-btn:hover",
-                    new UiStyleDeclaration().setBoxShadow(UiBoxShadow.inset(0, 0, 0, 999, 0x0DFFFFFF)))
-                // 可点击色块悬浮：放大
-                .addRule(
-                    ".swatch-btn:hover",
-                    new UiStyleDeclaration().setTransform(UiTransform.of(0.0F, 0.0F, 1.22F, 1.22F, 0.0F))));
-    }
-
     // ---- 颜色计算 ----
 
     /**
@@ -289,13 +165,7 @@ public final class QzNetworkUiKit {
 
     /** 返回访问级别的完整显示名（用于 Info 面板）。 */
     public static String accessName(final NetworkEntry entry) {
-        return switch (AccessLevel.fromOrdinal(entry.accessLevelOrdinal)) {
-            case OWNER -> tr("gui.singularityme.network_terminal.access.owner");
-            case ADMIN -> tr("gui.singularityme.network_terminal.access.admin");
-            case MEMBER -> tr("gui.singularityme.network_terminal.access.member");
-            case BLOCKED -> tr("gui.singularityme.network_terminal.access.blocked");
-            case NONE -> tr("gui.singularityme.network_terminal.access.none");
-        };
+        return roleName(AccessLevel.fromOrdinal(entry.accessLevelOrdinal));
     }
 
     /** 返回访问级别的完整显示名（从 AccessLevel 枚举读取，用于成员行 badge）。 */
@@ -383,20 +253,6 @@ public final class QzNetworkUiKit {
         return AccessLevel.fromOrdinal(entry.accessLevelOrdinal) == AccessLevel.BLOCKED;
     }
 
-    // ---- 键盘工具 ----
-
-    /**
-     * 判断按键事件是否为提交键（Enter / 小键盘 Enter）。
-     *
-     * @param keyCode 键码
-     * @param action  按键动作
-     * @return 是否为提交键
-     */
-    public static boolean isSubmitKey(final int keyCode, final UiKeyEvent.Action action) {
-        return action == UiKeyEvent.Action.PRESSED
-            && (keyCode == Keyboard.KEY_RETURN || keyCode == Keyboard.KEY_NUMPADENTER);
-    }
-
     // ---- i18n 工具 ----
 
     /** 翻译 lang key。 */
@@ -409,113 +265,22 @@ public final class QzNetworkUiKit {
         return StatCollector.translateToLocalFormatted(key, args);
     }
 
-    // ---- 密码掩码输入 ----
+    // ---- 密码掩码工具（无 GUI 框架依赖）----
+
+    /** 密码掩码字符 */
+    public static final char MASK_CHAR = '\u25CF';
 
     /**
-     * 密码掩码输入包装器。
+     * 将真实密码转换为等长掩码字符串。
      *
-     * <p>
-     * 内部持有真实密码字符串，对外显示等长 {@code ●}。
-     * 通过 {@link #getRealValue()} 获取真实密码用于提交。
-     * 调用 {@link #clear()} 清空密码。
-     * </p>
-     *
-     * <p>
-     * 用法：
-     * 
-     * <pre>
-     * 
-     * MaskedInput masked = MaskedInput.wrap(input);
-     * // 提交时：
-     * String password = masked.getRealValue();
-     * </pre>
-     * </p>
+     * @param realValue 真实密码
+     * @return 等长 ● 字符串
      */
-    public static final class MaskedInput {
-
-        private static final char MASK_CHAR = '\u25CF';
-        private static final String MASK_CHAR_STR = String.valueOf(MASK_CHAR);
-
-        private final DocumentTextInputControl control;
-        private String realValue = "";
-        private boolean updating = false;
-
-        private MaskedInput(final DocumentTextInputControl control) {
-            this.control = control;
-            control.setChangeHandler(event -> {
-                if (updating) return;
-                final String newText = event.getText() == null ? "" : event.getText();
-                final int oldMaskLength = maskLength();
-                if (newText.length() < oldMaskLength && isMaskPrefix(newText, newText.length())) {
-                    realValue = truncateToCodePoints(realValue, newText.length());
-                } else if (isMaskPrefix(newText, oldMaskLength)) {
-                    realValue = realValue + newText.substring(oldMaskLength);
-                } else {
-                    realValue = newText;
-                }
-                syncDisplay();
-            });
-        }
-
-        /**
-         * 把一个已有的 {@link DocumentTextInputControl} 包装成密码输入框。
-         *
-         * @param control 要包装的输入控件
-         * @return 密码掩码包装器
-         */
-        public static MaskedInput wrap(final DocumentTextInputControl control) {
-            return new MaskedInput(control);
-        }
-
-        /** 返回用户实际输入的密码（未掩码）。 */
-        public String getRealValue() {
-            return realValue;
-        }
-
-        /** 清空密码（同时清空控件显示）。 */
-        public void clear() {
-            realValue = "";
-            syncDisplay();
-        }
-
-        /** 返回密码是否为空。 */
-        public boolean isEmpty() {
-            return realValue.isEmpty();
-        }
-
-        private void syncDisplay() {
-            updating = true;
-            try {
-                control.setText(repeat(MASK_CHAR_STR, maskLength()));
-            } finally {
-                updating = false;
-            }
-        }
-
-        private int maskLength() {
-            return realValue.codePointCount(0, realValue.length());
-        }
-
-        private static boolean isMaskPrefix(final String text, final int length) {
-            if (text == null || length < 0 || text.length() < length) return false;
-            for (int i = 0; i < length; i++) {
-                if (text.charAt(i) != MASK_CHAR) return false;
-            }
-            return true;
-        }
-
-        private static String truncateToCodePoints(final String value, final int count) {
-            if (value == null || value.isEmpty() || count <= 0) return "";
-            final int available = value.codePointCount(0, value.length());
-            if (count >= available) return value;
-            return value.substring(0, value.offsetByCodePoints(0, count));
-        }
-
-        private static String repeat(final String s, final int count) {
-            if (count <= 0) return "";
-            final StringBuilder sb = new StringBuilder(count);
-            for (int i = 0; i < count; i++) sb.append(s);
-            return sb.toString();
-        }
+    public static String maskPassword(final String realValue) {
+        if (realValue == null || realValue.isEmpty()) return "";
+        final int len = realValue.codePointCount(0, realValue.length());
+        final StringBuilder sb = new StringBuilder(len);
+        for (int i = 0; i < len; i++) sb.append(MASK_CHAR);
+        return sb.toString();
     }
 }

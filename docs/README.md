@@ -27,6 +27,7 @@
 | 文件 | 说明 |
 |------|------|
 | [兼容性配置](compat-profile.md) | AE2FC、WCT 等可选依赖的启用方式与 smoke test 清单 |
+| [Qz vs HTML 样式差异研究](qz-vs-html-style-research.md) | Qz UILib 与 HTML/CSS 的样式系统差异对照，Web→游戏内迁移指南 |
 | [错误记录](errors/README.md) | 已知错误索引，避免重复踩坑 |
 | [../AGENTS.md](../AGENTS.md) | AI 协作规范、代码风格、Git 提交约定 |
 
@@ -42,6 +43,7 @@
 | `singularity-me-architecture-whitepaper.md` | 设计 | 开发者 | 网络模型、生命周期、注入机制的深度解析 |
 | `dev-guide.md` | 指南 | 开发者 | 如何贡献代码、添加新设备 |
 | `compat-profile.md` | 配置 | 维护者 | AE2 生态兼容测试方案 |
+| `qz-vs-html-style-research.md` | 研究 | 开发者 | Qz UILib 游戏内样式 vs HTML/CSS Web 样式系统性差异 |
 | `errors/README.md` | 运维 | 维护者 | 历史错误索引与教训 |
 
 > **注意**：`AI记忆文档.md` 已移至 `docs/internal/`，属于 AI 工作记忆，不属于协作者文档。如需了解构建命令、入口边界等技术细节，请参阅 [快速入门](getting-started.md) 和 [开发者指南](dev-guide.md)。

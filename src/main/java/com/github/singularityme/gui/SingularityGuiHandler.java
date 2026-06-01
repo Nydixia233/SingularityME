@@ -16,8 +16,8 @@ import com.github.singularityme.block.BlockSingularityPatternTerminal;
 import com.github.singularityme.block.BlockSingularityPowerCore;
 import com.github.singularityme.block.BlockSingularityStorageBus;
 import com.github.singularityme.block.BlockSingularityTerminal;
-import com.github.singularityme.client.ui.QzNetworkTabScreens;
-import com.github.singularityme.client.ui.QzNetworkTerminalScreens;
+import com.github.singularityme.client.ui.NetworkTabUI;
+import com.github.singularityme.client.ui.NetworkTerminalUI;
 import com.github.singularityme.tile.TileSingularityCraftingCore;
 import com.github.singularityme.tile.TileSingularityCraftingTerminal;
 import com.github.singularityme.tile.TileSingularityDrive;
@@ -178,10 +178,10 @@ public class SingularityGuiHandler implements IGuiHandler {
             return new GuiSingularityPowerCore(player.inventory, powerCore);
         }
         if (id == BlockSingularityNetworkTerminal.GUI_ID && te instanceof TileSingularityNetworkTerminal) {
-            return QzNetworkTerminalScreens.create(te);
+            return NetworkTerminalUI.create(te);
         }
         if (id == ContainerSingularityNetworkTab.GUI_ID) {
-            return QzNetworkTabScreens.create(te);
+            return NetworkTabUI.create(te);
         }
         return null;
     }

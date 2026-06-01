@@ -7,8 +7,8 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 
-import com.github.singularityme.client.ui.QzNetworkTabScreens;
-import com.github.singularityme.client.ui.QzNetworkTerminalScreens;
+import com.github.singularityme.client.ui.NetworkTabUI;
+import com.github.singularityme.client.ui.NetworkTerminalUI;
 import com.github.singularityme.core.SingularityNetworkRegistry;
 import com.github.singularityme.core.SingularityNetworkRegistry.NetworkMeta;
 
@@ -325,10 +325,10 @@ public class PacketNetworkTabData implements IMessage {
         public IMessage onMessage(final PacketNetworkTabData message, final MessageContext ctx) {
             Minecraft.getMinecraft()
                 .func_152344_a(() -> {
-                    if (QzNetworkTabScreens.receiveNetworkData(message)) {
+                    if (NetworkTabUI.receiveNetworkData(message)) {
                         return;
                     }
-                    if (QzNetworkTerminalScreens.receiveNetworkData(message)) {
+                    if (NetworkTerminalUI.receiveNetworkData(message)) {
                         return;
                     }
                 });
