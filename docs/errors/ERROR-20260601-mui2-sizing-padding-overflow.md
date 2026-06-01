@@ -50,3 +50,4 @@
 ## 相关提交
 
 `3bf55d7` — `[Migrate]: Qz-UILib → ModularUI2 网络 UI 迁移`
+`107ca32` — `[Add]: 完善网络终端 GUI`
