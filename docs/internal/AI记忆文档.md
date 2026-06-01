@@ -10,7 +10,7 @@
 | 模组总览 | `docs/singularity-me-overview.md` |
 | 架构设计 | `docs/singularity-me-architecture-whitepaper.md` |
 | 兼容配置 | `docs/compat-profile.md` |
-| MUI2 集成方式 | `docs/internal/` 本文件"ModularUI2 集成"章节 |
+| MUI2 集成方式 | `docs/modularui2/README.md` + 本文件"ModularUI2 集成"章节 |
 | 错误记录索引 | `docs/errors/README.md` |
 
 ## 项目定位
@@ -36,7 +36,7 @@
 ## 主动读取原则
 
 - 涉及 AE2 兼容 → 先读 `docs/compat-profile.md`
-- 涉及 UI 布局 → 参考 `client/ui/` 下 Java 文件 + `docs/html-reference/` 下 HTML 预览
+- 涉及 UI 布局 → 参考 `client/ui/` 下 Java 文件 + `docs/html-reference/` 下 HTML 预览 + `docs/modularui2/README.md`
 - 涉及网络协议 → 先读 `network/packet/` 下的包定义
 - 需要具体类/入口/目录位置 → 用 Glob/Grep/Read 现查，不在本文件维护索引
 

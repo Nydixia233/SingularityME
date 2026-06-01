@@ -160,7 +160,7 @@ GameRegistry.registerTileEntity(TileSingularityLevelEmitter.class, "SingularityL
 ### Step 4：创建 GUI（如需要）
 
 - **AE2 风格 GUI**：在 `gui/` 下创建 `GuiSingularityLevelEmitter`（继承 `GuiUpgradeable`）和 `ContainerSingularityLevelEmitter`（继承 `ContainerUpgradeable`）。
-- **ModularUI2 风格**：在 `client/ui/` 下创建 UI 定义，参考 `NetworkTerminalUI.java`，详见 [`modularui2-guide.md`](modularui2-guide.md)。
+- **ModularUI2 风格**：在 `client/ui/` 下创建 UI 定义，参考 `NetworkTerminalUI.java`，详见 [`modularui2/README.md`](modularui2/README.md)。
 - 在 `SingularityGuiHandler.java` 中注册 GUI ID。
 
 ### Step 5：添加语言文件
