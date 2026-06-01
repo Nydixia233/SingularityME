@@ -92,6 +92,7 @@ gui.singularityme.network_terminal.access.member=Member
 gui.singularityme.network_terminal.access.blocked=Blocked
 gui.singularityme.network_terminal.access.none=Guest
 gui.singularityme.network_terminal.info.owner=Owner
+gui.singularityme.network_terminal.info.name=Name
 gui.singularityme.network_terminal.info.security=Security
 gui.singularityme.network_terminal.info.access=Access
 gui.singularityme.network_terminal.info.admins=Admins
@@ -100,6 +101,27 @@ gui.singularityme.network_terminal.info.blocked=Blocked
 gui.singularityme.network_terminal.info.default=Default
 gui.singularityme.network_terminal.yes=Yes
 gui.singularityme.network_terminal.no=No
+
+# Network Terminal — Settings
+gui.singularityme.network_terminal.settings.name=Name
+gui.singularityme.network_terminal.settings.password=Password
+gui.singularityme.network_terminal.settings.security=Security
+gui.singularityme.network_terminal.settings.color=Color
+gui.singularityme.network_terminal.settings.cycle_security=Cycle Security
+gui.singularityme.network_terminal.settings.cycle_color=Cycle Color
+gui.singularityme.network_terminal.settings.apply=Apply
+gui.singularityme.network_terminal.settings.delete=Delete
+
+# Network Terminal — Members
+gui.singularityme.network_terminal.members.add=Add
+gui.singularityme.network_terminal.members.promote=Promote
+gui.singularityme.network_terminal.members.demote=Demote
+gui.singularityme.network_terminal.members.remove=Remove
+
+# Network Terminal — Create
+gui.singularityme.network_terminal.create.name=Name
+gui.singularityme.network_terminal.create.password=Password
+gui.singularityme.network_terminal.create.confirm=Create
 
 # Waila
 waila.singularityme.probe.title=SingularityME Probe

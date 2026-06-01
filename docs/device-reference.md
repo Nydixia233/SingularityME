@@ -177,9 +177,9 @@
 
 ## 9. 奇点网络终端（Network Terminal）
 
-**功能**：管理奇点网络的成员、安全级别和默认网络选择。**这是唯一不继承 AE2 TileEntity 体系而直接继承 `TileEntity` 的设备**——它的 UI 基于 Qz UILib 纯自定义界面。
+**功能**：管理奇点网络的成员、安全级别和默认网络选择。**这是唯一不继承 AE2 TileEntity 体系而直接继承 `TileEntity` 的设备**——它的 UI 基于 ModularUI2 client-only 界面。
 
-**UI 实现**：`QzNetworkTerminalScreens` / `QzNetworkTabScreens`，通过 `UiDocumentScreens.createDocumentScreen()` 渲染。
+**UI 实现**：`NetworkTerminalUI` / `NetworkTabUI`，通过 `ModularScreen` + `GuiScreenWrapper` 渲染。
 
 **升级卡**：不支持
 

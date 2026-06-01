@@ -40,7 +40,7 @@ import com.github.singularityme.network.packet.PacketSetMemberRole;
 import com.github.singularityme.network.packet.PacketSetNetworkSettings;
 
 /**
- * 5 面板网络终端 — MUI2 重写版。
+ * 5 面板网络终端 �?MUI2 重写版�?
  */
 public final class NetworkTerminalUI {
 
@@ -92,7 +92,7 @@ public final class NetworkTerminalUI {
         Panel currentPanel = Panel.SELECTION;
         int selectedColor = 0x4A90E2;
         SecurityLevel selectedSecurity = SecurityLevel.PRIVATE;
-        /** 当前面板是否首次渲染（用于区分主动切换 vs 数据刷新触发） */
+        /** 当前面板是否首次渲染（用于区分主动切�?vs 数据刷新触发�?*/
         boolean panelFirstRender = true;
 
         ModularPanel panel;
@@ -129,7 +129,7 @@ public final class NetworkTerminalUI {
 
             final Flow root = Flow.column().widthRel(1f).heightRel(1f);
 
-            // 导航栏
+            // 导航�?
             navBar = Flow.row()
                 .childPadding(4).widthRel(1f)
                 .padding(4).margin(8)
@@ -137,18 +137,18 @@ public final class NetworkTerminalUI {
             buildNavButtons();
             root.child(navBar);
 
-            // 网络信息栏
+            // 网络信息�?
             networkBar = Flow.row()
                 .childPadding(8).widthRel(1f)
                 .padding(6, 12)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER);
             root.child(networkBar);
 
-            // 内容区
+            // 内容�?
             contentArea = Flow.column().widthRel(1f).expanded();
             root.child(contentArea);
 
-            // 底部操作区
+            // 底部操作�?
             bottomArea = Flow.column()
                 .childPadding(8).widthRel(1f)
                 .padding(10, 12);
@@ -208,7 +208,7 @@ public final class NetworkTerminalUI {
             panelFirstRender = false;
         }
 
-        // ---- 网络信息栏 ----
+        // ---- 网络信息�?----
 
         @SuppressWarnings("unchecked")
         void updateNetworkBar() {
@@ -413,7 +413,7 @@ public final class NetworkTerminalUI {
             final NetworkEntry sel = selectedEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
 
-            // 首次进入 SETTINGS 面板时从已选网络读取真实值
+            // 首次进入 SETTINGS 面板时从已选网络读取真实�?
             if (panelFirstRender) {
                 selectedColor = sel.color;
                 selectedSecurity = SecurityLevel.fromOrdinal(sel.securityOrdinal);
@@ -439,7 +439,7 @@ public final class NetworkTerminalUI {
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.color"),
-                new TextWidget(IKey.str("\u25A0 #" + Integer.toHexString(selectedColor).toUpperCase()))
+                new TextWidget(IKey.str("\u25A0 #" + String.format("%06X", selectedColor)))
                     .color(0xFF000000 | selectedColor)));
 
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
@@ -532,6 +532,8 @@ public final class NetworkTerminalUI {
             if (panelFirstRender) {
                 createNameVal.setStringValue("");
                 createPwVal.setStringValue("");
+                selectedColor = 0x4A90E2;
+                selectedSecurity = SecurityLevel.PRIVATE;
             }
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.create.name"), createNameInput));
@@ -546,7 +548,7 @@ public final class NetworkTerminalUI {
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.color"),
-                new TextWidget(IKey.str("\u25A0 #" + Integer.toHexString(selectedColor).toUpperCase()))
+                new TextWidget(IKey.str("\u25A0 #" + String.format("%06X", selectedColor)))
                     .color(0xFF000000 | selectedColor)));
 
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f)
@@ -570,7 +572,7 @@ public final class NetworkTerminalUI {
             createPwVal.setStringValue("");
         }
 
-        // ---- 表单行 ----
+        // ---- 表单�?----
 
         private Flow formRow(String label, IWidget input) {
             return Flow.row()
@@ -580,7 +582,7 @@ public final class NetworkTerminalUI {
                 .child(input);
         }
 
-        // ---- 空状态 ----
+        // ---- 空状�?----
 
         private Flow emptyState() {
             return Flow.row()
@@ -614,7 +616,7 @@ public final class NetworkTerminalUI {
                 .onMousePressed(mb -> { action.run(); return true; });
         }
 
-        // ---- 输入框工厂 ----
+        // ---- 输入框工�?----
 
         private static TextFieldWidget makeInput(StringValue val) {
             return new TextFieldWidget()

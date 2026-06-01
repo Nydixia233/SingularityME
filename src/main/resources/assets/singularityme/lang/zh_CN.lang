@@ -173,6 +173,7 @@ gui.singularityme.network_terminal.access.member=成员
 gui.singularityme.network_terminal.access.blocked=已拉黑
 gui.singularityme.network_terminal.access.none=访客
 gui.singularityme.network_terminal.info.owner=拥有者
+gui.singularityme.network_terminal.info.name=名称
 gui.singularityme.network_terminal.info.security=安全
 gui.singularityme.network_terminal.info.access=权限
 gui.singularityme.network_terminal.info.admins=管理员
@@ -181,3 +182,24 @@ gui.singularityme.network_terminal.info.blocked=已拉黑
 gui.singularityme.network_terminal.info.default=默认
 gui.singularityme.network_terminal.yes=是
 gui.singularityme.network_terminal.no=否
+
+# Network Terminal — Settings
+gui.singularityme.network_terminal.settings.name=名称
+gui.singularityme.network_terminal.settings.password=密码
+gui.singularityme.network_terminal.settings.security=安全级别
+gui.singularityme.network_terminal.settings.color=颜色
+gui.singularityme.network_terminal.settings.cycle_security=切换安全级别
+gui.singularityme.network_terminal.settings.cycle_color=切换颜色
+gui.singularityme.network_terminal.settings.apply=应用
+gui.singularityme.network_terminal.settings.delete=删除
+
+# Network Terminal — Members
+gui.singularityme.network_terminal.members.add=添加
+gui.singularityme.network_terminal.members.promote=提升
+gui.singularityme.network_terminal.members.demote=降级
+gui.singularityme.network_terminal.members.remove=移除
+
+# Network Terminal — Create
+gui.singularityme.network_terminal.create.name=名称
+gui.singularityme.network_terminal.create.password=密码
+gui.singularityme.network_terminal.create.confirm=创建

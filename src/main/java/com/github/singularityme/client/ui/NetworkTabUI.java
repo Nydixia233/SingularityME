@@ -245,8 +245,10 @@ public final class NetworkTabUI {
             networks.addAll(packet.networks);
             deviceNetworkID = packet.deviceNetworkID;
             defaultNetworkID = packet.defaultNetworkID;
-            passwordMode = false;
-            passwordValue.setStringValue("");
+            // 仅在非密码模式时重置密码状态，避免用户输入中被清空
+            if (!passwordMode) {
+                passwordValue.setStringValue("");
+            }
             selectedNetworkID = packet.deviceNetworkID;
             if (selectedEntry() == null && !networks.isEmpty()) {
                 selectedNetworkID = networks.get(0).networkID;

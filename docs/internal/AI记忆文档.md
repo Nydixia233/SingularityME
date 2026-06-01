@@ -84,16 +84,6 @@
 |------|------|------|
 | TextWidget `margin/padding set on both sides on axis Y exceeds parent size` | row 固定高度（24px）内 TextWidget 的 padding 与主题默认 padding 叠加导致垂直溢出 | 日志报错但未阻断渲染，待排查修复 |
 
-## Qz UILib 遗留问题（已通过迁移消除）
-
-以下问题随 Qz UILib 弃用而永久消除，仅保留作历史记录：
-|------|----------|------|
-| flex 子元素 maxWidth/minWidth 不生效 | `FlexLayoutHelper.resolveContentMainSize()` 未调用 `applyWidthConstraints` | Qz 源码已修补 |
-| 列 flex 用自然内容高度覆盖 flex-basis | `FlexLayoutHelper.layoutColumnFlexChildren()` L228-232 | Qz 源码已修补 |
-| 框架给根元素默认 `overflow-y:auto` | `UiDocumentScreens` 文档注释 | Java 侧显式设 `overflow:hidden` |
-| 滚动容器需 `height:auto()` 而非 `px(0)` | `UiStyleLength.Type` 区分 PIXEL/AUTO | Java 侧 `scrollBox()` 使用 `auto()` |
-| Plan B 双层滚动在小视口下失效 | 外层 `height:px(1)` → flex-grow 后可能极小，内层 `height:auto` 溢出被外层 clip | 待决策：回退单层或修补 Qz |
-
 ## 设计决策
 
 - **NBT 键值**：不为了"看起来更像上游"而重命名已有键。如果必须迁移，先加旧键读取兼容，再在单独提交中切换写入。优先采用上游委托模式（如 `DualityInterface.writeToNBT`）。

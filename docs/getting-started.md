@@ -105,19 +105,12 @@ $env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
 .\gradlew.bat build -x spotlessJavaCheck
 ```
 
-### 2. Qz UILib 依赖解析失败
+### 2. ModularUI2 依赖解析失败
 ```
-Could not find club.heiqi.uilib:Qz-UILib-4.1.3-LTS
+Could not find com.github.GTNewHorizons:ModularUI2
 ```
-**原因**：Qz UILib 通过 `mavenLocal()` 解析，需要先将 JAR 安装到本地 Maven 仓库。
-**解决**：
-1. 确保 `Qz-UILib-4.1.3-LTS` 源码在本地并已构建
-2. 或从 GTNH 实例的 `mods/` 目录复制 `qz_uilib-4.1.3-LTS.jar`，手动安装到本地 Maven：
-```powershell
-mvn install:install-file -Dfile=qz_uilib-4.1.3-LTS.jar `
-  -DgroupId=club.heiqi.uilib -DartifactId=Qz-UILib-4.1.3-LTS `
-  -Dversion=NO-GIT-TAG-SET -Dpackaging=jar
-```
+**原因**：未能从 GTNH Maven 仓库解析依赖（通常是网络或仓库配置问题）。
+**解决**：ModularUI2 由 GTNH Maven 自动解析，无需手动安装。确认 `dependencies.gradle` 中声明 `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`，并检查网络可访问 GTNH Maven。
 
 ### 3. `Unsupported class file major version XX`
 **原因**：JDK 版本过低。GTNH 约定使用 Jabel 转译，但编译过程需要 JDK 17+。
@@ -149,4 +142,4 @@ mvn install:install-file -Dfile=qz_uilib-4.1.3-LTS.jar `
 
 - [GTNH 官方 Wiki](https://gtnh.miraheze.org/)
 - [AE2 非官方 GTNH 版文档](https://github.com/GTNewHorizons/Applied-Energistics-2)
-- [Qz UILib 文档](../../Qz-UILib-4.1.3-LTS/)（同工作区）
+- [ModularUI2 仓库](https://github.com/GTNewHorizons/ModularUI2)（GTNH fork）

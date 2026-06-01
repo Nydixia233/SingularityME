@@ -56,7 +56,7 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 | 奇点终端 | ME Terminal | 访问奇点网格中的所有物品 |
 | 奇点合成终端 | ME Crafting Terminal | 终端内直接进行合成操作 |
 | 奇点样板终端 | ME Pattern Terminal | 创建和管理合成样板 |
-| 奇点网络终端 | — | 网络选择、成员管理、网络设置（基于 Qz UILib） |
+| 奇点网络终端 | — | 网络选择、成员管理、网络设置（基于 ModularUI2） |
 | 奇点输入总线 | ME Import Bus | 从相邻容器抽取物品存入网格 |
 | 奇点输出总线 | ME Export Bus | 从网格向相邻容器输出物品 |
 | 奇点接口 | ME Interface | 物品缓冲与自动合成接口 |
@@ -84,7 +84,7 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 
 **GUI 完整性**
 
-- GUI 根据设备类型分别继承不同基类：总线类继承 `GuiUpgradeable`，终端类继承 AE2 原生 `GuiMEMonitorable`/`GuiCraftingTerm`/`GuiPatternTerm`，驱动器/合成核心/能量核心继承 `AEBaseGui`，网络终端使用 Qz UILib 自建界面
+- GUI 根据设备类型分别继承不同基类：总线类继承 `GuiUpgradeable`，终端类继承 AE2 原生 `GuiMEMonitorable`/`GuiCraftingTerm`/`GuiPatternTerm`，驱动器/合成核心/能量核心继承 `AEBaseGui`，网络终端使用 ModularUI2 自建界面
 - 存储总线 GUI 高度 251px，7 行 × 9 列过滤槽，含 clear/partition/priority 子界面
 - 输入/输出总线 GUI 按钮可见性与 AE2 完全一致（按升级卡安装情况动态显示）
 
@@ -142,7 +142,7 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 - 12 种奇点设备的基础功能（注册、联网、GUI、WAILA）
 - 核心网络模型（SingularityGrid、AnchorNode、NetworkManager）
 - 跨维度支持、能量系统、Mixin 频道绕过
-- 网络终端 UI（Qz UILib 实现）
+- 网络终端 UI（ModularUI2 实现）
 
 **Phase 2（规划中）**：
 - 加密网络安全验证 UI
