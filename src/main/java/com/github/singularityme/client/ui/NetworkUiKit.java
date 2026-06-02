@@ -107,6 +107,7 @@ public final class NetworkUiKit {
         public static final int COMPACT_ROW_H = 22;
         public static final int INFO_LABEL_W = 64;
         public static final int FORM_LABEL_W = 76;
+        public static final int FORM_CHILD_GAP = 8;
         public static final int TERMINAL_PANEL_MAX_W = 1120;
         public static final int TERMINAL_PANEL_MAX_H = 700;
         public static final float TERMINAL_PANEL_VIEWPORT_W = 0.58f;
@@ -309,6 +310,11 @@ public final class NetworkUiKit {
     public static int homeInfoColumnWidth(final int contentWidth) {
         if (!homeInfoUsesTwoColumns(contentWidth)) return Math.max(0, contentWidth);
         return Math.max(0, (contentWidth - 2) / 2);
+    }
+
+    /** 表单输入控件相对表单行左侧的起点，用于让色板等无标签控件和输入框左边缘对齐。 */
+    public static int formInputOffset() {
+        return Palette.FORM_LABEL_W + Palette.FORM_CHILD_GAP;
     }
 
     /** 判断主页信息是否应使用两列紧凑布局。 */
@@ -969,7 +975,7 @@ public final class NetworkUiKit {
     @SuppressWarnings("unchecked")
     public static Flow formRow(final String label, final IWidget input) {
         final Flow row = Flow.row()
-            .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
+            .childPadding(Palette.FORM_CHILD_GAP).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER);
         final TextWidget labelWidget = new TextWidget(IKey.str(label)).color(Palette.TEXT_LABEL);
         labelWidget.width(Palette.FORM_LABEL_W);
@@ -1041,7 +1047,7 @@ public final class NetworkUiKit {
     public static Flow colorSwatchRow(final int[] presets, final int selectedColor,
         final IntConsumer onSelect) {
         final Flow row = Flow.row()
-            .childPadding(6).widthRel(1f).height(Palette.ROW_H).padding(12, 0)
+            .childPadding(6).widthRel(1f).height(Palette.ROW_H).paddingLeft(formInputOffset())
             .crossAxisAlignment(Alignment.CrossAxis.CENTER);
         for (final int color : presets) {
             final boolean selected = (selectedColor & 0xFFFFFF) == (color & 0xFFFFFF);

@@ -409,10 +409,20 @@ public class NetworkUiKitTest {
     public void keepsColorSwatchesInsideClickableRowBounds() {
         final Flow row = NetworkUiKit.colorSwatchRow(new int[] { 0x4A90E2 }, 0x4A90E2, ignored -> {});
 
-        assertEquals(12, row.getArea().getPadding().getLeft());
-        assertEquals(12, row.getArea().getPadding().getRight());
+        assertEquals(NetworkUiKit.formInputOffset(), row.getArea().getPadding().getLeft());
+        assertEquals(0, row.getArea().getPadding().getRight());
         assertEquals(0, row.getArea().getPadding().getTop());
         assertEquals(0, row.getArea().getPadding().getBottom());
+    }
+
+    /** 设置/创建页色板第一颗色块必须与上方表单输入框左边缘对齐。 */
+    @Test
+    public void alignsColorSwatchesWithFormInputStart() {
+        assertEquals(84, NetworkUiKit.formInputOffset());
+
+        final Flow row = NetworkUiKit.colorSwatchRow(new int[] { 0x4A90E2 }, 0x4A90E2, ignored -> {});
+
+        assertEquals(NetworkUiKit.formInputOffset(), row.getArea().getPadding().getLeft());
     }
 
     /** 色块视觉必须挂在 ButtonWidget 本体上，避免内部 Flow 抢占 MUI2 的 hover/click 命中链。 */
