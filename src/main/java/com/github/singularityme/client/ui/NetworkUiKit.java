@@ -124,6 +124,8 @@ public final class NetworkUiKit {
         public static final int RAIL_ROW_H = 22;
         public static final int RAIL_ACTION_H = 24;
         public static final int LIST_ROW_GAP = 2;
+        public static final int NETWORK_ROW_INSET = 3;
+        public static final int LIST_CONTENT_INSET = 4;
         public static final int TERMINAL_RAIL_MIN_W = 96;
         public static final int TERMINAL_CONTENT_MIN_W = 160;
         public static final int TERMINAL_CONTENT_MIN_H = 80;
@@ -135,8 +137,8 @@ public final class NetworkUiKit {
         public static final int BORDER_RADIUS_ROW = 4;
         public static final int BORDER_RADIUS_BADGE = 3;
         public static final int BORDER_RADIUS_SWATCH = 2;
-        public static final int STATUS_DOT_SIZE = 8;
-        public static final int ID_PILL_W = 38;
+        public static final int STATUS_DOT_SIZE = 6;
+        public static final int ID_PILL_W = 32;
         public static final int ID_PILL_H = 16;
         public static final int SWATCH_BUTTON_SIZE = 26;
         public static final int SWATCH_INNER_SIZE = 22;
@@ -279,7 +281,7 @@ public final class NetworkUiKit {
 
     /** 左侧网络栏除列表外的固定高度。 */
     public static int terminalRailChromeHeight() {
-        return Palette.RAIL_HEADER_H + Palette.RAIL_FILTER_H + Palette.RAIL_ACTION_H + 20;
+        return Palette.RAIL_HEADER_H + Palette.RAIL_FILTER_H + Palette.RAIL_ACTION_H + 24;
     }
 
     /** 终端两栏布局的最小高度，防止内容区与底部操作区重叠。 */

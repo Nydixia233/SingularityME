@@ -107,7 +107,7 @@ public class NetworkUiKitTest {
         assertEquals(82, layout.railY);
         assertEquals(136, layout.railW);
         assertEquals(267, layout.railH);
-        assertEquals(183, layout.railListH);
+        assertEquals(179, layout.railListH);
         assertEquals(168, layout.contentX);
         assertEquals(82, layout.contentY);
         assertEquals(406, layout.contentW);
@@ -134,7 +134,7 @@ public class NetworkUiKitTest {
         assertEquals(168, layout.contentX);
         assertEquals(406, layout.contentW);
         assertEquals(227, layout.contentH);
-        assertEquals(183, layout.railListH);
+        assertEquals(179, layout.railListH);
         assertTrue(layout.contentY + layout.contentH < layout.bottomY);
         assertTrue(layout.railListH >= 72);
     }
@@ -266,8 +266,10 @@ public class NetworkUiKitTest {
     /** 左侧列表的圆点、编号胶囊和行距使用紧凑尺寸，匹配游戏内小列观感。 */
     @Test
     public void exposesCompactNetworkListMetrics() {
-        assertEquals(8, Palette.STATUS_DOT_SIZE);
-        assertEquals(38, Palette.ID_PILL_W);
+        assertEquals(6, Palette.STATUS_DOT_SIZE);
+        assertEquals(3, Palette.NETWORK_ROW_INSET);
+        assertEquals(4, Palette.LIST_CONTENT_INSET);
+        assertEquals(32, Palette.ID_PILL_W);
         assertEquals(2, Palette.LIST_ROW_GAP);
     }
 
@@ -288,8 +290,8 @@ public class NetworkUiKitTest {
     @Test
     public void exposesTerminalMinimumBounds() {
         assertEquals(308, NetworkUiKit.terminalMinimumWidth());
-        assertEquals(232, NetworkUiKit.terminalMinimumHeight());
-        assertEquals(84, NetworkUiKit.terminalRailChromeHeight());
+        assertEquals(236, NetworkUiKit.terminalMinimumHeight());
+        assertEquals(88, NetworkUiKit.terminalRailChromeHeight());
         assertEquals(88, NetworkUiKit.railActionWidth(96));
         assertEquals(128, NetworkUiKit.railActionWidth(136));
     }

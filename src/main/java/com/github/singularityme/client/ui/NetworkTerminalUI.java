@@ -14,6 +14,7 @@ import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.tileentity.TileEntity;
 
 import com.cleanroommc.modularui.api.drawable.IDrawable;
+import com.cleanroommc.modularui.api.drawable.IIcon;
 import com.cleanroommc.modularui.api.drawable.IKey;
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.screen.GuiScreenWrapper;
@@ -260,7 +261,7 @@ public final class NetworkTerminalUI {
                         if (isStatusPanel(p) && selectedRealEntry() != null) {
                             requestNetworkStatus();
                         }
-                        renderContent();
+                        renderContent(false);
                     }
                 }));
             }
@@ -305,7 +306,7 @@ public final class NetworkTerminalUI {
         @SuppressWarnings("unchecked")
         void updateNetworkBar() {
             networkBar.removeAll();
-            networkBar.child(new TextWidget(IKey.str(panelTitle(currentPanel)))
+            networkBar.child(new TextWidget(IKey.dynamicKey(() -> IKey.str(panelTitle(currentPanel))))
                 .color(Palette.TEXT_PRIMARY));
 
             final NetworkEntry sel = selectedEntry();
@@ -349,6 +350,8 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(IDrawable.NONE);
             list.disableHoverBackground();
+            list.childSeparator(IIcon.EMPTY_2PX);
+            list.padding(0, Palette.LIST_CONTENT_INSET);
             list.widthRel(1f);
             list.height(layout.railListH);
             for (final NetworkEntry entry : networks) {
@@ -385,7 +388,7 @@ public final class NetworkTerminalUI {
             nameWidget.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(4).widthRel(1f).height(Palette.RAIL_ROW_H).padding(0, 4)
+                .childPadding(4).widthRel(1f).height(Palette.RAIL_ROW_H).padding(0, Palette.NETWORK_ROW_INSET)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(NetworkUiKit.statusDotWidget(color))
                 .child(NetworkUiKit.idPill(entry.networkID))
@@ -400,7 +403,6 @@ public final class NetworkTerminalUI {
                     selectNetwork(entry.networkID);
                     return true;
                 });
-            row.margin(Palette.LIST_ROW_GAP / 2, 0);
             return row;
         }
 
@@ -615,6 +617,8 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
             list.disableHoverBackground();
+            list.childSeparator(IIcon.EMPTY_2PX);
+            list.padding(0, Palette.LIST_CONTENT_INSET);
             list.widthRel(1f);
             list.height(NetworkUiKit.selectionListHeight(layout.contentH));
             for (final NetworkEntry entry : networks) {
@@ -662,7 +666,7 @@ public final class NetworkTerminalUI {
             nameWidget.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
+                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, Palette.NETWORK_ROW_INSET)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(NetworkUiKit.statusDotWidget(c));
             if (entry.networkID != 0) {
@@ -684,7 +688,6 @@ public final class NetworkTerminalUI {
                     selectNetwork(entry.networkID);
                     return true;
                 });
-            row.margin(Palette.LIST_ROW_GAP / 2, 0);
             return row;
         }
 
@@ -703,6 +706,8 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
             list.disableHoverBackground();
+            list.childSeparator(IIcon.EMPTY_2PX);
+            list.padding(0, Palette.LIST_CONTENT_INSET);
             list.widthRel(1f);
             list.height(layout.contentH);
             for (final DeviceInfo device : networkStatus.devices) {
@@ -730,7 +735,6 @@ public final class NetworkTerminalUI {
                     ? "gui.singularityme.network_terminal.conn.online"
                     : "gui.singularityme.network_terminal.conn.offline")))
                     .color(device.loaded ? Palette.SECURITY_PUBLIC : Palette.BTN_DANGER_NORMAL));
-            row.margin(Palette.LIST_ROW_GAP / 2, 0);
             return row;
         }
 
@@ -806,7 +810,7 @@ public final class NetworkTerminalUI {
                 .background(Styles.rowBg(bg))
                 .disableHoverBackground();
             if (clickable) {
-                row.onMousePressed(mb -> { selectedMemberID = pid; renderContent(); return true; });
+                row.onMousePressed(mb -> { selectedMemberID = pid; renderContent(false); return true; });
             }
             return row;
         }
@@ -855,7 +859,7 @@ public final class NetworkTerminalUI {
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.security"),
                 NetworkUiKit.securitySegmentRow(selectedSecurity, level -> {
                     selectedSecurity = level;
-                    renderContent();
+                    renderContent(false);
                 })));
 
             contentArea.child(formRow(
@@ -1009,7 +1013,7 @@ public final class NetworkTerminalUI {
         private Flow colorSwatchRow() {
             return NetworkUiKit.colorSwatchRow(COLOR_PRESETS, selectedColor, c -> {
                 selectedColor = c;
-                renderContent();
+                renderContent(false);
             });
         }
 
@@ -1035,7 +1039,7 @@ public final class NetworkTerminalUI {
                         requestNetworkData();
                     }))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.confirm.cancel"),
-                    140, this::renderContent)));
+                    140, () -> renderContent(false))));
             contentViewport.scheduleResize();
         }
 
@@ -1061,7 +1065,7 @@ public final class NetworkTerminalUI {
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.security"),
                 NetworkUiKit.securitySegmentRow(selectedSecurity, level -> {
                     selectedSecurity = level;
-                    renderContent();
+                    renderContent(false);
                 })));
 
             contentArea.child(formRow(
