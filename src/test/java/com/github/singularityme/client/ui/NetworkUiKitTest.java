@@ -84,15 +84,18 @@ public class NetworkUiKitTest {
         assertEquals(20, layout.railX);
         assertEquals(82, layout.railY);
         assertEquals(136, layout.railW);
-        assertEquals(235, layout.railH);
+        assertEquals(267, layout.railH);
+        assertEquals(169, layout.railListH);
         assertEquals(168, layout.contentX);
         assertEquals(82, layout.contentY);
         assertEquals(406, layout.contentW);
-        assertEquals(235, layout.contentH);
-        assertEquals(20, layout.bottomX);
+        assertEquals(227, layout.contentH);
+        assertEquals(168, layout.bottomX);
         assertEquals(317, layout.bottomY);
-        assertEquals(554, layout.bottomW);
+        assertEquals(406, layout.bottomW);
         assertEquals(32, layout.bottomH);
+        assertTrue(layout.contentY + layout.contentH < layout.bottomY);
+        assertTrue(layout.railY + layout.railH <= 349);
     }
 
     /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */

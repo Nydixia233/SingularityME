@@ -285,6 +285,7 @@ public final class NetworkUiKit {
         public final int railY;
         public final int railW;
         public final int railH;
+        public final int railListH;
         public final int contentX;
         public final int contentY;
         public final int contentW;
@@ -306,15 +307,16 @@ public final class NetworkUiKit {
             this.railX = Palette.TERMINAL_OUTER_PAD_X;
             this.railY = Palette.TERMINAL_CONTENT_TOP;
             this.railW = Palette.TERMINAL_RAIL_W;
-            this.bottomX = Palette.TERMINAL_OUTER_PAD_X;
-            this.bottomY = Math.max(this.railY, panelH - Palette.TERMINAL_BOTTOM_H - 10);
-            this.bottomW = Math.max(0, panelW - Palette.TERMINAL_OUTER_PAD_X * 2);
-            this.bottomH = Palette.TERMINAL_BOTTOM_H;
-            this.railH = Math.max(120, this.bottomY - this.railY);
             this.contentX = this.railX + this.railW + Palette.TERMINAL_GAP;
             this.contentY = this.railY;
             this.contentW = Math.max(160, panelW - this.contentX - Palette.TERMINAL_OUTER_PAD_X);
-            this.contentH = Math.max(120, this.bottomY - this.contentY);
+            this.bottomX = this.contentX;
+            this.bottomY = Math.max(this.railY, panelH - Palette.TERMINAL_BOTTOM_H - 10);
+            this.bottomW = this.contentW;
+            this.bottomH = Palette.TERMINAL_BOTTOM_H;
+            this.railH = Math.max(120, panelH - this.railY - 10);
+            this.railListH = Math.max(72, this.railH - Palette.TEXT_ROW_H - Palette.ROW_H * 2 - 20);
+            this.contentH = Math.max(120, this.bottomY - this.contentY - 8);
         }
     }
 

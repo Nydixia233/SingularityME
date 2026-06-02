@@ -50,7 +50,7 @@ import com.github.singularityme.network.packet.PacketSetMemberRole;
 import com.github.singularityme.network.packet.PacketSetNetworkSettings;
 
 /**
- * 8 面板网络终端 — MUI2 重写版。
+ * 5 面板网络终端 — MUI2 重写版。
  */
 public final class NetworkTerminalUI {
 
@@ -122,6 +122,7 @@ public final class NetworkTerminalUI {
         Flow navBar;
         Flow networkBar;
         Flow networkRail;
+        ListWidget contentViewport;
         Flow contentArea;
         Flow bottomArea;
         int navButtonWidth;
@@ -182,9 +183,16 @@ public final class NetworkTerminalUI {
                 .background(Styles.listBg());
             panel.child(networkRail);
 
+            contentViewport = new ListWidget();
+            contentViewport.background(Styles.listBg());
+            contentViewport.pos(layout.contentX, layout.contentY);
+            contentViewport.size(layout.contentW, layout.contentH);
+            contentViewport.padding(4);
+            contentViewport.showScrollShadows(false);
             contentArea = Flow.column()
-                .childPadding(4).pos(layout.contentX, layout.contentY).size(layout.contentW, layout.contentH);
-            panel.child(contentArea);
+                .childPadding(4).widthRel(1f).coverChildrenHeight();
+            contentViewport.child(contentArea);
+            panel.child(contentViewport);
 
             // 底部操作区
             bottomArea = Flow.column()
@@ -246,6 +254,7 @@ public final class NetworkTerminalUI {
                 case SETTINGS -> renderSettings();
                 case CREATE -> renderCreate();
             }
+            contentViewport.scheduleResize();
             panelFirstRender = false;
         }
 
@@ -298,7 +307,7 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(IDrawable.NONE);
             list.widthRel(1f);
-            list.height(Math.max(84, layout.railH - 86));
+            list.height(layout.railListH);
             for (final NetworkEntry entry : networks) {
                 if (matchesFilter(entry)) {
                     list.child(buildRailRow(entry));
@@ -994,6 +1003,7 @@ public final class NetworkTerminalUI {
                     }))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.confirm.cancel"),
                     140, this::renderContent)));
+            contentViewport.scheduleResize();
         }
 
         // ---- CREATE ----
