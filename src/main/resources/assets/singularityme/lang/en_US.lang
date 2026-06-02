@@ -155,7 +155,6 @@ gui.singularityme.network_terminal.home.health=Health
 gui.singularityme.network_terminal.home.members=Members
 gui.singularityme.network_terminal.home.created=Created
 gui.singularityme.network_terminal.home.modified=Modified
-gui.singularityme.network_terminal.home.section.overview=Home Summary
 gui.singularityme.network_terminal.home.section.health=Health Alerts
 gui.singularityme.network_terminal.home.section.devices=Device Statistics
 gui.singularityme.network_terminal.home.section.properties=Network Properties

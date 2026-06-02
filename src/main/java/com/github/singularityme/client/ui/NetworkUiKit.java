@@ -103,7 +103,7 @@ public final class NetworkUiKit {
         // 尺寸
         public static final int ROW_H = 26;
         public static final int COMPACT_ROW_H = 22;
-        public static final int INFO_LABEL_W = 82;
+        public static final int INFO_LABEL_W = 64;
         public static final int FORM_LABEL_W = 76;
         public static final int TERMINAL_PANEL_MAX_W = 1120;
         public static final int TERMINAL_PANEL_MAX_H = 700;
@@ -123,6 +123,7 @@ public final class NetworkUiKit {
         public static final int RAIL_FILTER_H = 24;
         public static final int RAIL_ROW_H = 22;
         public static final int RAIL_ACTION_H = 24;
+        public static final int LIST_ROW_GAP = 2;
         public static final int TERMINAL_RAIL_MIN_W = 96;
         public static final int TERMINAL_CONTENT_MIN_W = 160;
         public static final int TERMINAL_CONTENT_MIN_H = 80;
@@ -134,7 +135,8 @@ public final class NetworkUiKit {
         public static final int BORDER_RADIUS_ROW = 4;
         public static final int BORDER_RADIUS_BADGE = 3;
         public static final int BORDER_RADIUS_SWATCH = 2;
-        public static final int ID_PILL_W = 44;
+        public static final int STATUS_DOT_SIZE = 8;
+        public static final int ID_PILL_W = 38;
         public static final int ID_PILL_H = 16;
         public static final int SWATCH_BUTTON_SIZE = 26;
         public static final int SWATCH_INNER_SIZE = 22;
@@ -327,14 +329,14 @@ public final class NetworkUiKit {
         return status == null ? "-" : value;
     }
 
-    /** 主页顶部能量概览：现有 / 容量（百分比）。 */
+    /** 主页能量概览：现有 / 容量（百分比）。 */
     public static String formatHomeEnergyOverview(final PacketNetworkStatus status) {
         if (status == null) return "-";
         return formatCompactEnergy(status.currentPower) + " / " + formatCompactEnergy(status.maxPower)
             + " (" + formatWholePercent(status.currentPower, status.maxPower) + ")";
     }
 
-    /** 主页顶部在线率概览：在线 / 总数（百分比）。 */
+    /** 主页在线率概览：在线 / 总数（百分比）。 */
     public static String formatHomeOnlineOverview(final PacketNetworkStatus status) {
         if (status == null) return "-";
         final int total = status.devices.size();
@@ -364,13 +366,6 @@ public final class NetworkUiKit {
         if (max <= 0.0) return "0%";
         final double fraction = Math.max(0.0, Math.min(1.0, current / max));
         return String.format(Locale.ROOT, "%.0f%%", fraction * 100D);
-    }
-
-    /** 计算主页概览指标卡宽度，保持指标行稳定均分。 */
-    public static int metricCardWidth(final int contentWidth, final int count) {
-        if (count <= 0) return 0;
-        final int gaps = Math.max(0, count - 1) * 4;
-        return Math.max(64, (Math.max(0, contentWidth) - gaps) / count);
     }
 
     /** 将巨大 AE 数值压缩为不换行的短文本。 */
@@ -863,7 +858,7 @@ public final class NetworkUiKit {
     @SuppressWarnings("unchecked")
     public static Flow statusDotWidget(final int color) {
         return Flow.row()
-            .width(10).height(10)
+            .width(Palette.STATUS_DOT_SIZE).height(Palette.STATUS_DOT_SIZE)
             .background(Styles.statusDot(0xFF000000 | color))
             .disableHoverBackground();
     }

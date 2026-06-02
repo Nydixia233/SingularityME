@@ -152,19 +152,12 @@ public class NetworkUiKitTest {
         assertFalse(NetworkUiKit.homeInfoUsesTwoColumns(360));
     }
 
-    @Test
-    public void computesOverviewMetricWidth() {
-        assertEquals(98, NetworkUiKit.metricCardWidth(406, 4));
-        assertEquals(188, NetworkUiKit.metricCardWidth(380, 2));
-    }
-
-    /** 内容视口存在内边距，主页两列和指标卡宽度必须按实际可用宽度计算，避免右侧被裁切。 */
+    /** 内容视口存在内边距，主页两列宽度必须按实际可用宽度计算，避免右侧被裁切。 */
     @Test
     public void computesContentInnerWidthForHomeRows() {
         assertEquals(4, Palette.CONTENT_VIEWPORT_PAD);
         assertEquals(398, NetworkUiKit.terminalContentInnerWidth(406));
         assertEquals(198, NetworkUiKit.homeInfoColumnWidth(NetworkUiKit.terminalContentInnerWidth(406)));
-        assertEquals(96, NetworkUiKit.metricCardWidth(NetworkUiKit.terminalContentInnerWidth(406), 4));
     }
 
     /** 切换网络时优先复用已收到的状态快照，避免内容区进入空白 loading 中间帧。 */
@@ -266,8 +259,16 @@ public class NetworkUiKitTest {
     /** 表单与主页标签使用固定宽度，避免值列和输入框起点抖动。 */
     @Test
     public void exposesStableLabelWidths() {
-        assertEquals(82, Palette.INFO_LABEL_W);
+        assertEquals(64, Palette.INFO_LABEL_W);
         assertEquals(76, Palette.FORM_LABEL_W);
+    }
+
+    /** 左侧列表的圆点、编号胶囊和行距使用紧凑尺寸，匹配游戏内小列观感。 */
+    @Test
+    public void exposesCompactNetworkListMetrics() {
+        assertEquals(8, Palette.STATUS_DOT_SIZE);
+        assertEquals(38, Palette.ID_PILL_W);
+        assertEquals(2, Palette.LIST_ROW_GAP);
     }
 
     /** 左侧网络栏和基础按钮使用更紧凑的高度，避免在截图区域形成厚重色块。 */
