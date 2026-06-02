@@ -887,7 +887,7 @@ public final class NetworkUiKit {
     @SuppressWarnings("unchecked")
     public static Flow selectionBar(final String text, final int accentColor) {
         final Flow bar = Flow.row()
-            .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 10)
+            .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(Palette.LIST_ROW_PADDING_H, 0)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.listBg())
             .disableHoverBackground();
@@ -914,7 +914,7 @@ public final class NetworkUiKit {
     @SuppressWarnings("unchecked")
     public static Flow infoRowFixed(final String label, final String value, final int valueColor) {
         final Flow row = Flow.row()
-            .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 10)
+            .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(Palette.LIST_ROW_PADDING_H, 0)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.rowBg(Palette.BG_ROW))
             .disableHoverBackground();
@@ -932,7 +932,7 @@ public final class NetworkUiKit {
     @SuppressWarnings("unchecked")
     public static Flow infoRowCompact(final String label, final String value) {
         final Flow row = Flow.row()
-            .childPadding(8).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(0, 10)
+            .childPadding(8).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(Palette.LIST_ROW_PADDING_H, 0)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.rowBg(Palette.BG_ROW))
             .disableHoverBackground();
@@ -967,7 +967,7 @@ public final class NetworkUiKit {
     public static Flow colorReadonly(final int color) {
         return Flow.row()
             .childPadding(6).height(Palette.ROW_H).expanded()
-            .padding(0, 8)
+            .padding(Palette.LIST_ROW_PADDING_H, 0)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.inputBg())
             .disableHoverBackground()
@@ -981,7 +981,7 @@ public final class NetworkUiKit {
         final Consumer<SecurityLevel> onSelect) {
         final Flow row = Flow.row()
             .childPadding(4).height(Palette.ROW_H).expanded()
-            .padding(3, 4)
+            .padding(Palette.LIST_ROW_PADDING_H, 0)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.inputBg())
             .disableHoverBackground();

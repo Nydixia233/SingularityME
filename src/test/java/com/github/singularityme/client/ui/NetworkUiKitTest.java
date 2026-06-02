@@ -15,6 +15,7 @@ import org.junit.Test;
 
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
+import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 
 /** 验证网络 UI 设备类型展示辅助方法。 */
@@ -288,6 +289,44 @@ public class NetworkUiKitTest {
         assertPaletteFieldMissing("BADGE_MARGIN_H");
         assertEquals(32, Palette.ID_PILL_MIN_W);
         assertEquals(2, Palette.LIST_ROW_GAP);
+    }
+
+    /** 带自身背景的表单胶囊也必须让圆点、文字和分段按钮离左右边界 4px。 */
+    @Test
+    public void keepsFormControlContentInsideItsOwnBackground() {
+        final Flow colorField = NetworkUiKit.colorReadonly(0x4A90E2);
+        assertEquals(4, colorField.getArea().getPadding().getLeft());
+        assertEquals(4, colorField.getArea().getPadding().getRight());
+        assertEquals(0, colorField.getArea().getPadding().getTop());
+        assertEquals(0, colorField.getArea().getPadding().getBottom());
+
+        final Flow securityField = NetworkUiKit.securitySegmentRow(SecurityLevel.PRIVATE, ignored -> {});
+        assertEquals(4, securityField.getArea().getPadding().getLeft());
+        assertEquals(4, securityField.getArea().getPadding().getRight());
+        assertEquals(0, securityField.getArea().getPadding().getTop());
+        assertEquals(0, securityField.getArea().getPadding().getBottom());
+    }
+
+    /** 主页信息胶囊使用自身背景时，内部标签和值也必须离左右边界 4px。 */
+    @Test
+    public void keepsInfoRowsInsideTheirOwnBackground() {
+        final Flow fixed = NetworkUiKit.infoRowFixed("标签", "值");
+        assertEquals(4, fixed.getArea().getPadding().getLeft());
+        assertEquals(4, fixed.getArea().getPadding().getRight());
+        assertEquals(0, fixed.getArea().getPadding().getTop());
+        assertEquals(0, fixed.getArea().getPadding().getBottom());
+
+        final Flow compact = NetworkUiKit.infoRowCompact("标签", "值");
+        assertEquals(4, compact.getArea().getPadding().getLeft());
+        assertEquals(4, compact.getArea().getPadding().getRight());
+        assertEquals(0, compact.getArea().getPadding().getTop());
+        assertEquals(0, compact.getArea().getPadding().getBottom());
+
+        final Flow selection = NetworkUiKit.selectionBar("选中", 0x4A90E2);
+        assertEquals(4, selection.getArea().getPadding().getLeft());
+        assertEquals(4, selection.getArea().getPadding().getRight());
+        assertEquals(0, selection.getArea().getPadding().getTop());
+        assertEquals(0, selection.getArea().getPadding().getBottom());
     }
 
     private static void assertPaletteFieldMissing(final String name) {

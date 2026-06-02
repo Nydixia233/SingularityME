@@ -582,7 +582,7 @@ public final class NetworkTerminalUI {
         @SuppressWarnings("unchecked")
         private Flow homeNoticeRow(final String text, final int color) {
             return Flow.row()
-                .childPadding(6).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(0, 10)
+                .childPadding(6).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(Palette.LIST_ROW_PADDING_H, 0)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .background(Styles.rowBg(Palette.BG_ROW))
                 .disableHoverBackground()
