@@ -9,6 +9,7 @@ import com.cleanroommc.modularui.drawable.Circle;
 import com.cleanroommc.modularui.drawable.Rectangle;
 import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
+import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.core.AccessLevel;
@@ -320,6 +321,17 @@ public final class NetworkUiKit {
         return Math.max(0, contentWidth - Palette.CONTENT_VIEWPORT_PAD * 2);
     }
 
+    /** 计算内容视口扣除内边距后的实际可用高度，避免嵌套列表撑出外层假滚动条。 */
+    public static int terminalContentInnerHeight(final int contentHeight) {
+        return Math.max(0, contentHeight - Palette.CONTENT_VIEWPORT_PAD * 2);
+    }
+
+    /** 重置列表滚动位置；用于复用同一个 MUI2 ListWidget 渲染不同页面时清理旧偏移。 */
+    public static void resetListScroll(final ListWidget<?, ?> list) {
+        if (list == null || list.getScrollData() == null) return;
+        list.getScrollData().scrollTo(list.getScrollArea(), 0);
+    }
+
     /** 获取指定网络的已缓存状态快照；无缓存或未分配网络返回 null。 */
     public static PacketNetworkStatus cachedStatusForNetwork(final Map<Integer, PacketNetworkStatus> cache,
         final int networkID) {
@@ -395,6 +407,11 @@ public final class NetworkUiKit {
     /** 计算成员页列表高度，为添加成员输入行预留稳定空间。 */
     public static int memberListHeight(final int contentHeight) {
         return Math.max(120, contentHeight - 48);
+    }
+
+    /** 计算连接页列表高度；连接页只有一个内部列表，必须适配外层内容视口的内高。 */
+    public static int connectionListHeight(final int contentHeight) {
+        return terminalContentInnerHeight(contentHeight);
     }
 
     /**

@@ -147,6 +147,8 @@ public final class NetworkTerminalUI {
         final Map<Integer, PacketNetworkStatus> statusCache = new LinkedHashMap<>();
         /** 当前面板是否首次渲染（用于区分主动切换 vs 数据刷新触发） */
         boolean panelFirstRender = true;
+        /** 内容视口复用同一个 ListWidget，切换页面/网络时需要清除旧滚动偏移。 */
+        boolean resetContentScrollNextRender = true;
 
         ModularPanel panel;
         TerminalLayout layout;
@@ -257,6 +259,7 @@ public final class NetworkTerminalUI {
                     if (currentPanel != p) {
                         currentPanel = p;
                         panelFirstRender = true;
+                        resetContentScrollNextRender = true;
                         buildNavButtons();
                         if (isStatusPanel(p) && selectedRealEntry() != null) {
                             requestNetworkStatus();
@@ -297,8 +300,15 @@ public final class NetworkTerminalUI {
                 case SETTINGS -> renderSettings();
                 case CREATE -> renderCreate();
             }
+            resetContentViewportScrollIfNeeded();
             contentViewport.scheduleResize();
             panelFirstRender = false;
+        }
+
+        private void resetContentViewportScrollIfNeeded() {
+            if (!resetContentScrollNextRender) return;
+            NetworkUiKit.resetListScroll(contentViewport);
+            resetContentScrollNextRender = false;
         }
 
         // ---- 网络信息栏 ----
@@ -711,7 +721,7 @@ public final class NetworkTerminalUI {
             list.childSeparator(IIcon.EMPTY_2PX);
             list.padding(Palette.LIST_CONTENT_INSET, 0);
             list.widthRel(1f);
-            list.height(layout.contentH);
+            list.height(NetworkUiKit.connectionListHeight(layout.contentH));
             for (final DeviceInfo device : networkStatus.devices) {
                 list.child(buildDeviceRow(device));
             }
@@ -1175,6 +1185,7 @@ public final class NetworkTerminalUI {
             selectedNetworkID = networkID;
             selectedMemberID = -1;
             networkStatus = NetworkUiKit.cachedStatusForNetwork(statusCache, selectedNetworkID);
+            resetContentScrollNextRender = true;
             if (currentPanel == Panel.SETTINGS) {
                 panelFirstRender = true;
             }
@@ -1212,6 +1223,7 @@ public final class NetworkTerminalUI {
                 selectedNetworkID = initialNetworkID(packet.deviceNetworkID);
                 selectedMemberID = -1;
                 networkStatus = NetworkUiKit.cachedStatusForNetwork(statusCache, selectedNetworkID);
+                resetContentScrollNextRender = true;
             }
             if (networkStatus != null && networkStatus.networkID != selectedNetworkID) {
                 networkStatus = NetworkUiKit.cachedStatusForNetwork(statusCache, selectedNetworkID);

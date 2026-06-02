@@ -13,6 +13,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
 import com.github.singularityme.core.SecurityLevel;
@@ -369,6 +370,28 @@ public class NetworkUiKitTest {
         assertEquals(308, NetworkUiKit.memberListHeight(356));
         assertEquals(120, NetworkUiKit.selectionListHeight(180));
         assertEquals(132, NetworkUiKit.memberListHeight(180));
+    }
+
+    /** 嵌套列表必须使用内容视口扣除 padding 后的高度，避免外层内容区出现 8px 假滚动。 */
+    @Test
+    public void computesContentInnerHeightForNestedLists() {
+        assertEquals(219, NetworkUiKit.terminalContentInnerHeight(227));
+        assertEquals(348, NetworkUiKit.terminalContentInnerHeight(356));
+        assertEquals(219, NetworkUiKit.connectionListHeight(227));
+    }
+
+    /** 页面切换复用同一个 ListWidget 时必须清除旧滚动位置，避免滚动偏移泄漏到其他页面。 */
+    @Test
+    public void resetsListScrollOffset() {
+        final ListWidget<?, ?> list = new ListWidget<>();
+        list.onInit();
+        list.size(100, 100);
+        list.getScrollData().setScrollSize(200);
+        list.getScrollData().scrollTo(list.getScrollArea(), 40);
+
+        NetworkUiKit.resetListScroll(list);
+
+        assertEquals(0, list.getScrollData().getScroll());
     }
 
     /** 色板按钮视觉尺寸固定，选中态不得通过改变控件大小造成布局跳动。 */
