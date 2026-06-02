@@ -4,6 +4,8 @@
 
 网络终端各列表行与表单胶囊要求内容与自身背景左右边界保持 4px，但实际游戏内左侧圆点、编号胶囊、连接列表文本、设置/创建页颜色字段、主页健康提醒行等仍贴近行背景边界。
 
+同类误判也会让设置/创建页的颜色色板行出现“看得见但点不到”：色板行固定高度为 `Palette.ROW_H`，但 `.padding(0, 12)` 实际是上下各 12px，导致 26px 高的颜色按钮被放进几乎没有可用高度的父行内，点击区域在游戏里被裁掉或偏离。
+
 ## 触发场景
 
 在 `NetworkTerminalUI` 和 `NetworkTabUI` 中构建列表行、表单只读字段、主页信息行和摘要栏时，误将 `.padding(0, 4)` / `.padding(0, 8)` / `.padding(0, 10)` 当作"垂直 0、水平 N"使用，并进一步把部分间距补到 `badge/idPill` 的外部 margin 上，导致行背景内部仍没有左右留白。
@@ -23,6 +25,7 @@ MUI2 两参数 padding 的真实顺序是 `padding(horizontal, vertical)`：
 - 列表行与表单/信息胶囊背景自身使用 `.padding(Palette.LIST_ROW_PADDING_H, 0)`，覆盖网络左栏、选择列表、连接列表、成员列表、旧网络选择页、颜色只读字段、安全级别分段字段、主页信息行、健康提醒行和选中摘要栏。
 - `badge()` 与 `idPill()` 使用 `.padding(Palette.BADGE_PADDING_H, 0)` 保证文字与自身胶囊左右边界的 4px 内距。
 - 删除 `BADGE_MARGIN_H`，避免把"行背景内部留白"误实现成"胶囊控件外部间距"。
+- 色板行使用 `.padding(12, 0)`，保证颜色按钮完整落在父行点击区域内。
 - 在 `NetworkUiKitTest` 中增加 `treatsTwoArgumentPaddingAsHorizontalThenVertical`，并覆盖列表、表单胶囊、信息胶囊的水平内距，直接断言 MUI2 padding 的参数顺序和视觉约束。
 
 ## 预防措施

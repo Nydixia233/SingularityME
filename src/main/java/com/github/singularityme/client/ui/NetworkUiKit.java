@@ -1041,7 +1041,7 @@ public final class NetworkUiKit {
     public static Flow colorSwatchRow(final int[] presets, final int selectedColor,
         final IntConsumer onSelect) {
         final Flow row = Flow.row()
-            .childPadding(6).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
+            .childPadding(6).widthRel(1f).height(Palette.ROW_H).padding(12, 0)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER);
         for (final int color : presets) {
             final boolean selected = (selectedColor & 0xFFFFFF) == (color & 0xFFFFFF);

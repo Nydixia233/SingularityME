@@ -400,4 +400,15 @@ public class NetworkUiKitTest {
         assertEquals(26, Palette.SWATCH_BUTTON_SIZE);
         assertEquals(22, Palette.SWATCH_INNER_SIZE);
     }
+
+    /** 色板行必须把按钮完整放在父行点击区域内，否则游戏里会出现看得到但点不到。 */
+    @Test
+    public void keepsColorSwatchesInsideClickableRowBounds() {
+        final Flow row = NetworkUiKit.colorSwatchRow(new int[] { 0x4A90E2 }, 0x4A90E2, ignored -> {});
+
+        assertEquals(12, row.getArea().getPadding().getLeft());
+        assertEquals(12, row.getArea().getPadding().getRight());
+        assertEquals(0, row.getArea().getPadding().getTop());
+        assertEquals(0, row.getArea().getPadding().getBottom());
+    }
 }
