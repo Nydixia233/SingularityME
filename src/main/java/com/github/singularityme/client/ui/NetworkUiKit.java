@@ -16,6 +16,7 @@ import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -342,6 +343,21 @@ public final class NetworkUiKit {
             if (device.loaded) loaded++;
         }
         return loaded + " / " + total + " (" + formatWholePercent(loaded, total) + ")";
+    }
+
+    /** 按设备类型聚合状态快照，保留状态包中的首次出现顺序，供主页和统计页复用。 */
+    public static Map<String, Integer> countDeviceTypes(final PacketNetworkStatus status) {
+        final Map<String, Integer> counts = new LinkedHashMap<>();
+        if (status == null) return counts;
+        for (final PacketNetworkStatus.DeviceInfo device : status.devices) {
+            counts.put(device.type, counts.getOrDefault(device.type, 0) + 1);
+        }
+        return counts;
+    }
+
+    /** 设备数量徽章文案，负数输入按 0 处理。 */
+    public static String formatCountBadge(final int count) {
+        return "x" + Math.max(0, count);
     }
 
     private static String formatWholePercent(final double current, final double max) {

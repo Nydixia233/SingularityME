@@ -213,6 +213,34 @@ public class NetworkUiKitTest {
                 new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 4, 5, 6, 0, false)))));
     }
 
+    /** 主页设备统计按状态包中的首次出现顺序聚合，便于稳定渲染两列网格。 */
+    @Test
+    public void countsHomeDeviceTypesInStableOrder() {
+        final PacketNetworkStatus status = new PacketNetworkStatus(
+            13,
+            0D,
+            0D,
+            java.util.Arrays.asList(
+                new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 1, 2, 3, 0, true),
+                new PacketNetworkStatus.DeviceInfo("TileSingularityPowerCore", 4, 5, 6, 0, true),
+                new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 7, 8, 9, 0, false)));
+
+        final Map<String, Integer> counts = NetworkUiKit.countDeviceTypes(status);
+
+        assertEquals(Integer.valueOf(2), counts.get("TileSingularityDrive"));
+        assertEquals(Integer.valueOf(1), counts.get("TileSingularityPowerCore"));
+        assertEquals("TileSingularityDrive", counts.keySet().iterator().next());
+        assertTrue(NetworkUiKit.countDeviceTypes(null).isEmpty());
+    }
+
+    /** 主页设备统计的值列统一使用 xN，和统计页文案保持一致。 */
+    @Test
+    public void formatsHomeDeviceCountBadge() {
+        assertEquals("x4", NetworkUiKit.formatCountBadge(4));
+        assertEquals("x0", NetworkUiKit.formatCountBadge(0));
+        assertEquals("x0", NetworkUiKit.formatCountBadge(-1));
+    }
+
     /** 终端表面色保持参考稿的深蓝灰层级，避免内容区退回纯黑或高对比闪烁。 */
     @Test
     public void exposesReferenceSurfaceColors() {
