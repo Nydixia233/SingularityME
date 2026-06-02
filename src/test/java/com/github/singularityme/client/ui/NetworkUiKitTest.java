@@ -251,9 +251,11 @@ public class NetworkUiKitTest {
 
     @Test
     public void computesStableBadgeWidth() {
-        assertEquals(25, NetworkUiKit.badgeWidth("*"));
-        assertEquals(42, NetworkUiKit.badgeWidth("默认"));
-        assertEquals(67, NetworkUiKit.badgeWidth("Default"));
+        assertEquals(24, NetworkUiKit.badgeWidth("*"));
+        assertEquals(32, NetworkUiKit.badgeWidth("默认"));
+        assertEquals(57, NetworkUiKit.badgeWidth("Default"));
+        assertEquals(32, NetworkUiKit.idPillWidth(1));
+        assertEquals(36, NetworkUiKit.idPillWidth(123));
     }
 
     /** 表单与主页标签使用固定宽度，避免值列和输入框起点抖动。 */
@@ -269,14 +271,16 @@ public class NetworkUiKitTest {
         assertEquals(6, Palette.STATUS_DOT_SIZE);
         assertEquals(3, Palette.NETWORK_ROW_INSET);
         assertEquals(4, Palette.LIST_CONTENT_INSET);
-        assertEquals(32, Palette.ID_PILL_W);
+        assertEquals(4, Palette.BADGE_PADDING_H);
+        assertEquals(32, Palette.ID_PILL_MIN_W);
         assertEquals(2, Palette.LIST_ROW_GAP);
     }
 
-    /** 左侧网络栏和基础按钮使用更紧凑的高度，避免在截图区域形成厚重色块。 */
+    /** 左侧网络栏、连接列表和成员列表使用更紧凑的高度，避免形成厚重色块。 */
     @Test
     public void usesCompactControlHeights() {
         assertEquals(26, Palette.ROW_H);
+        assertEquals(22, Palette.LIST_ROW_H);
         assertEquals(16, Palette.TEXT_ROW_H);
         assertEquals(16, Palette.RAIL_HEADER_H);
         assertEquals(24, Palette.RAIL_FILTER_H);

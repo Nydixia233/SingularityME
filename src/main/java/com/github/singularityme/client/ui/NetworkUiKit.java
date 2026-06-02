@@ -102,6 +102,7 @@ public final class NetworkUiKit {
 
         // 尺寸
         public static final int ROW_H = 26;
+        public static final int LIST_ROW_H = 22;
         public static final int COMPACT_ROW_H = 22;
         public static final int INFO_LABEL_W = 64;
         public static final int FORM_LABEL_W = 76;
@@ -132,13 +133,13 @@ public final class NetworkUiKit {
         public static final int TERMINAL_RAIL_LIST_MIN_H = 56;
         public static final int BADGE_H = 16;
         public static final int BADGE_MIN_W = 24;
-        public static final int BADGE_PADDING_H = 5;
+        public static final int BADGE_PADDING_H = 4;
         public static final int BORDER_RADIUS_PANEL = 6;
         public static final int BORDER_RADIUS_ROW = 4;
         public static final int BORDER_RADIUS_BADGE = 3;
         public static final int BORDER_RADIUS_SWATCH = 2;
         public static final int STATUS_DOT_SIZE = 6;
-        public static final int ID_PILL_W = 32;
+        public static final int ID_PILL_MIN_W = 32;
         public static final int ID_PILL_H = 16;
         public static final int SWATCH_BUTTON_SIZE = 26;
         public static final int SWATCH_INNER_SIZE = 22;
@@ -797,6 +798,7 @@ public final class NetworkUiKit {
     public static Flow badge(final String text, final int bgColor) {
         return Flow.row()
             .width(badgeWidth(text)).height(Palette.BADGE_H)
+            .padding(0, Palette.BADGE_PADDING_H)
             .mainAxisAlignment(Alignment.MainAxis.CENTER)
             .background(new Rectangle().cornerRadius(Palette.BORDER_RADIUS_BADGE).color(bgColor))
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
@@ -805,6 +807,17 @@ public final class NetworkUiKit {
 
     /** 按文本估算徽章宽度，避免在拉伸行内变成整条色块。 */
     public static int badgeWidth(final String text) {
+        return Math.max(Palette.BADGE_MIN_W, estimatedTextWidth(text) + Palette.BADGE_PADDING_H * 2);
+    }
+
+    /** 按文本估算 ID 胶囊宽度，为内容左右保留固定内距。 */
+    public static int idPillWidth(final int networkID) {
+        return Math.max(Palette.ID_PILL_MIN_W,
+            estimatedTextWidth("#" + networkID) + Palette.BADGE_PADDING_H * 2);
+    }
+
+    /** 按 Minecraft 文字大致宽度估算胶囊文本占位。 */
+    private static int estimatedTextWidth(final String text) {
         int textWidth = 0;
         if (text != null) {
             for (int offset = 0; offset < text.length();) {
@@ -813,14 +826,15 @@ public final class NetworkUiKit {
                 offset += Character.charCount(codePoint);
             }
         }
-        return Math.max(Palette.BADGE_MIN_W, textWidth + 18);
+        return textWidth;
     }
 
     /** 构建 ID 胶囊（如 #1、#42）。 */
     @SuppressWarnings("unchecked")
     public static Flow idPill(final int networkID) {
         return Flow.row()
-            .width(Palette.ID_PILL_W).height(Palette.ID_PILL_H)
+            .width(idPillWidth(networkID)).height(Palette.ID_PILL_H)
+            .padding(0, Palette.BADGE_PADDING_H)
             .mainAxisAlignment(Alignment.MainAxis.CENTER)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(new Rectangle().cornerRadius(Palette.BORDER_RADIUS_BADGE).color(Palette.BG_ID_PILL))
