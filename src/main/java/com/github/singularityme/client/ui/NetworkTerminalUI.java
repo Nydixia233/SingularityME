@@ -271,33 +271,56 @@ public final class NetworkTerminalUI {
             final NetworkEntry sel = selectedEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
 
+            final List<Flow> infoRows = homeInfoRows(sel);
             final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight();
-            rows.child(infoRow("ID", "#" + sel.networkID));
-            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
-            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
-            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.security"),
+            final int columnWidth = NetworkUiKit.homeInfoColumnWidth(layout.contentW);
+            if (layout.contentW >= 520) {
+                for (int i = 0; i < infoRows.size(); i += 2) {
+                    final Flow pair = Flow.row().childPadding(2).widthRel(1f)
+                        .height(Palette.COMPACT_ROW_H)
+                        .crossAxisAlignment(Alignment.CrossAxis.CENTER);
+                    pair.child(infoRows.get(i).width(columnWidth));
+                    if (i + 1 < infoRows.size()) {
+                        pair.child(infoRows.get(i + 1).width(columnWidth));
+                    }
+                    rows.child(pair);
+                }
+            } else {
+                for (final Flow row : infoRows) {
+                    rows.child(row.width(columnWidth));
+                }
+            }
+            contentArea.child(rows);
+        }
+
+        private List<Flow> homeInfoRows(final NetworkEntry sel) {
+            final List<Flow> rows = new ArrayList<>();
+            rows.add(infoRow("ID", "#" + sel.networkID));
+            rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
+            rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
+            rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.security"),
                 NetworkUiKit.securityName(sel)));
-            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
+            rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
                 NetworkUiKit.accessName(sel)));
-            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.members"),
+            rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.members"),
                 String.valueOf(sel.adminPlayerIDs.size() + sel.memberPlayerIDs.size() + 1)));
 
             if (networkStatus == null) {
-                rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading"), "-"));
+                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading"), "-"));
             } else {
                 final int devices = networkStatus.devices.size();
                 final int online = countLoadedDevices();
-                rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.devices"),
+                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.devices"),
                     devices + " / " + online));
-                rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"),
+                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"),
                     formatEnergy(networkStatus.currentPower, networkStatus.maxPower)));
             }
 
-            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.created"),
+            rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.created"),
                 formatTimestamp(sel.createdAtMillis)));
-            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.modified"),
+            rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.modified"),
                 formatTimestamp(sel.lastModifiedMillis)));
-            contentArea.child(rows);
+            return rows;
         }
 
         // ---- SELECTION ----
@@ -328,7 +351,7 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
             list.widthRel(1f);
-            list.height(Math.max(120, layout.contentH - 116));
+            list.height(NetworkUiKit.selectionListHeight(layout.contentH));
             for (final NetworkEntry entry : networks) {
                 if (matchesFilter(entry)) {
                     list.child(buildSelectionRow(entry));
@@ -457,7 +480,7 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
             list.widthRel(1f);
-            list.height(Math.max(120, layout.contentH - 48));
+            list.height(NetworkUiKit.memberListHeight(layout.contentH));
 
             list.child(buildMemberRow(sel.ownerPlayerID, sel.ownerName, AccessLevel.OWNER, false));
             for (int i = 0; i < sel.adminPlayerIDs.size(); i++)

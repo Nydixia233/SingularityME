@@ -102,20 +102,26 @@ body {
 
 /* 色块 (colorSwatch) */
 .swatch {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  border: 1px solid var(--border-swatch);
-  border-radius: var(--radius-swatch);
-  cursor: pointer;
-  transition: transform 0.15s;
-}
-.swatch:hover { transform: scale(1.08); }
-.swatch.selected {
   width: 26px;
   height: 26px;
-  outline: 2px solid var(--text-primary);
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-swatch);
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.swatch:hover { background: rgba(234, 242, 248, 0.08); }
+.swatch.selected {
+  background: rgba(234, 242, 248, 0.16);
+  box-shadow: 0 0 0 1px rgba(234, 242, 248, 0.82);
+}
+.swatch-core {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-swatch);
+  border-radius: var(--radius-swatch);
 }
 
 /* 状态圆点 (statusDotWidget) */

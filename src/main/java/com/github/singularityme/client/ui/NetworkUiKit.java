@@ -97,6 +97,8 @@ public final class NetworkUiKit {
         // 尺寸
         public static final int ROW_H = 36;
         public static final int COMPACT_ROW_H = 30;
+        public static final int INFO_LABEL_W = 82;
+        public static final int FORM_LABEL_W = 76;
         /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
         public static final int TEXT_ROW_H = 20;
         public static final int BADGE_H = 22;
@@ -108,6 +110,8 @@ public final class NetworkUiKit {
         public static final int BORDER_RADIUS_SWATCH = 2;
         public static final int ID_PILL_W = 48;
         public static final int ID_PILL_H = 22;
+        public static final int SWATCH_BUTTON_SIZE = 26;
+        public static final int SWATCH_INNER_SIZE = 22;
     }
 
     // ---- 颜色计算 ----
@@ -176,6 +180,22 @@ public final class NetworkUiKit {
         final int gaps = Math.max(0, buttonCount - 1) * 4;
         final int available = Math.max(0, panelWidth - navOuterMargin - navInnerPadding - gaps);
         return Math.max(48, available / buttonCount);
+    }
+
+    /** 计算主页信息列宽；空间不足时退化为单列。 */
+    public static int homeInfoColumnWidth(final int contentWidth) {
+        if (contentWidth < 520) return Math.max(0, contentWidth);
+        return Math.max(0, (contentWidth - 2) / 2);
+    }
+
+    /** 计算选择页列表高度，优先扩展列表区域，减少上方空白。 */
+    public static int selectionListHeight(final int contentHeight) {
+        return Math.max(120, contentHeight - 116);
+    }
+
+    /** 计算成员页列表高度，为添加成员输入行预留稳定空间。 */
+    public static int memberListHeight(final int contentHeight) {
+        return Math.max(120, contentHeight - 48);
     }
 
     /**
@@ -629,7 +649,8 @@ public final class NetworkUiKit {
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.rowBg(Palette.BG_ROW));
         final TextWidget labelWidget = new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL);
-        labelWidget.width(92);
+        labelWidget.width(Palette.INFO_LABEL_W);
+        labelWidget.textAlign(Alignment.CenterRight);
         row.child(labelWidget);
         final TextWidget val = new TextWidget(IKey.str(value)).color(valueColor);
         val.expanded();
@@ -645,7 +666,8 @@ public final class NetworkUiKit {
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.rowBg(Palette.BG_ROW));
         final TextWidget labelWidget = new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL);
-        labelWidget.width(92);
+        labelWidget.width(Palette.INFO_LABEL_W);
+        labelWidget.textAlign(Alignment.CenterRight);
         row.child(labelWidget);
         final TextWidget val = new TextWidget(IKey.str(value)).color(Palette.TEXT_PRIMARY);
         val.expanded();
@@ -662,7 +684,8 @@ public final class NetworkUiKit {
             .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER);
         final TextWidget labelWidget = new TextWidget(IKey.str(label)).color(Palette.TEXT_LABEL);
-        labelWidget.width(76);
+        labelWidget.width(Palette.FORM_LABEL_W);
+        labelWidget.textAlign(Alignment.CenterRight);
         row.child(labelWidget);
         row.child(input);
         return row;
@@ -732,10 +755,20 @@ public final class NetworkUiKit {
             .crossAxisAlignment(Alignment.CrossAxis.CENTER);
         for (final int color : presets) {
             final boolean selected = (selectedColor & 0xFFFFFF) == (color & 0xFFFFFF);
-            final int swatchSize = selected ? 26 : 22;
+            final Flow swatch = Flow.row()
+                .width(Palette.SWATCH_BUTTON_SIZE)
+                .height(Palette.SWATCH_BUTTON_SIZE)
+                .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .background(selected ? Styles.rowBg(lighten(color, 0.18f)) : IDrawable.NONE);
+            swatch.child(Flow.row()
+                .width(Palette.SWATCH_INNER_SIZE)
+                .height(Palette.SWATCH_INNER_SIZE)
+                .background(Styles.swatch(color)));
             row.child(new ButtonWidget<>()
-                .width(swatchSize).height(swatchSize)
-                .background(selected ? Styles.rowBg(lighten(color, 0.18f)) : Styles.swatch(color))
+                .child(swatch)
+                .width(Palette.SWATCH_BUTTON_SIZE).height(Palette.SWATCH_BUTTON_SIZE)
+                .background(IDrawable.NONE)
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
                     onSelect.accept(color & 0xFFFFFF);

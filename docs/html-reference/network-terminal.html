@@ -308,15 +308,22 @@ input,
   padding: 0 10px 10px 86px;
 }
 .swatch {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+}
+.swatch.active {
+  background: rgba(234, 242, 248, 0.16);
+  box-shadow: 0 0 0 1px rgba(234, 242, 248, 0.82);
+}
+.swatch-core {
   width: 22px;
   height: 22px;
   border-radius: 2px;
   border: 1px solid #0A0D10;
-}
-.swatch.active {
-  outline: 2px solid #EAF2F8;
-  box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.32);
-  position: relative;
 }
 .empty {
   height: 44px;
@@ -405,14 +412,14 @@ input,
         <div class="field"><label>安全</label><div class="segments"><span class="seg">公开</span><span class="seg">加密</span><span class="seg active">私有</span></div></div>
         <div class="field"><label>颜色</label><div class="readonly"><span class="dot"></span>&nbsp; #4A90E2</div></div>
         <div class="swatches">
-          <span class="swatch active" style="background:#4A90E2"></span>
-          <span class="swatch" style="background:#E24A4A"></span>
-          <span class="swatch" style="background:#4AE24A"></span>
-          <span class="swatch" style="background:#E2E24A"></span>
-          <span class="swatch" style="background:#E24AE2"></span>
-          <span class="swatch" style="background:#4AE2E2"></span>
-          <span class="swatch" style="background:#E28E4A"></span>
-          <span class="swatch" style="background:#FFFFFF"></span>
+          <span class="swatch active"><span class="swatch-core" style="background:#4A90E2"></span></span>
+          <span class="swatch"><span class="swatch-core" style="background:#E24A4A"></span></span>
+          <span class="swatch"><span class="swatch-core" style="background:#4AE24A"></span></span>
+          <span class="swatch"><span class="swatch-core" style="background:#E2E24A"></span></span>
+          <span class="swatch"><span class="swatch-core" style="background:#E24AE2"></span></span>
+          <span class="swatch"><span class="swatch-core" style="background:#4AE2E2"></span></span>
+          <span class="swatch"><span class="swatch-core" style="background:#E28E4A"></span></span>
+          <span class="swatch"><span class="swatch-core" style="background:#FFFFFF"></span></span>
         </div>
         <div class="actions">
           <button class="btn">应用</button>

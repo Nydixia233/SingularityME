@@ -82,4 +82,34 @@ public class NetworkUiKitTest {
         assertEquals(736, layout.bottomW);
         assertEquals(40, layout.bottomH);
     }
+
+    /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
+    @Test
+    public void computesHomeInfoColumnWidth() {
+        assertEquals(367, NetworkUiKit.homeInfoColumnWidth(736));
+        assertEquals(360, NetworkUiKit.homeInfoColumnWidth(360));
+    }
+
+    /** 表单与主页标签使用固定宽度，避免值列和输入框起点抖动。 */
+    @Test
+    public void exposesStableLabelWidths() {
+        assertEquals(82, Palette.INFO_LABEL_W);
+        assertEquals(76, Palette.FORM_LABEL_W);
+    }
+
+    /** 终端列表高度优先占满内容区，只为过滤、元信息和选中栏预留稳定空间。 */
+    @Test
+    public void computesTerminalListHeights() {
+        assertEquals(240, NetworkUiKit.selectionListHeight(356));
+        assertEquals(308, NetworkUiKit.memberListHeight(356));
+        assertEquals(120, NetworkUiKit.selectionListHeight(180));
+        assertEquals(132, NetworkUiKit.memberListHeight(180));
+    }
+
+    /** 色板按钮视觉尺寸固定，选中态不得通过改变控件大小造成布局跳动。 */
+    @Test
+    public void exposesStableSwatchMetrics() {
+        assertEquals(26, Palette.SWATCH_BUTTON_SIZE);
+        assertEquals(22, Palette.SWATCH_INNER_SIZE);
+    }
 }
