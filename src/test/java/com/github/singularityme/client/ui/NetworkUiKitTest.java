@@ -58,56 +58,66 @@ public class NetworkUiKitTest {
     /** 导航按钮使用稳定宽度，避免激活背景只绘制成小方块。 */
     @Test
     public void computesStableNavButtonWidth() {
-        assertEquals(128, NetworkUiKit.navButtonWidth(680, 5));
+        assertEquals(110, NetworkUiKit.navButtonWidth(594, 5));
         assertEquals(96, NetworkUiKit.navButtonWidth(520, 5));
     }
 
     @Test
     public void capsTerminalPanelSize() {
-        assertEquals(680, NetworkUiKit.terminalPanelWidth(2560, 1));
-        assertEquals(460, NetworkUiKit.terminalPanelHeight(1440, 1));
-        assertEquals(656, NetworkUiKit.terminalPanelWidth(800, 1));
-        assertEquals(393, NetworkUiKit.terminalPanelHeight(480, 1));
+        assertEquals(1120, NetworkUiKit.terminalPanelWidth(2560, 1));
+        assertEquals(700, NetworkUiKit.terminalPanelHeight(1440, 1));
+        assertEquals(594, NetworkUiKit.terminalPanelWidth(2048, 2));
+        assertEquals(359, NetworkUiKit.terminalPanelHeight(1088, 2));
+        assertEquals(480, NetworkUiKit.terminalPanelWidth(800, 1));
+        assertEquals(317, NetworkUiKit.terminalPanelHeight(480, 1));
     }
 
     /** 网络终端使用固定坐标骨架，避免顶层 Flow 相对布局在游戏内溢出或拉伸。 */
     @Test
     public void computesFixedTerminalLayout() {
-        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(680, 460);
+        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(594, 359);
 
         assertEquals(8, layout.navX);
         assertEquals(8, layout.navY);
-        assertEquals(664, layout.navW);
-        assertEquals(40, layout.navH);
-        assertEquals(12, layout.networkX);
-        assertEquals(58, layout.networkY);
-        assertEquals(656, layout.networkW);
-        assertEquals(36, layout.networkH);
-        assertEquals(12, layout.railX);
-        assertEquals(104, layout.railY);
-        assertEquals(160, layout.railW);
-        assertEquals(344, layout.railH);
-        assertEquals(180, layout.contentX);
-        assertEquals(104, layout.contentY);
-        assertEquals(488, layout.contentW);
-        assertEquals(296, layout.contentH);
-        assertEquals(180, layout.bottomX);
-        assertEquals(408, layout.bottomY);
-        assertEquals(488, layout.bottomW);
-        assertEquals(40, layout.bottomH);
+        assertEquals(578, layout.navW);
+        assertEquals(30, layout.navH);
+        assertEquals(20, layout.railX);
+        assertEquals(82, layout.railY);
+        assertEquals(136, layout.railW);
+        assertEquals(235, layout.railH);
+        assertEquals(168, layout.contentX);
+        assertEquals(82, layout.contentY);
+        assertEquals(406, layout.contentW);
+        assertEquals(235, layout.contentH);
+        assertEquals(20, layout.bottomX);
+        assertEquals(317, layout.bottomY);
+        assertEquals(554, layout.bottomW);
+        assertEquals(32, layout.bottomH);
     }
 
     /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
     @Test
     public void computesHomeInfoColumnWidth() {
-        assertEquals(243, NetworkUiKit.homeInfoColumnWidth(488));
+        assertEquals(202, NetworkUiKit.homeInfoColumnWidth(406));
         assertEquals(360, NetworkUiKit.homeInfoColumnWidth(360));
     }
 
     @Test
     public void detectsHomeInfoColumnMode() {
-        assertTrue(NetworkUiKit.homeInfoUsesTwoColumns(488));
+        assertTrue(NetworkUiKit.homeInfoUsesTwoColumns(406));
         assertFalse(NetworkUiKit.homeInfoUsesTwoColumns(360));
+    }
+
+    @Test
+    public void computesOverviewMetricWidth() {
+        assertEquals(98, NetworkUiKit.metricCardWidth(406, 4));
+        assertEquals(188, NetworkUiKit.metricCardWidth(380, 2));
+    }
+
+    @Test
+    public void formatsCompactEnergy() {
+        assertEquals("9.22P AE", NetworkUiKit.formatCompactEnergy(9223372036854777D));
+        assertEquals("120k AE", NetworkUiKit.formatCompactEnergy(120000D));
     }
 
     @Test

@@ -15,6 +15,7 @@ import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
+import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -95,19 +96,24 @@ public final class NetworkUiKit {
         public static final int COLOR_UNASSIGNED = 0xFF777777;
 
         // 尺寸
-        public static final int ROW_H = 36;
-        public static final int COMPACT_ROW_H = 28;
+        public static final int ROW_H = 30;
+        public static final int COMPACT_ROW_H = 22;
         public static final int INFO_LABEL_W = 82;
         public static final int FORM_LABEL_W = 76;
-        public static final int TERMINAL_PANEL_MAX_W = 680;
-        public static final int TERMINAL_PANEL_MAX_H = 460;
-        public static final float TERMINAL_PANEL_VIEWPORT_W = 0.82f;
-        public static final float TERMINAL_PANEL_VIEWPORT_H = 0.82f;
-        public static final int TERMINAL_RAIL_W = 160;
-        public static final int TERMINAL_GAP = 8;
+        public static final int TERMINAL_PANEL_MAX_W = 1120;
+        public static final int TERMINAL_PANEL_MAX_H = 700;
+        public static final float TERMINAL_PANEL_VIEWPORT_W = 0.58f;
+        public static final float TERMINAL_PANEL_VIEWPORT_H = 0.66f;
+        public static final int TERMINAL_RAIL_W = 136;
+        public static final int TERMINAL_GAP = 12;
+        public static final int TERMINAL_OUTER_PAD_X = 20;
+        public static final int TERMINAL_NAV_H = 30;
+        public static final int TERMINAL_CRUMB_H = 32;
+        public static final int TERMINAL_BOTTOM_H = 32;
+        public static final int TERMINAL_CONTENT_TOP = 82;
         /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
-        public static final int TEXT_ROW_H = 20;
-        public static final int BADGE_H = 22;
+        public static final int TEXT_ROW_H = 18;
+        public static final int BADGE_H = 18;
         public static final int BADGE_MIN_W = 24;
         public static final int BADGE_PADDING_H = 5;
         public static final int BORDER_RADIUS_PANEL = 6;
@@ -115,7 +121,7 @@ public final class NetworkUiKit {
         public static final int BORDER_RADIUS_BADGE = 3;
         public static final int BORDER_RADIUS_SWATCH = 2;
         public static final int ID_PILL_W = 48;
-        public static final int ID_PILL_H = 22;
+        public static final int ID_PILL_H = 18;
         public static final int SWATCH_BUTTON_SIZE = 26;
         public static final int SWATCH_INNER_SIZE = 22;
     }
@@ -197,8 +203,8 @@ public final class NetworkUiKit {
      */
     public static int terminalPanelWidth(final int displayWidth, final int guiScale) {
         final int scale = Math.max(1, guiScale);
-        final int viewportWidth = (int) (displayWidth * Palette.TERMINAL_PANEL_VIEWPORT_W / scale);
-        return Math.min(Palette.TERMINAL_PANEL_MAX_W, Math.max(360, viewportWidth));
+        final int viewportWidth = Math.round(displayWidth * Palette.TERMINAL_PANEL_VIEWPORT_W / scale);
+        return Math.min(Palette.TERMINAL_PANEL_MAX_W, Math.max(480, viewportWidth));
     }
 
     /**
@@ -210,8 +216,8 @@ public final class NetworkUiKit {
      */
     public static int terminalPanelHeight(final int displayHeight, final int guiScale) {
         final int scale = Math.max(1, guiScale);
-        final int viewportHeight = (int) (displayHeight * Palette.TERMINAL_PANEL_VIEWPORT_H / scale);
-        return Math.min(Palette.TERMINAL_PANEL_MAX_H, Math.max(320, viewportHeight));
+        final int viewportHeight = Math.round(displayHeight * Palette.TERMINAL_PANEL_VIEWPORT_H / scale);
+        return Math.min(Palette.TERMINAL_PANEL_MAX_H, Math.max(316, viewportHeight));
     }
 
     /** 计算主页信息列宽；空间不足时退化为单列。 */
@@ -222,7 +228,29 @@ public final class NetworkUiKit {
 
     /** 判断主页信息是否应使用两列紧凑布局。 */
     public static boolean homeInfoUsesTwoColumns(final int contentWidth) {
-        return contentWidth >= 440;
+        return contentWidth >= 400;
+    }
+
+    /** 计算主页概览指标卡宽度，保持指标行稳定均分。 */
+    public static int metricCardWidth(final int contentWidth, final int count) {
+        if (count <= 0) return 0;
+        final int gaps = Math.max(0, count - 1) * 4;
+        return Math.max(64, (Math.max(0, contentWidth) - gaps) / count);
+    }
+
+    /** 将巨大 AE 数值压缩为不换行的短文本。 */
+    public static String formatCompactEnergy(final double value) {
+        final double abs = Math.abs(value);
+        if (abs >= 1_000_000_000_000_000D)
+            return String.format(Locale.ROOT, "%.2fP AE", value / 1_000_000_000_000_000D);
+        if (abs >= 1_000_000_000_000D)
+            return String.format(Locale.ROOT, "%.2fT AE", value / 1_000_000_000_000D);
+        if (abs >= 1_000_000_000D)
+            return String.format(Locale.ROOT, "%.2fG AE", value / 1_000_000_000D);
+        if (abs >= 1_000_000D)
+            return String.format(Locale.ROOT, "%.2fM AE", value / 1_000_000D);
+        if (abs >= 1_000D) return String.format(Locale.ROOT, "%.0fk AE", value / 1_000D);
+        return String.format(Locale.ROOT, "%.0f AE", value);
     }
 
     /** 计算选择页列表高度，优先扩展列表区域，减少上方空白。 */
@@ -270,23 +298,23 @@ public final class NetworkUiKit {
             this.navX = 8;
             this.navY = 8;
             this.navW = Math.max(0, panelW - 16);
-            this.navH = 40;
-            this.networkX = 12;
-            this.networkY = 58;
-            this.networkW = Math.max(0, panelW - 24);
-            this.networkH = Palette.ROW_H;
-            this.railX = 12;
-            this.railY = 104;
+            this.navH = Palette.TERMINAL_NAV_H;
+            this.networkX = Palette.TERMINAL_OUTER_PAD_X;
+            this.networkY = 48;
+            this.networkW = Math.max(0, panelW - Palette.TERMINAL_OUTER_PAD_X * 2);
+            this.networkH = Palette.TERMINAL_CRUMB_H;
+            this.railX = Palette.TERMINAL_OUTER_PAD_X;
+            this.railY = Palette.TERMINAL_CONTENT_TOP;
             this.railW = Palette.TERMINAL_RAIL_W;
-            this.railH = Math.max(96, panelH - this.railY - 12);
+            this.bottomX = Palette.TERMINAL_OUTER_PAD_X;
+            this.bottomY = Math.max(this.railY, panelH - Palette.TERMINAL_BOTTOM_H - 10);
+            this.bottomW = Math.max(0, panelW - Palette.TERMINAL_OUTER_PAD_X * 2);
+            this.bottomH = Palette.TERMINAL_BOTTOM_H;
+            this.railH = Math.max(120, this.bottomY - this.railY);
             this.contentX = this.railX + this.railW + Palette.TERMINAL_GAP;
             this.contentY = this.railY;
-            this.contentW = Math.max(96, panelW - this.contentX - 12);
-            this.bottomX = this.contentX;
-            this.bottomY = Math.max(104, panelH - 52);
-            this.bottomW = this.contentW;
-            this.bottomH = 40;
-            this.contentH = Math.max(96, this.bottomY - this.contentY - 8);
+            this.contentW = Math.max(160, panelW - this.contentX - Palette.TERMINAL_OUTER_PAD_X);
+            this.contentH = Math.max(120, this.bottomY - this.contentY);
         }
     }
 
@@ -348,6 +376,13 @@ public final class NetworkUiKit {
             return new Rectangle()
                 .cornerRadius(Palette.BORDER_RADIUS_ROW)
                 .verticalGradient(lighten(color, 0.16f), color);
+        }
+
+        /** 顶部导航激活态使用低调蓝色底，避免厚重实心页签。 */
+        public static IDrawable navActiveBg() {
+            return new Rectangle()
+                .cornerRadius(Palette.BORDER_RADIUS_ROW)
+                .color(0x552F6F95);
         }
 
         /** 颜色块背景。 */
