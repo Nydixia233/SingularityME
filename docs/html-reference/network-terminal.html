@@ -3,778 +3,432 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>网络终端 — Singularity ME</title>
-<link rel="stylesheet" href="shared-palette.css">
+<title>Singularity ME 网络终端 UI 方向</title>
 <style>
-  /* ── 页面容器 ── */
-  .overlay {
-    position: fixed; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(5, 7, 11, 0.67);
-  }
-
-  .frame {
-    width: min(92vw, 760px);
-    height: min(92vh, 520px);
-    position: relative;
-    display: block;
-    background: rgba(20, 25, 35, 0.93);
-    border: 1px solid var(--border-panel);
-    border-radius: var(--radius-panel);
-    overflow: hidden;
-  }
-
-  /* ── 导航栏 ── */
-  .nav {
-    position: absolute;
-    left: 8px; top: 8px;
-    width: calc(100% - 16px);
-    height: 40px;
-    box-sizing: border-box;
-    display: flex; align-items: center;
-    background: var(--bg-list);
-    border: 1px solid var(--border-list);
-    border-radius: var(--radius-row);
-    margin: 0;
-    padding: 4px;
-    gap: 4px;
-  }
-  .nav-btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    height: 30px;
-    padding: 5px 10px;
-    border-radius: var(--radius-row);
-    font-size: 13px; font-weight: 600;
-    cursor: pointer;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    transition: background 0.15s, color 0.15s;
-    white-space: nowrap;
-  }
-  .nav-btn:hover { background: rgba(255,255,255,0.05); }
-  .nav-btn.active {
-    background: var(--bg-row);
-    color: var(--text-primary);
-    box-shadow: inset 0 -2px 0 var(--btn-normal);
-  }
-
-  /* ── 内容区 ── */
-  .content {
-    position: absolute;
-    left: 12px; right: 12px;
-    top: 58px; bottom: 12px;
-    display: block;
-    overflow: hidden;
-  }
-
-  /* ── 网络信息条 ── */
-  .network-bar {
-    position: absolute;
-    left: 0; right: 0; top: 0;
-    height: var(--row-h);
-    box-sizing: border-box;
-    display: flex; align-items: center;
-    padding: var(--pad-sm) var(--pad-lg);
-    gap: var(--gap-md);
-  }
-  .network-bar .bar-title {
-    flex: 1; min-width: 0;
-    color: var(--text-primary);
-    font-weight: 700;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .network-bar .bar-name {
-    color: var(--text-secondary);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-
-  /* ── 滚动盒 ── */
-  .scroll-box {
-    position: absolute;
-    left: 0; right: 0;
-    top: 46px; bottom: 52px;
-    min-height: 120px;
-    overflow-y: auto; overflow-x: hidden;
-    padding: var(--gap-sm) var(--pad-lg);
-  }
-
-  /* ── 列表元信息 ── */
-  .list-meta {
-    position: absolute;
-    left: 0; right: 0;
-    top: 42px;
-    height: 20px;
-    box-sizing: border-box;
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 4px var(--pad-lg);
-    color: var(--text-muted); font-size: 12px;
-  }
-
-  /* ── 网络列表 ── */
-  .network-list-inner {
-    display: flex; flex-direction: column;
-    background: var(--bg-list);
-    border: 1px solid var(--border-list);
-    border-radius: var(--radius-row);
-  }
-  .network-row {
-    display: flex; align-items: center;
-    height: var(--row-h);
-    padding: 0 var(--pad-sm);
-    gap: var(--gap-md);
-    border: 1px solid var(--border-row);
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
-  }
-  .network-row:not(:last-child) { border-bottom: none; }
-  .network-row:hover { filter: brightness(1.1); }
-  .network-row.selected {
-    box-shadow: inset 3px 0 0 currentColor;
-  }
-  .network-row .name {
-    flex: 1; min-width: 0;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-
-  /* ── 选中摘要栏 ── */
-  .selection-summary {
-    position: absolute;
-    left: 0; right: 0;
-    bottom: 46px;
-    box-sizing: border-box;
-    display: flex; align-items: center;
-    margin: 0;
-    padding: var(--pad-md); gap: var(--gap-md);
-    background: var(--bg-list);
-    border: 1px solid;
-    border-radius: var(--radius-row);
-  }
-  .selection-summary .text {
-    flex: 1; min-width: 0;
-    color: var(--text-secondary);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-
-  /* ── 操作行 ── */
-  .actions {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 40px;
-    box-sizing: border-box;
-    display: flex; align-items: center;
-    padding: 0;
-    gap: var(--gap-md);
-    flex-wrap: wrap;
-  }
-
-  /* ── 编辑表单 ── */
-  .edit-form {
-    display: flex; flex-direction: column;
-    gap: var(--gap-md);
-    padding: var(--pad-lg);
-  }
-  .field-row {
-    display: flex; align-items: center;
-    gap: var(--gap-md);
-  }
-  .field-row .field-label {
-    width: 80px; flex-shrink: 0;
-    color: var(--text-label);
-    text-align: right;
-  }
-  .field-row input,
-  .field-row .readonly-field {
-    flex: 1; min-width: 0;
-  }
-  .security-segments {
-    flex: 1; min-width: 0;
-    height: var(--row-h);
-    display: flex; align-items: center;
-    gap: 4px;
-    padding: 3px 4px;
-    background: var(--bg-input);
-    border: 1px solid var(--border-input);
-    border-radius: var(--radius-row);
-  }
-  .security-segment {
-    min-width: 62px;
-    height: var(--id-pill-h);
-    display: inline-flex; align-items: center; justify-content: center;
-    border-radius: var(--radius-badge);
-    color: var(--text-muted);
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .security-segment.active {
-    color: var(--text-badge);
-    background: var(--security-private);
-  }
-
-  /* ── 颜色调色板 ── */
-  .color-palette {
-    display: flex; flex-wrap: wrap;
-    gap: var(--gap-sm);
-    padding-left: 92px;
-  }
-
-  /* ── 预览条 ── */
-  .preview-bar {
-    display: flex; align-items: center;
-    gap: var(--gap-md);
-    padding: var(--pad-md);
-    background: var(--bg-list);
-    border: 1px solid;
-    border-radius: var(--radius-row);
-  }
-  .preview-bar .preview-name {
-    flex: 1; min-width: 0;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-
-  /* ── 信息行 ── */
-  .info-row {
-    display: flex; align-items: center;
-    height: var(--row-h);
-    padding: 0 var(--gap-lg); gap: var(--gap-md);
-    background: var(--bg-row);
-    border: 1px solid var(--border-row);
-  }
-  .info-row:not(:last-child) { border-bottom: none; }
-  .info-row .info-label {
-    width: 100px; flex-shrink: 0;
-    color: var(--text-label);
-  }
-  .info-row .info-value {
-    flex: 1; min-width: 0;
-    color: var(--text-secondary);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .home-grid {
-    position: absolute;
-    left: 0; right: 0;
-    top: 46px; bottom: 52px;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    overflow: hidden;
-  }
-
-  .list-meta + .scroll-box {
-    top: 70px;
-    bottom: 98px;
-  }
-
-  /* ── 空状态 ── */
-  .empty-state {
-    flex: 1;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--text-empty);
-    font-size: 14px;
-  }
-
-  /* ── 按钮变体 ── */
-  .btn-xs { padding: 0 8px; height: 28px; font-size: 12px; }
+:root {
+  --bg-panel: #141923;
+  --bg-list: #0D1219;
+  --bg-row: #151D27;
+  --bg-row-hover: #1B2836;
+  --bg-input: #0D1117;
+  --bg-id-pill: #0B1016;
+  --border-panel: #536B7F;
+  --border-list: #2C3846;
+  --border-row: #263240;
+  --border-input: #354451;
+  --text-primary: #EAF2F8;
+  --text-secondary: #D7E0EA;
+  --text-muted: #9FB0BF;
+  --text-empty: #8996A3;
+  --text-label: #AFC0CC;
+  --btn-normal: #2F6F95;
+  --btn-active: #255878;
+  --btn-danger: #8C3D3D;
+  --security-public: #2F8C52;
+  --security-encrypted: #C48A32;
+  --security-private: #7055A8;
+  --access-owner: #3D78C2;
+  --access-admin: #5E7FC7;
+  --access-member: #4D8F8A;
+  --badge-default: #446EAA;
+  --row-h: 36px;
+  --text-row-h: 24px;
+  --radius-panel: 6px;
+  --radius-row: 4px;
+  --radius-badge: 3px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 10%, #223046 0, #0A0D10 38%, #05070B 100%);
+  color: var(--text-primary);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+}
+.page {
+  min-height: 100vh;
+  padding: 28px;
+  background: rgba(5, 7, 11, 0.58);
+}
+.title {
+  max-width: 1080px;
+  margin: 0 auto 16px;
+}
+h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.subtitle {
+  margin: 0;
+  color: var(--text-muted);
+}
+.frame {
+  width: min(1080px, calc(100vw - 56px));
+  min-height: 660px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  background: rgba(20, 25, 35, 0.94);
+  border: 1px solid var(--border-panel);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.48);
+  overflow: hidden;
+}
+.nav {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin: 8px;
+  padding: 4px;
+  background: var(--bg-list);
+  border: 1px solid var(--border-list);
+  border-radius: var(--radius-row);
+}
+.nav button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-row);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 600;
+}
+.nav button.active {
+  background: rgba(47, 111, 149, 0.42);
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--btn-normal);
+}
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 18px;
+  color: var(--text-muted);
+}
+.crumb strong {
+  min-width: 88px;
+  color: var(--text-primary);
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4A90E2;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+.pill,
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  min-width: 28px;
+  padding: 0 6px;
+  border-radius: var(--radius-badge);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+.pill {
+  width: 48px;
+  background: var(--bg-id-pill);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.content {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 12px;
+  padding: 8px 18px 18px;
+  min-height: 0;
+}
+.panel {
+  min-width: 0;
+  background: rgba(13, 18, 25, 0.62);
+  border: 1px solid var(--border-list);
+  border-radius: var(--radius-row);
+  overflow: hidden;
+}
+.panel h2 {
+  height: 32px;
+  margin: 0;
+  padding: 8px 10px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 0 10px 10px;
+}
+.info-row {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  align-items: center;
+  height: var(--row-h);
+  padding: 0 10px;
+  background: var(--bg-row);
+  border: 1px solid var(--border-row);
+  margin-top: -1px;
+  min-width: 0;
+}
+.info-row label {
+  color: var(--text-label);
+  text-align: right;
+  padding-right: 10px;
+}
+.info-row span {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 8px;
+}
+.field {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--row-h);
+  padding: 0 10px 8px;
+}
+.field label {
+  color: var(--text-label);
+  text-align: right;
+}
+input,
+.readonly {
+  width: 100%;
+  height: var(--row-h);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-row);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  padding: 0 8px;
+  font: inherit;
+}
+.readonly {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+.list {
+  margin: 0 10px 10px;
+  background: var(--bg-list);
+  border: 1px solid var(--border-list);
+  border-radius: var(--radius-row);
+  overflow: hidden;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--row-h);
+  padding: 0 8px;
+  background: var(--bg-row);
+  border-bottom: 1px solid var(--border-row);
+}
+.row:last-child { border-bottom: 0; }
+.row.selected {
+  background: #1A3143;
+  box-shadow: inset 3px 0 0 #4A90E2;
+}
+.name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.meta {
+  display: flex;
+  justify-content: space-between;
+  height: 24px;
+  padding: 0 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+.btn {
+  height: var(--row-h);
+  min-width: 108px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-row);
+  background: var(--btn-normal);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+}
+.btn.danger { background: var(--btn-danger); }
+.segments {
+  display: flex;
+  gap: 4px;
+  height: var(--row-h);
+  padding: 3px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-row);
+}
+.seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  padding: 0 8px;
+  border-radius: var(--radius-badge);
+  color: var(--text-muted);
+}
+.seg.active {
+  color: #fff;
+  background: var(--security-private);
+}
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--row-h);
+  padding: 0 10px 10px 86px;
+}
+.swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 2px;
+  border: 1px solid #0A0D10;
+}
+.swatch.active {
+  outline: 2px solid #EAF2F8;
+  box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.32);
+  position: relative;
+}
+.empty {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 10px 10px;
+  color: var(--text-empty);
+  border: 1px dashed var(--border-row);
+  border-radius: var(--radius-row);
+}
+.wide { grid-column: 1 / -1; }
+@media (max-width: 820px) {
+  .content { grid-template-columns: 1fr; }
+  .home-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
+<main class="page">
+  <section class="title">
+    <h1>推荐方向：紧凑、可区分、低噪声</h1>
+    <p class="subtitle">这张稿只使用现有 Java Palette 的颜色和尺寸，目标是让 HTML 参考与 MUI2 游戏内实装保持同源。</p>
+  </section>
 
-<div class="overlay">
-  <div class="frame">
-
-    <!-- 导航栏 -->
-    <div class="nav" id="nav"></div>
-
-    <!-- 内容区 -->
-    <div class="content" id="content"></div>
-
-  </div>
-</div>
-
-<script>
-// ============================================================
-// 模拟数据
-// ============================================================
-const MOCK_NETWORKS = [
-  { networkID: 1,  name: "主基地网络", color: 0x4A90E2, security:"PRIVATE",   access:"OWNER",
-    ownerName:"PlayerX", ownerPlayerID:100, isOwner:true,  isPasswordProtected:true,
-    adminPlayerIDs:[101],  adminNames:["Helper1"],
-    memberPlayerIDs:[102,103], memberNames:["FriendA","FriendB"],
-    blockedPlayerIDs:[200], blockedNames:["Griefer99"] },
-  { networkID: 2,  name: "采矿前哨",  color: 0xE2A84A, security:"ENCRYPTED", access:"NONE",
-    ownerName:"Steve",   ownerPlayerID:201, isOwner:false, isPasswordProtected:true,
-    adminPlayerIDs:[], adminNames:[], memberPlayerIDs:[], memberNames:[], blockedPlayerIDs:[], blockedNames:[] },
-  { networkID: 3,  name: "公共交易站", color: 0x4AE24A, security:"PUBLIC",    access:"MEMBER",
-    ownerName:"Alex",    ownerPlayerID:301, isOwner:false, isPasswordProtected:false,
-    adminPlayerIDs:[302], adminNames:["Trader1"],
-    memberPlayerIDs:[303], memberNames:["PlayerX"],
-    blockedPlayerIDs:[],  blockedNames:[] },
-  { networkID: 4,  name: "实验室网络", color: 0x7B68EE, security:"PRIVATE",   access:"ADMIN",
-    ownerName:"Notch",   ownerPlayerID:401, isOwner:false, isPasswordProtected:false,
-    adminPlayerIDs:[402], adminNames:["PlayerX"],
-    memberPlayerIDs:[403], memberNames:["Researcher1"],
-    blockedPlayerIDs:[],  blockedNames:[] },
-  { networkID: 5,  name: "被封锁网络", color: 0xE24A4A, security:"ENCRYPTED", access:"BLOCKED",
-    ownerName:"Griefer", ownerPlayerID:501, isOwner:false, isPasswordProtected:false,
-    adminPlayerIDs:[], adminNames:[], memberPlayerIDs:[], memberNames:[], blockedPlayerIDs:[], blockedNames:[] },
-];
-
-const DEFAULT_NETWORK_ID = 1;
-const PALETTE_COLORS = [0x4A90E2, 0x7B68EE, 0xE24A4A, 0xE2A84A, 0x4AE24A, 0x4AE2D0, 0xE24AB0, 0xFFFFFF];
-
-// ── 安全级别 ──
-const SECURITY = {
-  PUBLIC:    { name:"公开",     short:"公", color:"var(--security-public)" },
-  ENCRYPTED: { name:"加密",     short:"密", color:"var(--security-encrypted)" },
-  PRIVATE:   { name:"私有",     short:"私", color:"var(--security-private)" },
-};
-
-// ── 访问级别 ──
-const ACCESS = {
-  OWNER:   { name:"所有者",  short:"O", roleName:"所有者", color:"var(--access-owner)" },
-  ADMIN:   { name:"管理员",  short:"A", roleName:"管理员", color:"var(--access-admin)" },
-  MEMBER:  { name:"成员",    short:"M", roleName:"成员",   color:"var(--access-member)" },
-  BLOCKED: { name:"已封锁",  short:"B", roleName:"已封锁", color:"var(--access-blocked)" },
-  NONE:    { name:"无",      short:"-", roleName:"无",     color:"var(--access-none)" },
-};
-
-// ── 面板枚举 ──
-const PANEL = { HOME:"HOME", SELECTION:"SELECTION", MEMBERS:"MEMBERS", SETTINGS:"SETTINGS", CREATE:"CREATE" };
-const PANEL_LABELS = {
-  HOME: "主页", SELECTION: "选择", MEMBERS: "成员", SETTINGS: "设置", CREATE: "创建"
-};
-
-// ── 状态 ──
-let panel = PANEL.HOME;
-let selectedNetworkID = 1;
-let selectedMemberID = -1;
-let selectedColor = 0x4A90E2;
-let selectedSecurity = "PRIVATE";
-
-// ── 工具函数 ──
-const entryColor = e => e.networkID === 0 ? 'var(--color-unassigned)' : '#' + (e.color & 0xFFFFFF).toString(16).padStart(6,'0');
-const darken = (hex, f) => {
-  const r=Math.floor(parseInt(hex.slice(1,3),16)*f), g=Math.floor(parseInt(hex.slice(3,5),16)*f), b=Math.floor(parseInt(hex.slice(5,7),16)*f);
-  return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');
-};
-const secInfo = e => SECURITY[e.security] || SECURITY.PUBLIC;
-const accInfo = e => ACCESS[e.access] || ACCESS.NONE;
-const secName = s => SECURITY[s]?.name || s;
-const secColor = s => SECURITY[s]?.color || 'var(--security-public)';
-const roleColor = r => ACCESS[r]?.color || 'var(--access-none)';
-const entry = () => MOCK_NETWORKS.find(e => e.networkID === selectedNetworkID);
-
-function buildColorSwatch(color, selected, size) {
-  const s = selected ? (size||26) : (size||22);
-  return `<span class="swatch${selected?' selected':''}" style="background:#${(color&0xFFFFFF).toString(16).padStart(6,'0')};width:${s}px;height:${s}px;"></span>`;
-}
-function buildStatusDot(color) {
-  return `<span class="status-dot" style="background:#${(color&0xFFFFFF).toString(16).padStart(6,'0')};"></span>`;
-}
-function buildBadge(text, bgColor) {
-  return `<span class="badge" style="background:${bgColor};">${text}</span>`;
-}
-function buildIdPill(id) {
-  return `<span class="id-pill">#${id}</span>`;
-}
-
-// ── 渲染入口 ──
-function render() {
-  renderNav();
-  const content = document.getElementById('content');
-  const sel = entry();
-  content.innerHTML = '';
-
-  // 网络信息条
-  const bar = document.createElement('div');
-  bar.className = 'network-bar';
-  bar.innerHTML = `
-    <span class="bar-title">${PANEL_LABELS[panel]}</span>
-    ${sel ? `
-      ${buildStatusDot(sel.color)}
-      <span class="bar-name" style="color:${entryColor(sel)};">${sel.name}</span>
-      ${buildIdPill(sel.networkID)}
-      ${sel.networkID === DEFAULT_NETWORK_ID ? buildBadge('默认', 'var(--badge-default)') : ''}
-    ` : ''}
-  `;
-  content.appendChild(bar);
-
-  // 按面板渲染
-  switch (panel) {
-    case PANEL.HOME:      renderHome(content); break;
-    case PANEL.SELECTION: renderSelection(content); break;
-    case PANEL.MEMBERS:   renderMembers(content); break;
-    case PANEL.SETTINGS:  renderSettings(content); break;
-    case PANEL.CREATE:    renderCreate(content); break;
-  }
-}
-
-// ── 导航栏 ──
-function renderNav() {
-  const nav = document.getElementById('nav');
-  nav.innerHTML = Object.entries(PANEL).map(([key, val]) => {
-    const active = panel === val;
-    return `<button class="nav-btn${active?' active':''}" data-panel="${val}">
-      ${PANEL_LABELS[val]}
-    </button>`;
-  }).join('');
-
-  nav.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      panel = btn.dataset.panel;
-      render();
-    });
-  });
-}
-
-// ── 主页面板 ──
-function renderHome(content) {
-  const sel = entry();
-  if (!sel) { content.innerHTML += '<div class="empty-state">请先选择一个网络</div>'; return; }
-
-  const totalMembers = sel.adminPlayerIDs.length + sel.memberPlayerIDs.length + 1;
-  const grid = document.createElement('div');
-  grid.className = 'home-grid';
-  grid.innerHTML = `
-    ${buildInfoLine('ID', '#' + sel.networkID)}
-    ${buildInfoLine('名称', sel.name)}
-    ${buildInfoLine('拥有者', sel.ownerName)}
-    ${buildInfoLine('安全', secInfo(sel).name)}
-    ${buildInfoLine('权限', accInfo(sel).name)}
-    ${buildInfoLine('成员', String(totalMembers))}
-    ${buildInfoLine('设备', '14 / 12')}
-    ${buildInfoLine('能量', '120000 / 300000 AE')}
-    ${buildInfoLine('创建时间', '2026-06-02 12:00:00')}
-    ${buildInfoLine('修改时间', '2026-06-02 12:30:00')}
-  `;
-  content.appendChild(grid);
-}
-
-// ── 网络选择面板 ──
-function renderSelection(content) {
-  // 列表元信息
-  const meta = document.createElement('div');
-  meta.className = 'list-meta';
-  meta.innerHTML = `<span>按 名称 排序</span><span>共 ${MOCK_NETWORKS.length} 个网络</span>`;
-  content.appendChild(meta);
-
-  // 滚动列表
-  const scroll = document.createElement('div');
-  scroll.className = 'scroll-box';
-  const listInner = document.createElement('div');
-  listInner.className = 'network-list-inner';
-  listInner.innerHTML = MOCK_NETWORKS.map(e => {
-    const sel = e.networkID === selectedNetworkID;
-    const color = entryColor(e);
-    return `<div class="network-row${sel?' selected':''}" data-nid="${e.networkID}"
-      style="background:${sel?darken(color,0.32):'var(--bg-row)'};border-color:var(--border-row);color:${sel?color:'var(--border-row)'};">
-      ${buildStatusDot(e.color)}
-      ${buildIdPill(e.networkID)}
-      <span class="name" style="color:${sel?'#FFF':'var(--text-secondary)'};">${e.name}</span>
-      ${buildBadge(secInfo(e).short, secInfo(e).color)}
-      ${buildBadge(accInfo(e).short, accInfo(e).color)}
-      ${e.networkID===DEFAULT_NETWORK_ID?buildBadge('默认','var(--badge-default)'):''}
-    </div>`;
-  }).join('');
-  scroll.appendChild(listInner);
-  content.appendChild(scroll);
-
-  // 点击行
-  scroll.querySelectorAll('.network-row').forEach(row => {
-    row.addEventListener('click', () => {
-      selectedNetworkID = parseInt(row.dataset.nid);
-      selectedMemberID = -1;
-      render();
-    });
-  });
-
-  // 选中摘要
-  const sel = entry();
-  const summary = document.createElement('div');
-  summary.className = 'selection-summary';
-  summary.style.borderColor = sel ? entryColor(sel) : 'var(--border-list)';
-  summary.innerHTML = `<span class="text">${
-    sel ? `已选中：#${sel.networkID} ${sel.name}  ${secInfo(sel).name}  (${accInfo(sel).short})`
-    : '未选中任何网络'
-  }</span>`;
-  content.appendChild(summary);
-
-  // 操作按钮
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  const isDefault = sel && sel.networkID === DEFAULT_NETWORK_ID;
-  actions.innerHTML = `
-    <button class="btn btn-xs" id="setDefaultBtn">
-      ${isDefault ? '清除默认' : '设为默认网络'}
-    </button>
-  `;
-  content.appendChild(actions);
-
-  document.getElementById('setDefaultBtn').addEventListener('click', () => {
-    alert(`[模拟] ${isDefault ? '清除' : '设置'}默认网络 #${sel.networkID}`);
-    if (isDefault) {
-      // 实际上 default 常量在 demo 中不变，这里只做提示
-    }
-    render();
-  });
-}
-
-// ── 成员管理面板 ──
-function renderMembers(content) {
-  const sel = entry();
-  if (!sel) {
-    content.innerHTML += '<div class="empty-state">请先选择一个网络</div>';
-    return;
-  }
-
-  // 成员列表
-  const scroll = document.createElement('div');
-  scroll.className = 'scroll-box';
-  const listInner = document.createElement('div');
-  listInner.className = 'network-list-inner';
-
-  const buildMemberRow = (pid, name, role) => {
-    const sel2 = pid === selectedMemberID;
-    const rc = roleColor(role);
-    return `<div class="network-row" data-pid="${pid}" data-role="${role}"
-      style="background:${sel2?darken(rc,0.25):'var(--bg-row)'};border-color:${sel2?rc:'var(--border-row)'};cursor:${role==='OWNER'?'default':'pointer'};">
-      ${buildBadge(ACCESS[role]?.roleName||role, rc)}
-      <span class="name" style="color:var(--text-primary);">${name}</span>
-      ${buildIdPill(pid)}
-    </div>`;
-  };
-
-  let rows = '';
-  rows += buildMemberRow(sel.ownerPlayerID, sel.ownerName, 'OWNER');
-  sel.adminPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.adminNames[i]||('#'+pid), 'ADMIN'));
-  sel.memberPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.memberNames[i]||('#'+pid), 'MEMBER'));
-  sel.blockedPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.blockedNames[i]||('#'+pid), 'BLOCKED'));
-  if (!sel.adminPlayerIDs.length && !sel.memberPlayerIDs.length && !sel.blockedPlayerIDs.length) {
-    rows += `<div class="network-row" style="justify-content:center;color:var(--text-empty);">暂无其他成员</div>`;
-  }
-  listInner.innerHTML = rows;
-  scroll.appendChild(listInner);
-  content.appendChild(scroll);
-
-  // 点击成员行
-  scroll.querySelectorAll('.network-row').forEach(row => {
-    row.addEventListener('click', () => {
-      if (row.dataset.role === 'OWNER') return;
-      selectedMemberID = parseInt(row.dataset.pid);
-      render();
-    });
-  });
-
-  // 添加成员
-  const addRow = document.createElement('div');
-  addRow.className = 'actions';
-  addRow.style.paddingTop = '6px';
-  addRow.innerHTML = `
-    <input type="text" id="memberNameInput" placeholder="输入玩家名..." maxlength="64" style="flex:1;min-width:120px;">
-    <button class="btn btn-xs" id="addMemberBtn">添加成员</button>
-  `;
-  content.appendChild(addRow);
-
-  document.getElementById('addMemberBtn').addEventListener('click', () => {
-    const name = document.getElementById('memberNameInput').value.trim();
-    if (!name) return;
-    alert(`[模拟] 向网络 #${sel.networkID} 添加成员: ${name}`);
-    document.getElementById('memberNameInput').value = '';
-  });
-  document.getElementById('memberNameInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('addMemberBtn').click();
-  });
-
-  // 角色操作（仅 owner 可见）
-  if (sel.isOwner && selectedMemberID >= 0) {
-    const roleRow = document.createElement('div');
-    roleRow.className = 'actions';
-    roleRow.innerHTML = `
-      <button class="btn btn-xs" id="promoteBtn">提升为管理员</button>
-      <button class="btn btn-xs btn-danger" id="demoteBtn">降级为成员</button>
-      <button class="btn btn-xs btn-danger" id="removeBtn">移出网络</button>
-    `;
-    content.appendChild(roleRow);
-
-    document.getElementById('promoteBtn').addEventListener('click', () => {
-      alert(`[模拟] 提升玩家 #${selectedMemberID} 为管理员`);
-    });
-    document.getElementById('demoteBtn').addEventListener('click', () => {
-      alert(`[模拟] 降级玩家 #${selectedMemberID} 为成员`);
-    });
-    document.getElementById('removeBtn').addEventListener('click', () => {
-      alert(`[模拟] 将玩家 #${selectedMemberID} 移出网络`);
-    });
-  }
-}
-
-// ── 设置面板 ──
-function renderSettings(content) {
-  const sel = entry();
-  if (!sel) { content.innerHTML += '<div class="empty-state">请先选择一个网络</div>'; return; }
-
-  const scroll = document.createElement('div');
-  scroll.className = 'scroll-box';
-  scroll.innerHTML = `
-    <div class="edit-form">
-      <div class="field-row">
-        <span class="field-label">名称</span>
-        <input type="text" id="settingsNameInput" value="${sel.name}" maxlength="64">
-      </div>
-      <div class="field-row">
-        <span class="field-label">密码</span>
-        <input type="password" id="settingsPasswordInput" placeholder="新密码 (留空不变)" maxlength="64">
-      </div>
-      <div class="field-row">
-        <span class="field-label">安全级别</span>
-        ${buildSecuritySegments()}
-      </div>
-      <div class="field-row">
-        <span class="field-label">颜色</span>
-        <div class="readonly-field">${buildStatusDot(selectedColor)} #${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0').toUpperCase()}</div>
-      </div>
-      <div class="color-palette" id="colorPaletteSettings">
-        ${PALETTE_COLORS.map(c => {
-          const sel2 = (c & 0xFFFFFF) === (selectedColor & 0xFFFFFF);
-          return buildColorSwatch(c, sel2);
-        }).join('')}
-      </div>
-      <div class="preview-bar" id="previewBarSettings" style="border-color:${'#'+(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')};">
-        ${buildColorSwatch(selectedColor, false, 12)}
-        <span class="preview-name" style="color:#${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')};">${sel.name}</span>
-        ${buildBadge(secName(selectedSecurity), secColor(selectedSecurity))}
-      </div>
+  <section class="frame">
+    <nav class="nav">
+      <button class="active">主页</button>
+      <button>选择</button>
+      <button>连接</button>
+      <button>成员</button>
+      <button>统计</button>
+      <button>设置</button>
+      <button>健康</button>
+      <button>创建</button>
+    </nav>
+    <div class="crumb">
+      <strong>主页</strong>
+      <span class="dot"></span>
+      <span class="name">主基地网络</span>
+      <span class="pill">#1</span>
+      <span class="badge" style="background: var(--badge-default)">默认</span>
     </div>
-  `;
-  content.appendChild(scroll);
 
-  // 颜色点击
-  scroll.querySelectorAll('.swatch').forEach((sw, i) => {
-    sw.addEventListener('click', () => {
-      selectedColor = PALETTE_COLORS[i] & 0xFFFFFF;
-      render();
-    });
-  });
+    <div class="content">
+      <section class="panel">
+        <h2>主页信息：两列、定宽标签、36px 行高</h2>
+        <div class="home-grid">
+          <div class="info-row"><label>ID:</label><span>#1</span></div>
+          <div class="info-row"><label>名称:</label><span>主基地网络</span></div>
+          <div class="info-row"><label>拥有者:</label><span>PlayerX</span></div>
+          <div class="info-row"><label>安全:</label><span>私有</span></div>
+          <div class="info-row"><label>权限:</label><span>拥有者</span></div>
+          <div class="info-row"><label>设备:</label><span>14 / 在线 12</span></div>
+          <div class="info-row"><label>能量:</label><span>120000 / 300000 AE</span></div>
+          <div class="info-row"><label>成员:</label><span>4</span></div>
+        </div>
+      </section>
 
-  // 操作按钮
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  actions.innerHTML = `
-    <button class="btn btn-xs" id="applySettingsBtn">应用设置</button>
-    ${sel.isOwner ? '<button class="btn btn-xs btn-danger" id="deleteNetworkBtn">删除网络</button>' : ''}
-  `;
-  content.appendChild(actions);
+      <section class="panel">
+        <h2>选择列表：默认深色，选中才显示蓝色强调</h2>
+        <div class="toolbar">
+          <input value="" placeholder="过滤名称或 #ID">
+        </div>
+        <div class="meta"><span>排序: 名称 ↑</span><span>总计: 5</span></div>
+        <div class="list">
+          <div class="row selected"><span class="dot"></span><span class="pill">#1</span><span class="name">主基地网络</span><span class="badge" style="background: var(--security-private)">私有</span><span class="badge" style="background: var(--access-owner)">拥有</span></div>
+          <div class="row"><span class="dot" style="background:#E28E4A"></span><span class="pill">#2</span><span class="name">采矿前哨</span><span class="badge" style="background: var(--security-encrypted)">加密</span><span class="badge" style="background:#5D6875">访客</span></div>
+          <div class="row"><span class="dot" style="background:#4AE24A"></span><span class="pill">#3</span><span class="name">公共交易站</span><span class="badge" style="background: var(--security-public)">公开</span><span class="badge" style="background: var(--access-member)">成员</span></div>
+        </div>
+      </section>
 
-  bindSecuritySegments(content);
-  document.getElementById('applySettingsBtn').addEventListener('click', () => {
-    const name = document.getElementById('settingsNameInput').value.trim() || sel.name;
-    alert(`[模拟] 应用设置: 名称="${name}", 颜色=#${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')}, 安全级别=${selectedSecurity}`);
-  });
-  if (sel.isOwner) {
-    document.getElementById('deleteNetworkBtn').addEventListener('click', () => {
-      if (confirm(`确定要删除网络 "${sel.name}" 吗？此操作不可撤销。`)) {
-        alert(`[模拟] 已删除网络 #${sel.networkID}`);
-        selectedNetworkID = 1;
-        panel = PANEL.SELECTION;
-        render();
-      }
-    });
-  }
-}
+      <section class="panel">
+        <h2>成员页：编号回到行内，空状态明确</h2>
+        <div class="list">
+          <div class="row"><span class="badge" style="background: var(--access-owner)">拥有者</span><span class="name">PlayerX</span><span class="pill">#100</span></div>
+          <div class="row"><span class="badge" style="background: var(--access-admin)">管理员</span><span class="name">Helper1</span><span class="pill">#101</span></div>
+        </div>
+        <div class="empty">暂无其他成员</div>
+      </section>
 
-function buildInfoLine(label, value) {
-  return `<div class="info-row">
-    <span class="info-label">${label}</span>
-    <span class="info-value">${value}</span>
-  </div>`;
-}
+      <section class="panel">
+        <h2>设置/创建：单行输入、直选安全级别、色板即操作</h2>
+        <div class="field"><label>名称</label><input value="主基地网络"></div>
+        <div class="field"><label>密码</label><input type="password" value="abcdef"></div>
+        <div class="field"><label>安全</label><div class="segments"><span class="seg">公开</span><span class="seg">加密</span><span class="seg active">私有</span></div></div>
+        <div class="field"><label>颜色</label><div class="readonly"><span class="dot"></span>&nbsp; #4A90E2</div></div>
+        <div class="swatches">
+          <span class="swatch active" style="background:#4A90E2"></span>
+          <span class="swatch" style="background:#E24A4A"></span>
+          <span class="swatch" style="background:#4AE24A"></span>
+          <span class="swatch" style="background:#E2E24A"></span>
+          <span class="swatch" style="background:#E24AE2"></span>
+          <span class="swatch" style="background:#4AE2E2"></span>
+          <span class="swatch" style="background:#E28E4A"></span>
+          <span class="swatch" style="background:#FFFFFF"></span>
+        </div>
+        <div class="actions">
+          <button class="btn">应用</button>
+          <button class="btn danger">删除</button>
+        </div>
+      </section>
 
-function buildSecuritySegments() {
-  return `<div class="security-segments">
-    ${Object.keys(SECURITY).map(key => `<span class="security-segment${selectedSecurity===key?' active':''}" data-security="${key}"
-      style="${selectedSecurity===key ? `background:${SECURITY[key].color};` : ''}">${SECURITY[key].name}</span>`).join('')}
-  </div>`;
-}
-
-function bindSecuritySegments(root) {
-  root.querySelectorAll('.security-segment').forEach(seg => {
-    seg.addEventListener('click', () => {
-      selectedSecurity = seg.dataset.security;
-      render();
-    });
-  });
-}
-
-// ── 创建面板 ──
-function renderCreate(content) {
-  const scroll = document.createElement('div');
-  scroll.className = 'scroll-box';
-  scroll.innerHTML = `
-    <div class="edit-form">
-      <div class="field-row">
-        <span class="field-label">名称</span>
-        <input type="text" id="createNameInput" placeholder="输入网络名称..." maxlength="64">
-      </div>
-      <div class="field-row">
-        <span class="field-label">密码</span>
-        <input type="password" id="createPasswordInput" placeholder="设置密码..." maxlength="64">
-      </div>
-      <div class="field-row">
-        <span class="field-label">安全级别</span>
-        ${buildSecuritySegments()}
-      </div>
-      <div class="field-row">
-        <span class="field-label">颜色</span>
-        <div class="readonly-field">${buildStatusDot(selectedColor)} #${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0').toUpperCase()}</div>
-      </div>
-      <div class="color-palette" id="colorPaletteCreate">
-        ${PALETTE_COLORS.map(c => {
-          const sel2 = (c & 0xFFFFFF) === (selectedColor & 0xFFFFFF);
-          return buildColorSwatch(c, sel2);
-        }).join('')}
-      </div>
-      <div class="preview-bar" id="previewBarCreate" style="border-color:${'#'+(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')};">
-        ${buildColorSwatch(selectedColor, false, 12)}
-        <span class="preview-name" style="color:#${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')};">
-          新网络名称</span>
-        ${buildBadge(secName(selectedSecurity), secColor(selectedSecurity))}
-      </div>
+      <section class="panel wide">
+        <h2>本轮实装边界</h2>
+        <div class="home-grid">
+          <div class="info-row"><label>会改:</label><span>视觉密度、对齐、列表状态、表单控件、色板、安全级别控件、删除确认文案</span></div>
+          <div class="info-row"><label>暂不改:</label><span>顶层 8 标签信息架构、外部 HUD 绿色能量条、真正的密码掩码能力</span></div>
+        </div>
+      </section>
     </div>
-  `;
-  content.appendChild(scroll);
-
-  scroll.querySelectorAll('.swatch').forEach((sw, i) => {
-    sw.addEventListener('click', () => {
-      selectedColor = PALETTE_COLORS[i] & 0xFFFFFF;
-      render();
-    });
-  });
-
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  actions.innerHTML = `
-    <button class="btn btn-xs" id="confirmCreateBtn">确认创建</button>
-  `;
-  content.appendChild(actions);
-
-  bindSecuritySegments(content);
-  document.getElementById('confirmCreateBtn').addEventListener('click', () => {
-    const name = document.getElementById('createNameInput').value.trim();
-    if (!name) { alert('请输入网络名称'); return; }
-    alert(`[模拟] 创建网络: "${name}"\n颜色: #${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')}\n安全级别: ${selectedSecurity}`);
-    document.getElementById('createNameInput').value = '';
-    selectedNetworkID = 1;
-    panel = PANEL.SELECTION;
-    render();
-  });
-  document.getElementById('createNameInput')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('confirmCreateBtn').click();
-  });
-}
-
-// ── 初始化 ──
-render();
-</script>
-
+  </section>
+</main>
 </body>
 </html>
