@@ -23,6 +23,7 @@ Thumbs.db
 
 # Kiro / Claude session files
 .claude/
+.superpowers/
 
 # Build artifacts
 *.jar
