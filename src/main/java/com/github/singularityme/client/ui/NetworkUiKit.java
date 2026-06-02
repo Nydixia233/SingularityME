@@ -96,7 +96,7 @@ public final class NetworkUiKit {
         public static final int COLOR_UNASSIGNED = 0xFF777777;
 
         // 尺寸
-        public static final int ROW_H = 30;
+        public static final int ROW_H = 26;
         public static final int COMPACT_ROW_H = 22;
         public static final int INFO_LABEL_W = 82;
         public static final int FORM_LABEL_W = 76;
@@ -112,16 +112,24 @@ public final class NetworkUiKit {
         public static final int TERMINAL_BOTTOM_H = 32;
         public static final int TERMINAL_CONTENT_TOP = 82;
         /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
-        public static final int TEXT_ROW_H = 18;
-        public static final int BADGE_H = 18;
+        public static final int TEXT_ROW_H = 16;
+        public static final int RAIL_HEADER_H = TEXT_ROW_H;
+        public static final int RAIL_FILTER_H = 24;
+        public static final int RAIL_ROW_H = 22;
+        public static final int RAIL_ACTION_H = 24;
+        public static final int TERMINAL_RAIL_MIN_W = 96;
+        public static final int TERMINAL_CONTENT_MIN_W = 160;
+        public static final int TERMINAL_CONTENT_MIN_H = 80;
+        public static final int TERMINAL_RAIL_LIST_MIN_H = 56;
+        public static final int BADGE_H = 16;
         public static final int BADGE_MIN_W = 24;
         public static final int BADGE_PADDING_H = 5;
         public static final int BORDER_RADIUS_PANEL = 6;
         public static final int BORDER_RADIUS_ROW = 4;
         public static final int BORDER_RADIUS_BADGE = 3;
         public static final int BORDER_RADIUS_SWATCH = 2;
-        public static final int ID_PILL_W = 48;
-        public static final int ID_PILL_H = 18;
+        public static final int ID_PILL_W = 44;
+        public static final int ID_PILL_H = 16;
         public static final int SWATCH_BUTTON_SIZE = 26;
         public static final int SWATCH_INNER_SIZE = 22;
     }
@@ -204,7 +212,7 @@ public final class NetworkUiKit {
     public static int terminalPanelWidth(final int displayWidth, final int guiScale) {
         final int scale = Math.max(1, guiScale);
         final int viewportWidth = Math.round(displayWidth * Palette.TERMINAL_PANEL_VIEWPORT_W / scale);
-        return Math.min(Palette.TERMINAL_PANEL_MAX_W, Math.max(480, viewportWidth));
+        return clampScaledPanelSize(viewportWidth, 480, Palette.TERMINAL_PANEL_MAX_W, scale, terminalMinimumWidth());
     }
 
     /**
@@ -217,7 +225,54 @@ public final class NetworkUiKit {
     public static int terminalPanelHeight(final int displayHeight, final int guiScale) {
         final int scale = Math.max(1, guiScale);
         final int viewportHeight = Math.round(displayHeight * Palette.TERMINAL_PANEL_VIEWPORT_H / scale);
-        return Math.min(Palette.TERMINAL_PANEL_MAX_H, Math.max(316, viewportHeight));
+        return clampScaledPanelSize(viewportHeight, 316, Palette.TERMINAL_PANEL_MAX_H, scale, terminalMinimumHeight());
+    }
+
+    /**
+     * 以 guiScale=2 的视觉尺寸为参考缩放最小/最大面板限制。
+     *
+     * <p>
+     * Minecraft 的 GUI 坐标会随 guiScale 放大成物理像素。若直接使用固定 GUI 坐标 min/max，
+     * guiScale=3/4 会把面板强行撑成过大的物理尺寸，因此这里把限制值按参考缩放折算。
+     * </p>
+     */
+    private static int clampScaledPanelSize(final int target, final int baseMin, final int baseMax, final int guiScale,
+        final int absoluteMin) {
+        final float factor = 2.0f / Math.max(1, guiScale);
+        final int scaledMin = Math.max(absoluteMin, Math.min(baseMin, Math.max(1, Math.round(baseMin * factor))));
+        final int scaledMax = Math.min(baseMax, Math.max(scaledMin, Math.round(baseMax * factor)));
+        return Math.min(scaledMax, Math.max(scaledMin, target));
+    }
+
+    /** 终端两栏布局的最小宽度，防止高 guiScale 下内容列被压出面板。 */
+    public static int terminalMinimumWidth() {
+        return Palette.TERMINAL_OUTER_PAD_X * 2
+            + Palette.TERMINAL_RAIL_MIN_W
+            + Palette.TERMINAL_GAP
+            + Palette.TERMINAL_CONTENT_MIN_W;
+    }
+
+    /** 左侧网络栏除列表外的固定高度。 */
+    public static int terminalRailChromeHeight() {
+        return Palette.RAIL_HEADER_H + Palette.RAIL_FILTER_H + Palette.RAIL_ACTION_H + 20;
+    }
+
+    /** 终端两栏布局的最小高度，防止内容区与底部操作区重叠。 */
+    public static int terminalMinimumHeight() {
+        final int contentMin = Palette.TERMINAL_CONTENT_TOP
+            + Palette.TERMINAL_CONTENT_MIN_H
+            + Palette.TERMINAL_BOTTOM_H
+            + 18;
+        final int railMin = Palette.TERMINAL_CONTENT_TOP
+            + terminalRailChromeHeight()
+            + Palette.TERMINAL_RAIL_LIST_MIN_H
+            + 10;
+        return Math.max(contentMin, railMin);
+    }
+
+    /** 左侧网络栏底部操作按钮宽度，始终限制在 rail 内部。 */
+    public static int railActionWidth(final int railWidth) {
+        return Math.max(72, Math.max(0, railWidth - 8));
     }
 
     /** 计算主页信息列宽；空间不足时退化为单列。 */
@@ -306,17 +361,23 @@ public final class NetworkUiKit {
             this.networkH = Palette.TERMINAL_CRUMB_H;
             this.railX = Palette.TERMINAL_OUTER_PAD_X;
             this.railY = Palette.TERMINAL_CONTENT_TOP;
-            this.railW = Palette.TERMINAL_RAIL_W;
+            this.railW = Math.max(
+                Palette.TERMINAL_RAIL_MIN_W,
+                Math.min(Palette.TERMINAL_RAIL_W, Math.round(panelW * 0.24f)));
             this.contentX = this.railX + this.railW + Palette.TERMINAL_GAP;
             this.contentY = this.railY;
-            this.contentW = Math.max(160, panelW - this.contentX - Palette.TERMINAL_OUTER_PAD_X);
+            this.contentW = Math.max(
+                Palette.TERMINAL_CONTENT_MIN_W,
+                panelW - this.contentX - Palette.TERMINAL_OUTER_PAD_X);
             this.bottomX = this.contentX;
             this.bottomY = Math.max(this.railY, panelH - Palette.TERMINAL_BOTTOM_H - 10);
             this.bottomW = this.contentW;
             this.bottomH = Palette.TERMINAL_BOTTOM_H;
-            this.railH = Math.max(120, panelH - this.railY - 10);
-            this.railListH = Math.max(72, this.railH - Palette.TEXT_ROW_H - Palette.ROW_H * 2 - 20);
-            this.contentH = Math.max(120, this.bottomY - this.contentY - 8);
+            this.railH = Math.max(terminalRailChromeHeight() + Palette.TERMINAL_RAIL_LIST_MIN_H,
+                panelH - this.railY - 10);
+            this.railListH = Math.max(Palette.TERMINAL_RAIL_LIST_MIN_H,
+                this.railH - terminalRailChromeHeight());
+            this.contentH = Math.max(Palette.TERMINAL_CONTENT_MIN_H, this.bottomY - this.contentY - 8);
         }
     }
 

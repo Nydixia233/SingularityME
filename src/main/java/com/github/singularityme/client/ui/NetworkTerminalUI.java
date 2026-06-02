@@ -201,7 +201,7 @@ public final class NetworkTerminalUI {
 
             // 输入控件
             memberNameInput = makeInput(memberNameVal);
-            filterInput = makeInput(filterVal);
+            filterInput = makeRailInput(filterVal);
             createNameInput = makeInput(createNameVal);
             createPasswordInput = makeInput(createPwVal);
             settingsNameInput = makeInput(settingsNameVal);
@@ -291,7 +291,7 @@ public final class NetworkTerminalUI {
             networkRail.removeAll();
             networkRail.child(Flow.row()
                 .mainAxisAlignment(Alignment.MainAxis.SPACE_BETWEEN)
-                .widthRel(1f).height(Palette.TEXT_ROW_H)
+                .widthRel(1f).height(Palette.RAIL_HEADER_H)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_terminal.rail.title")))
                     .color(Palette.TEXT_PRIMARY))
@@ -300,7 +300,7 @@ public final class NetworkTerminalUI {
                     .color(Palette.TEXT_MUTED)));
 
             networkRail.child(Flow.row()
-                .widthRel(1f).height(Palette.ROW_H)
+                .widthRel(1f).height(Palette.RAIL_FILTER_H)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(filterInput.widthRel(1f).expanded()));
 
@@ -321,7 +321,7 @@ public final class NetworkTerminalUI {
                 ? NetworkUiKit.tr("gui.singularityme.network_terminal.selection.clear_default")
                 : NetworkUiKit.tr("gui.singularityme.network_terminal.selection.set_default");
             final boolean canSet = sel != null && NetworkUiKit.canAccess(sel);
-            networkRail.child(makeBtn(btnText, Math.max(120, layout.railW - 12), () -> {
+            networkRail.child(makeRailBtn(btnText, NetworkUiKit.railActionWidth(layout.railW), () -> {
                 if (sel == null) return;
                 final int nextDefault = isDefault ? 0 : sel.networkID;
                 SingularityChannel.CHANNEL.sendToServer(new PacketSetDefaultNetwork(nextDefault));
@@ -342,7 +342,7 @@ public final class NetworkTerminalUI {
             nameWidget.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(4).widthRel(1f).height(Palette.ROW_H).padding(0, 4)
+                .childPadding(4).widthRel(1f).height(Palette.RAIL_ROW_H).padding(0, 4)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(NetworkUiKit.statusDotWidget(color))
                 .child(NetworkUiKit.idPill(entry.networkID))
@@ -350,7 +350,7 @@ public final class NetworkTerminalUI {
 
             return new ButtonWidget<>()
                 .child(rowContent)
-                .widthRel(1f).height(Palette.ROW_H)
+                .widthRel(1f).height(Palette.RAIL_ROW_H)
                 .background(Styles.rowBg(bg))
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
@@ -1089,6 +1089,18 @@ public final class NetworkTerminalUI {
                 });
         }
 
+        private static ButtonWidget<?> makeRailBtn(String text, int w, Runnable action, boolean enabled) {
+            return new ButtonWidget<>()
+                .overlay(IKey.str(text))
+                .width(w).height(Palette.RAIL_ACTION_H).padding(0, 6)
+                .background(Styles.rowBg(enabled ? Palette.BTN_NORMAL : Palette.BTN_DISABLED))
+                .onMousePressed(mb -> {
+                    if (!enabled) return false;
+                    action.run();
+                    return true;
+                });
+        }
+
         private static ButtonWidget<?> makeDangerBtn(String text, int w, Runnable action) {
             return new ButtonWidget<>()
                 .overlay(IKey.str(text))
@@ -1103,6 +1115,14 @@ public final class NetworkTerminalUI {
             return new TextFieldWidget()
                 .value(val)
                 .height(Palette.ROW_H).expanded()
+                .background(Styles.inputBg())
+                .autoUpdateOnChange(true);
+        }
+
+        private static TextFieldWidget makeRailInput(StringValue val) {
+            return new TextFieldWidget()
+                .value(val)
+                .height(Palette.RAIL_FILTER_H).expanded()
                 .background(Styles.inputBg())
                 .autoUpdateOnChange(true);
         }

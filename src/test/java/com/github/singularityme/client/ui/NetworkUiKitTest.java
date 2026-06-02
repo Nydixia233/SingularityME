@@ -68,6 +68,8 @@ public class NetworkUiKitTest {
         assertEquals(700, NetworkUiKit.terminalPanelHeight(1440, 1));
         assertEquals(594, NetworkUiKit.terminalPanelWidth(2048, 2));
         assertEquals(359, NetworkUiKit.terminalPanelHeight(1088, 2));
+        assertEquals(396, NetworkUiKit.terminalPanelWidth(2048, 3));
+        assertEquals(239, NetworkUiKit.terminalPanelHeight(1088, 3));
         assertEquals(480, NetworkUiKit.terminalPanelWidth(800, 1));
         assertEquals(317, NetworkUiKit.terminalPanelHeight(480, 1));
     }
@@ -85,7 +87,7 @@ public class NetworkUiKitTest {
         assertEquals(82, layout.railY);
         assertEquals(136, layout.railW);
         assertEquals(267, layout.railH);
-        assertEquals(169, layout.railListH);
+        assertEquals(183, layout.railListH);
         assertEquals(168, layout.contentX);
         assertEquals(82, layout.contentY);
         assertEquals(406, layout.contentW);
@@ -96,6 +98,20 @@ public class NetworkUiKitTest {
         assertEquals(32, layout.bottomH);
         assertTrue(layout.contentY + layout.contentH < layout.bottomY);
         assertTrue(layout.railY + layout.railH <= 349);
+    }
+
+    /** 高 GUI 缩放下不使用固定 GUI 坐标最小宽高硬撑面板，避免 guiScale=3/4 下整体变胖。 */
+    @Test
+    public void keepsTerminalLayoutBoundedAtHighGuiScale() {
+        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(396, 239);
+
+        assertEquals(96, layout.railW);
+        assertEquals(128, layout.contentX);
+        assertEquals(248, layout.contentW);
+        assertEquals(107, layout.contentH);
+        assertEquals(63, layout.railListH);
+        assertTrue(layout.contentY + layout.contentH < layout.bottomY);
+        assertTrue(layout.railListH >= 56);
     }
 
     /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
@@ -135,6 +151,29 @@ public class NetworkUiKitTest {
     public void exposesStableLabelWidths() {
         assertEquals(82, Palette.INFO_LABEL_W);
         assertEquals(76, Palette.FORM_LABEL_W);
+    }
+
+    /** 左侧网络栏和基础按钮使用更紧凑的高度，避免在截图区域形成厚重色块。 */
+    @Test
+    public void usesCompactControlHeights() {
+        assertEquals(26, Palette.ROW_H);
+        assertEquals(16, Palette.TEXT_ROW_H);
+        assertEquals(16, Palette.RAIL_HEADER_H);
+        assertEquals(24, Palette.RAIL_FILTER_H);
+        assertEquals(22, Palette.RAIL_ROW_H);
+        assertEquals(24, Palette.RAIL_ACTION_H);
+        assertEquals(16, Palette.BADGE_H);
+        assertEquals(16, Palette.ID_PILL_H);
+    }
+
+    /** 高 GUI 缩放下仍保留两栏布局的最小可用空间，并让左侧操作按钮留在 rail 内部。 */
+    @Test
+    public void exposesTerminalMinimumBounds() {
+        assertEquals(308, NetworkUiKit.terminalMinimumWidth());
+        assertEquals(232, NetworkUiKit.terminalMinimumHeight());
+        assertEquals(84, NetworkUiKit.terminalRailChromeHeight());
+        assertEquals(88, NetworkUiKit.railActionWidth(96));
+        assertEquals(128, NetworkUiKit.railActionWidth(136));
     }
 
     /** 终端列表高度优先占满内容区，只为过滤、元信息和选中栏预留稳定空间。 */
