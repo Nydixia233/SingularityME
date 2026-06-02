@@ -151,6 +151,24 @@ public class NetworkUiKitTest {
         assertEquals(188, NetworkUiKit.metricCardWidth(380, 2));
     }
 
+    /** 内容视口存在内边距，主页两列和指标卡宽度必须按实际可用宽度计算，避免右侧被裁切。 */
+    @Test
+    public void computesContentInnerWidthForHomeRows() {
+        assertEquals(4, Palette.CONTENT_VIEWPORT_PAD);
+        assertEquals(398, NetworkUiKit.terminalContentInnerWidth(406));
+        assertEquals(198, NetworkUiKit.homeInfoColumnWidth(NetworkUiKit.terminalContentInnerWidth(406)));
+        assertEquals(96, NetworkUiKit.metricCardWidth(NetworkUiKit.terminalContentInnerWidth(406), 4));
+    }
+
+    /** 终端表面色保持参考稿的深蓝灰层级，避免内容区退回纯黑或高对比闪烁。 */
+    @Test
+    public void exposesReferenceSurfaceColors() {
+        assertEquals(0xF0141923, Palette.BG_PANEL);
+        assertEquals(0xD80D1219, Palette.BG_LIST);
+        assertEquals(0xFF192331, Palette.BG_ROW_SOFT);
+        assertEquals(0xB005070B, Palette.BG_OVERLAY);
+    }
+
     @Test
     public void formatsCompactEnergy() {
         assertEquals("9.22P AE", NetworkUiKit.formatCompactEnergy(9223372036854777D));

@@ -39,11 +39,13 @@ public final class NetworkUiKit {
         private Palette() {}
 
         // 背景色
-        public static final int BG_PANEL = 0xEE141923;
-        public static final int BG_LIST = 0xFF0D1219;
+        public static final int BG_PANEL = 0xF0141923;
+        public static final int BG_LIST = 0xD80D1219;
         public static final int BG_ROW = 0xFF151D27;
+        public static final int BG_ROW_SOFT = 0xFF192331;
         public static final int BG_INPUT = 0xFF0D1117;
-        public static final int BG_OVERLAY = 0xAA05070B;
+        public static final int BG_OVERLAY = 0xB005070B;
+        public static final int BG_OVERLAY_BOTTOM = 0xC405070B;
         public static final int BG_ID_PILL = 0xFF0B1016;
 
         // 边框色
@@ -111,6 +113,7 @@ public final class NetworkUiKit {
         public static final int TERMINAL_CRUMB_H = 32;
         public static final int TERMINAL_BOTTOM_H = 32;
         public static final int TERMINAL_CONTENT_TOP = 82;
+        public static final int CONTENT_VIEWPORT_PAD = 4;
         /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
         public static final int TEXT_ROW_H = 16;
         public static final int RAIL_HEADER_H = TEXT_ROW_H;
@@ -300,7 +303,12 @@ public final class NetworkUiKit {
 
     /** 判断主页信息是否应使用两列紧凑布局。 */
     public static boolean homeInfoUsesTwoColumns(final int contentWidth) {
-        return contentWidth >= 400;
+        return contentWidth >= 380;
+    }
+
+    /** 计算内容视口扣除内边距后的实际可用宽度，避免子项按外框宽度布局后被裁切。 */
+    public static int terminalContentInnerWidth(final int contentWidth) {
+        return Math.max(0, contentWidth - Palette.CONTENT_VIEWPORT_PAD * 2);
     }
 
     /** 计算主页概览指标卡宽度，保持指标行稳定均分。 */
@@ -432,14 +440,14 @@ public final class NetworkUiKit {
         public static IDrawable panelBg() {
             return new Rectangle()
                 .cornerRadius(Palette.BORDER_RADIUS_PANEL)
-                .verticalGradient(lighten(Palette.BG_PANEL, 0.08f), Palette.BG_PANEL);
+                .verticalGradient(lighten(Palette.BG_PANEL, 0.05f), Palette.BG_PANEL);
         }
 
         /** 次级卡片背景。 */
         public static IDrawable cardBg() {
             return new Rectangle()
                 .cornerRadius(Palette.BORDER_RADIUS_ROW)
-                .verticalGradient(lighten(Palette.BG_ROW, 0.06f), Palette.BG_ROW);
+                .verticalGradient(lighten(Palette.BG_ROW_SOFT, 0.04f), Palette.BG_ROW_SOFT);
         }
 
         /** 列表容器背景。 */
@@ -449,11 +457,17 @@ public final class NetworkUiKit {
                 .color(Palette.BG_LIST);
         }
 
+        /** 终端打开时的稳定世界遮罩，降低鼠标穿过背景时的视觉闪烁。 */
+        public static IDrawable terminalOverlayBg() {
+            return new Rectangle()
+                .verticalGradient(Palette.BG_OVERLAY, Palette.BG_OVERLAY_BOTTOM);
+        }
+
         /** 列表行或按钮背景。 */
         public static IDrawable rowBg(final int color) {
             return new Rectangle()
                 .cornerRadius(Palette.BORDER_RADIUS_ROW)
-                .verticalGradient(lighten(color, 0.08f), color);
+                .verticalGradient(lighten(color, 0.05f), color);
         }
 
         /** 输入框背景。 */
@@ -467,14 +481,14 @@ public final class NetworkUiKit {
         public static IDrawable headerGradient(final int color) {
             return new Rectangle()
                 .cornerRadius(Palette.BORDER_RADIUS_ROW)
-                .verticalGradient(lighten(color, 0.16f), color);
+                .verticalGradient(lighten(color, 0.10f), darken(color, 0.82f));
         }
 
         /** 顶部导航激活态使用低调蓝色底，避免厚重实心页签。 */
         public static IDrawable navActiveBg() {
             return new Rectangle()
                 .cornerRadius(Palette.BORDER_RADIUS_ROW)
-                .color(0x552F6F95);
+                .verticalGradient(0x602F6F95, 0x402F6F95);
         }
 
         /** 颜色块背景。 */
@@ -795,7 +809,8 @@ public final class NetworkUiKit {
     public static Flow statusDotWidget(final int color) {
         return Flow.row()
             .width(10).height(10)
-            .background(Styles.statusDot(0xFF000000 | color));
+            .background(Styles.statusDot(0xFF000000 | color))
+            .disableHoverBackground();
     }
 
     /**
@@ -807,11 +822,13 @@ public final class NetworkUiKit {
         final Flow bar = Flow.row()
             .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 10)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-            .background(Styles.listBg());
+            .background(Styles.listBg())
+            .disableHoverBackground();
         // 左侧色条作为视觉 accent
         final Flow accent = Flow.row()
             .width(3).heightRel(0.6f)
-            .background(new Rectangle().cornerRadius(2).color(0xFF000000 | accentColor));
+            .background(new Rectangle().cornerRadius(2).color(0xFF000000 | accentColor))
+            .disableHoverBackground();
         bar.child(accent);
         bar.child(new TextWidget(IKey.str(text)).color(Palette.TEXT_SECONDARY));
         return bar;
@@ -832,7 +849,8 @@ public final class NetworkUiKit {
         final Flow row = Flow.row()
             .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 10)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-            .background(Styles.rowBg(Palette.BG_ROW));
+            .background(Styles.rowBg(Palette.BG_ROW))
+            .disableHoverBackground();
         final TextWidget labelWidget = new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL);
         labelWidget.width(Palette.INFO_LABEL_W);
         labelWidget.textAlign(Alignment.CenterRight);
@@ -849,7 +867,8 @@ public final class NetworkUiKit {
         final Flow row = Flow.row()
             .childPadding(8).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(0, 10)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-            .background(Styles.rowBg(Palette.BG_ROW));
+            .background(Styles.rowBg(Palette.BG_ROW))
+            .disableHoverBackground();
         final TextWidget labelWidget = new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL);
         labelWidget.width(Palette.INFO_LABEL_W);
         labelWidget.textAlign(Alignment.CenterRight);
@@ -884,6 +903,7 @@ public final class NetworkUiKit {
             .padding(0, 8)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.inputBg())
+            .disableHoverBackground()
             .child(statusDotWidget(color))
             .child(new TextWidget(IKey.str("#" + rgbHex(color))).color(0xFF000000 | color));
     }
@@ -896,7 +916,8 @@ public final class NetworkUiKit {
             .childPadding(4).height(Palette.ROW_H).expanded()
             .padding(3, 4)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-            .background(Styles.inputBg());
+            .background(Styles.inputBg())
+            .disableHoverBackground();
         for (final SecurityLevel level : SecurityLevel.values()) {
             row.child(securitySegment(selected, level, () -> onSelect.accept(level)));
         }
@@ -945,11 +966,13 @@ public final class NetworkUiKit {
                 .height(Palette.SWATCH_BUTTON_SIZE)
                 .mainAxisAlignment(Alignment.MainAxis.CENTER)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .background(selected ? Styles.rowBg(lighten(color, 0.18f)) : IDrawable.NONE);
+                .background(selected ? Styles.rowBg(lighten(color, 0.18f)) : IDrawable.NONE)
+                .disableHoverBackground();
             swatch.child(Flow.row()
                 .width(Palette.SWATCH_INNER_SIZE)
                 .height(Palette.SWATCH_INNER_SIZE)
-                .background(Styles.swatch(color)));
+                .background(Styles.swatch(color))
+                .disableHoverBackground());
             row.child(new ButtonWidget<>()
                 .child(swatch)
                 .width(Palette.SWATCH_BUTTON_SIZE).height(Palette.SWATCH_BUTTON_SIZE)

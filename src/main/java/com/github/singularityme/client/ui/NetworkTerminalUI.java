@@ -71,7 +71,7 @@ public final class NetworkTerminalUI {
             return state.buildPanel();
         });
         screen.getContext().setSettings(new UISettings());
-        final GuiScreenWrapper wrapper = new GuiScreenWrapper(screen);
+        final GuiScreenWrapper wrapper = new TerminalScreenWrapper(screen);
 
         Minecraft.getMinecraft().func_152344_a(() -> {
             final TerminalState state = activeState == null ? null : activeState.get();
@@ -103,6 +103,19 @@ public final class NetworkTerminalUI {
     }
 
     private enum Panel { HOME, CONNECTION, MEMBERS, SETTINGS, CREATE }
+
+    /** 网络终端专用屏幕包装器，绘制稳定遮罩以避免背景 hover 时闪烁。 */
+    private static final class TerminalScreenWrapper extends GuiScreenWrapper {
+
+        TerminalScreenWrapper(final ModularScreen screen) {
+            super(screen);
+        }
+
+        @Override
+        public void drawWorldBackground(final int tint) {
+            drawGradientRect(0, 0, this.width, this.height, Palette.BG_OVERLAY, Palette.BG_OVERLAY_BOTTOM);
+        }
+    }
 
     /** 以 guiScale=2 为参考整体缩放终端面板，避免高 GUI 缩放下内部控件比例变胖。 */
     private static final class ReferenceScaledPanel extends ModularPanel {
@@ -173,6 +186,7 @@ public final class NetworkTerminalUI {
             panel = new ReferenceScaledPanel("network_terminal", visualScale)
                 .size(panelW, panelH)
                 .background(new ShadowDrawable(Styles.panelBg(), 6, 0x80000000));
+            panel.disableHoverBackground();
 
             layout = NetworkUiKit.terminalLayout(panelW, panelH, guiScale);
 
@@ -182,6 +196,7 @@ public final class NetworkTerminalUI {
             navBar.padding(3);
             navBar.crossAxisAlignment(Alignment.CrossAxis.CENTER);
             navBar.background(Styles.headerGradient(Palette.BG_LIST));
+            navBar.disableHoverBackground();
             navButtonWidth = NetworkUiKit.navButtonWidth(panelW, Panel.values().length);
             buildNavButtons();
             panel.child(navBar);
@@ -197,14 +212,16 @@ public final class NetworkTerminalUI {
             networkRail = Flow.column()
                 .childPadding(4).pos(layout.railX, layout.railY).size(layout.railW, layout.railH)
                 .padding(4)
-                .background(Styles.listBg());
+                .background(Styles.listBg())
+                .disableHoverBackground();
             panel.child(networkRail);
 
             contentViewport = new ListWidget();
             contentViewport.background(Styles.listBg());
+            contentViewport.disableHoverBackground();
             contentViewport.pos(layout.contentX, layout.contentY);
             contentViewport.size(layout.contentW, layout.contentH);
-            contentViewport.padding(4);
+            contentViewport.padding(Palette.CONTENT_VIEWPORT_PAD);
             contentViewport.showScrollShadows(false);
             contentArea = Flow.column()
                 .childPadding(4).widthRel(1f).coverChildrenHeight();
@@ -323,6 +340,7 @@ public final class NetworkTerminalUI {
 
             final ListWidget list = new ListWidget();
             list.background(IDrawable.NONE);
+            list.disableHoverBackground();
             list.widthRel(1f);
             list.height(layout.railListH);
             for (final NetworkEntry entry : networks) {
@@ -410,8 +428,9 @@ public final class NetworkTerminalUI {
 
         private Flow homeInfoGrid(final List<Flow> infoRows) {
             final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight();
-            final int columnWidth = NetworkUiKit.homeInfoColumnWidth(layout.contentW);
-            if (NetworkUiKit.homeInfoUsesTwoColumns(layout.contentW)) {
+            final int contentInnerW = NetworkUiKit.terminalContentInnerWidth(layout.contentW);
+            final int columnWidth = NetworkUiKit.homeInfoColumnWidth(contentInnerW);
+            if (NetworkUiKit.homeInfoUsesTwoColumns(contentInnerW)) {
                 for (int i = 0; i < infoRows.size(); i += 2) {
                     final Flow pair = Flow.row().childPadding(2).widthRel(1f)
                         .height(Palette.COMPACT_ROW_H)
@@ -432,7 +451,8 @@ public final class NetworkTerminalUI {
 
         @SuppressWarnings("unchecked")
         private Flow homeMetricRow(final NetworkEntry sel) {
-            final int cardW = NetworkUiKit.metricCardWidth(layout.contentW, 4);
+            final int contentInnerW = NetworkUiKit.terminalContentInnerWidth(layout.contentW);
+            final int cardW = NetworkUiKit.metricCardWidth(contentInnerW, 4);
             return Flow.row()
                 .childPadding(4).widthRel(1f).height(42)
                 .child(metricCard(
@@ -462,6 +482,7 @@ public final class NetworkTerminalUI {
             return Flow.column()
                 .childPadding(2).width(width).height(42).padding(4, 6)
                 .background(Styles.cardBg())
+                .disableHoverBackground()
                 .child(new TextWidget(IKey.str(label)).color(Palette.TEXT_MUTED))
                 .child(new TextWidget(IKey.str(value)).color(color));
         }
@@ -516,6 +537,7 @@ public final class NetworkTerminalUI {
                 .mainAxisAlignment(Alignment.MainAxis.CENTER)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .background(Styles.cardBg())
+                .disableHoverBackground()
                 .child(new TextWidget(IKey.str(
                     NetworkUiKit.tr("gui.singularityme.network_terminal.home.unassigned_title")))
                     .color(Palette.TEXT_PRIMARY))
@@ -599,6 +621,7 @@ public final class NetworkTerminalUI {
 
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
+            list.disableHoverBackground();
             list.widthRel(1f);
             list.height(NetworkUiKit.selectionListHeight(layout.contentH));
             for (final NetworkEntry entry : networks) {
@@ -690,6 +713,7 @@ public final class NetworkTerminalUI {
 
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
+            list.disableHoverBackground();
             list.widthRel(1f);
             list.height(layout.contentH);
             for (final DeviceInfo device : networkStatus.devices) {
@@ -709,6 +733,7 @@ public final class NetworkTerminalUI {
                 .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .background(Styles.rowBg(Palette.BG_ROW))
+                .disableHoverBackground()
                 .child(new TextWidget(IKey.str("\u25A0")).color(color))
                 .child(type)
                 .child(new TextWidget(IKey.str(formatLocation(device))).color(Palette.TEXT_MUTED))
@@ -728,6 +753,7 @@ public final class NetworkTerminalUI {
 
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
+            list.disableHoverBackground();
             list.widthRel(1f);
             list.height(NetworkUiKit.memberListHeight(layout.contentH));
 
@@ -977,10 +1003,12 @@ public final class NetworkTerminalUI {
             final float clamped = Math.max(0f, Math.min(1f, fraction));
             final Flow track = Flow.row()
                 .widthRel(1f).height(14).margin(4, 12)
-                .background(Styles.listBg());
+                .background(Styles.listBg())
+                .disableHoverBackground();
             final Flow fill = Flow.row()
                 .widthRel(clamped).heightRel(1f)
-                .background(Styles.rowBg(color));
+                .background(Styles.rowBg(color))
+                .disableHoverBackground();
             track.child(fill);
             return track;
         }
