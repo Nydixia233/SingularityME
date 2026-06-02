@@ -161,6 +161,22 @@ public final class NetworkUiKit {
         return String.format("%06X", color & 0xFFFFFF);
     }
 
+    /**
+     * 计算网络终端导航按钮稳定宽度，避免背景只绘制成小块。
+     *
+     * @param panelWidth 面板宽度
+     * @param buttonCount 导航按钮数量
+     * @return 单个按钮宽度
+     */
+    public static int navButtonWidth(final int panelWidth, final int buttonCount) {
+        if (buttonCount <= 0) return 0;
+        final int navOuterMargin = 16;
+        final int navInnerPadding = 8;
+        final int gaps = Math.max(0, buttonCount - 1) * 4;
+        final int available = Math.max(0, panelWidth - navOuterMargin - navInnerPadding - gaps);
+        return Math.max(48, available / buttonCount);
+    }
+
     // ---- MUI2 样式工厂 ----
 
     /** 集中生成 MUI2 drawable；每次返回新实例，避免可变 drawable 状态串扰。 */

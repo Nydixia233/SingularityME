@@ -52,4 +52,11 @@ public class NetworkUiKitTest {
         assertEquals(NetworkUiKit.tr("gui.singularityme.network_terminal.badge.default"),
             NetworkUiKit.defaultBadgeText());
     }
+
+    /** 导航按钮使用稳定宽度，避免激活背景只绘制成小方块。 */
+    @Test
+    public void computesStableNavButtonWidth() {
+        assertEquals(88, NetworkUiKit.navButtonWidth(760, 8));
+        assertEquals(58, NetworkUiKit.navButtonWidth(520, 8));
+    }
 }

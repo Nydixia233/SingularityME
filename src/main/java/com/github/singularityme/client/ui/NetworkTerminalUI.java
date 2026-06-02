@@ -120,6 +120,7 @@ public final class NetworkTerminalUI {
         Flow networkBar;
         Flow contentArea;
         Flow bottomArea;
+        int navButtonWidth;
 
         TextFieldWidget memberNameInput;
         StringValue memberNameVal = new StringValue("");
@@ -156,6 +157,7 @@ public final class NetworkTerminalUI {
                 .childPadding(4).widthRel(1f).coverChildrenHeight()
                 .padding(4).margin(8)
                 .background(Styles.headerGradient(Palette.BG_LIST));
+            navButtonWidth = NetworkUiKit.navButtonWidth(panelW, Panel.values().length);
             buildNavButtons();
             root.child(navBar);
 
@@ -195,7 +197,7 @@ public final class NetworkTerminalUI {
             navBar.removeAll();
             for (Panel p : Panel.values()) {
                 final boolean active = p == currentPanel;
-                navBar.child(makeNavBtn(panelTitle(p), active, () -> {
+                navBar.child(makeNavBtn(panelTitle(p), active, navButtonWidth, () -> {
                     if (currentPanel != p) {
                         currentPanel = p;
                         panelFirstRender = true;
@@ -209,10 +211,10 @@ public final class NetworkTerminalUI {
             }
         }
 
-        private static ButtonWidget<?> makeNavBtn(String text, boolean active, Runnable action) {
+        private static ButtonWidget<?> makeNavBtn(String text, boolean active, int width, Runnable action) {
             return new ButtonWidget<>()
                 .overlay(IKey.str(text))
-                .height(30).padding(0, 10)
+                .width(width).height(30).padding(0, 10)
                 .background(active ? Styles.rowBg(Palette.BG_ROW) : IDrawable.NONE)
                 .disableHoverBackground()
                 .onMousePressed(mb -> { action.run(); return true; });
@@ -268,43 +270,31 @@ public final class NetworkTerminalUI {
             if (sel == null) { contentArea.child(emptyState()); return; }
 
             final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight().padding(0, 12);
-            final Flow lineA = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
-            lineA.child(infoRow("ID", "#" + sel.networkID));
-            lineA.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
-            rows.child(lineA);
-
-            final Flow lineB = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
-            lineB.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
-            lineB.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.security"),
+            rows.child(infoRow("ID", "#" + sel.networkID));
+            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
+            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
+            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.security"),
                 NetworkUiKit.securityName(sel)));
-            rows.child(lineB);
-
-            final Flow lineC = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
-            lineC.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
+            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
                 NetworkUiKit.accessName(sel)));
-            lineC.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.members"),
+            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.members"),
                 String.valueOf(sel.adminPlayerIDs.size() + sel.memberPlayerIDs.size() + 1)));
-            rows.child(lineC);
 
             if (networkStatus == null) {
                 rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading"), "-"));
             } else {
                 final int devices = networkStatus.devices.size();
                 final int online = countLoadedDevices();
-                final Flow lineD = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
-                lineD.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.devices"),
+                rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.devices"),
                     devices + " / " + online));
-                lineD.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"),
+                rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"),
                     formatEnergy(networkStatus.currentPower, networkStatus.maxPower)));
-                rows.child(lineD);
             }
 
-            final Flow lineE = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
-            lineE.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.created"),
+            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.created"),
                 formatTimestamp(sel.createdAtMillis)));
-            lineE.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.modified"),
+            rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.modified"),
                 formatTimestamp(sel.lastModifiedMillis)));
-            rows.child(lineE);
             contentArea.child(rows);
         }
 

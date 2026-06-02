@@ -40,3 +40,4 @@
 |------|------|------|
 | 2026-06-01 | PowerShell Set-Content 损坏 UTF-8 中文注释编码 | `ERROR-20260601-powershell-encoding-corruption.md` |
 | 2026-06-01 | MUI2 TextWidget SIZING padding 溢出（非致命） | `ERROR-20260601-mui2-sizing-padding-overflow.md` |
+| 2026-06-02 | MUI2 widthRel 子项横向溢出 | `ERROR-20260602-mui2-widthrel-row-overflow.md` |
