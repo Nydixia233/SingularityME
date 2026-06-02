@@ -49,7 +49,7 @@ Flow.row()
     .childPadding(8)
     .widthRel(1f)
     .height(Palette.ROW_H)
-    .padding(0, 12)
+    .padding(12, 0)
     .crossAxisAlignment(Alignment.CrossAxis.CENTER);
 ```
 
@@ -107,7 +107,7 @@ list.expanded();
 private static ButtonWidget<?> makeBtn(String text, int w, Runnable action, boolean enabled) {
     return new ButtonWidget<>()
         .overlay(IKey.str(text))
-        .width(w).height(Palette.ROW_H).padding(0, 12)
+        .width(w).height(Palette.ROW_H).padding(12, 0)
         .background(Styles.rowBg(enabled ? Palette.BTN_NORMAL : Palette.BTN_DISABLED))
         .onMousePressed(mb -> {
             if (!enabled) return false;

@@ -13,7 +13,7 @@ final Flow row = Flow.row()
     .childPadding(8)
     .widthRel(1f)
     .height(Palette.ROW_H)
-    .padding(0, 12)
+    .padding(12, 0)
     .crossAxisAlignment(Alignment.CrossAxis.CENTER);
 ```
 
@@ -55,7 +55,7 @@ Panel name 会被 `isPanelOpen("network_terminal")` 用于 packet 刷新命中�
 ```java
 return new ButtonWidget<>()
     .overlay(IKey.str(text))
-    .width(w).height(Palette.ROW_H).padding(0, 12)
+    .width(w).height(Palette.ROW_H).padding(12, 0)
     .background(Styles.rowBg(Palette.BTN_NORMAL))
     .disableHoverBackground()
     .onMousePressed(mb -> {

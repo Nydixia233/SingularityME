@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -12,6 +13,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 
@@ -265,16 +267,36 @@ public class NetworkUiKitTest {
         assertEquals(76, Palette.FORM_LABEL_W);
     }
 
+    @Test
+    public void treatsTwoArgumentPaddingAsHorizontalThenVertical() {
+        final Flow row = Flow.row().padding(4, 0);
+
+        assertEquals(4, row.getArea().getPadding().getLeft());
+        assertEquals(4, row.getArea().getPadding().getRight());
+        assertEquals(0, row.getArea().getPadding().getTop());
+        assertEquals(0, row.getArea().getPadding().getBottom());
+    }
+
     /** 左侧列表的圆点、编号胶囊和行距使用紧凑尺寸，匹配游戏内小列观感。 */
     @Test
     public void exposesCompactNetworkListMetrics() {
         assertEquals(6, Palette.STATUS_DOT_SIZE);
+        assertEquals(4, Palette.LIST_ROW_PADDING_H);
         assertEquals(4, Palette.NETWORK_ROW_INSET);
         assertEquals(4, Palette.LIST_CONTENT_INSET);
         assertEquals(4, Palette.BADGE_PADDING_H);
-        assertEquals(4, Palette.BADGE_MARGIN_H);
+        assertPaletteFieldMissing("BADGE_MARGIN_H");
         assertEquals(32, Palette.ID_PILL_MIN_W);
         assertEquals(2, Palette.LIST_ROW_GAP);
+    }
+
+    private static void assertPaletteFieldMissing(final String name) {
+        try {
+            Palette.class.getField(name);
+            fail("Palette should not expose " + name + ".");
+        } catch (NoSuchFieldException expected) {
+            // expected
+        }
     }
 
     /** 左侧网络栏、连接列表和成员列表使用更紧凑的高度，避免形成厚重色块。 */

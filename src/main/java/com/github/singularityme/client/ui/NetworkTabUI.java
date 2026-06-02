@@ -9,6 +9,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.tileentity.TileEntity;
 
 import com.cleanroommc.modularui.api.drawable.IKey;
+import com.cleanroommc.modularui.api.drawable.IIcon;
 import com.cleanroommc.modularui.screen.GuiScreenWrapper;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.ModularScreen;
@@ -133,6 +134,9 @@ public final class NetworkTabUI {
             // 网络列表
             networkList = new ListWidget();
             networkList.background(Styles.listBg());
+            networkList.disableHoverBackground();
+            networkList.childSeparator(IIcon.EMPTY_2PX);
+            networkList.padding(Palette.LIST_CONTENT_INSET, 0);
             networkList.widthRel(1f);
             networkList.expanded();
             root.child(networkList);
@@ -335,7 +339,7 @@ public final class NetworkTabUI {
             nameWidget.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
+                .childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(new TextWidget(IKey.str("\u25A0")).color(color));
             if (entry.networkID != 0) {
@@ -352,6 +356,7 @@ public final class NetworkTabUI {
             return new ButtonWidget<>()
                 .child(rowContent)
                 .widthRel(1f).height(Palette.ROW_H)
+                .padding(Palette.LIST_ROW_PADDING_H, 0)
                 .background(Styles.rowBg(bg))
                 .disableHoverBackground()
                 .onMousePressed(mb -> {

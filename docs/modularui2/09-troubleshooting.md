@@ -24,7 +24,7 @@
 
 修法：
 
-- 固定高度行使用 `.padding(0, horizontal)`。
+- 固定高度行使用 `.padding(horizontal, 0)`；MUI2 两参数顺序是水平、垂直。
 - 垂直留白放到外层 `margin`。
 - 复用 `NetworkUiKit.fixedRow(int)` / `NetworkUiKit.textRow()`。
 

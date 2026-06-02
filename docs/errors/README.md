@@ -44,3 +44,4 @@
 | 2026-06-02 | Network Terminal 只适配单一 guiScale | `ERROR-20260602-network-terminal-gui-scale.md` |
 | 2026-06-02 | Network Terminal 背景 hover 闪烁与主页内宽裁切 | `ERROR-20260602-network-terminal-hover-overflow.md` |
 | 2026-06-03 | Network Terminal 切换网络时 loading 中间帧闪烁 | `ERROR-20260603-network-terminal-status-switch-flicker.md` |
+| 2026-06-03 | MUI2 padding 参数顺序误判 | `ERROR-20260603-mui2-padding-argument-order.md` |

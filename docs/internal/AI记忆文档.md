@@ -73,6 +73,7 @@
 | `Widget.width(int)` 返回 `IPositioned` 而非 `W` | 不能在 `.width()` 后链式调用 `.background()`/`.color()` 等 Widget 方法 | 已规避：分步调用或先设 background 再 sizing |
 | `TextWidget.expanded()` 返回 `IPositioned` | 不能在 `.expanded()` 后继续链式调用 | 已规避：移除或分步 |
 | `ListWidget` sizing 方法返回 `IPositioned` | `.widthRel()`/`.expanded()` 后链断裂 | 已规避：raw type + 分步赋值 |
+| MUI2 两参数 `padding` / `margin` 顺序是水平、垂直 | 左右留白应写 `.padding(horizontal, 0)`；`.padding(0, horizontal)` 实际是上下留白 | 已记录：见 `docs/errors/ERROR-20260603-mui2-padding-argument-order.md` |
 | `Rectangle` 不支持圆角+边框并存 | 原 Qz UI 大量圆角+边框效果丢失 | 接受直角边框 |
 | MUI2 无内建密码掩码 | `TextFieldWidget` 无 password mode | 当前明文显示密码 |
 | SIZING TextWidget padding overflow | 见下方已知问题 | 待修复 |

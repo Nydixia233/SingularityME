@@ -351,7 +351,7 @@ public final class NetworkTerminalUI {
             list.background(IDrawable.NONE);
             list.disableHoverBackground();
             list.childSeparator(IIcon.EMPTY_2PX);
-            list.padding(0, Palette.LIST_CONTENT_INSET);
+            list.padding(Palette.LIST_CONTENT_INSET, 0);
             list.widthRel(1f);
             list.height(layout.railListH);
             for (final NetworkEntry entry : networks) {
@@ -388,7 +388,7 @@ public final class NetworkTerminalUI {
             nameWidget.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(4).widthRel(1f).height(Palette.RAIL_ROW_H).padding(0, Palette.NETWORK_ROW_INSET)
+                .childPadding(4).widthRel(1f).height(Palette.RAIL_ROW_H)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(NetworkUiKit.statusDotWidget(color))
                 .child(NetworkUiKit.idPill(entry.networkID))
@@ -397,6 +397,7 @@ public final class NetworkTerminalUI {
             final ButtonWidget<?> row = new ButtonWidget<>()
                 .child(rowContent)
                 .widthRel(1f).height(Palette.RAIL_ROW_H)
+                .padding(Palette.LIST_ROW_PADDING_H, 0)
                 .background(Styles.rowBg(bg))
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
@@ -618,7 +619,7 @@ public final class NetworkTerminalUI {
             list.background(Styles.listBg());
             list.disableHoverBackground();
             list.childSeparator(IIcon.EMPTY_2PX);
-            list.padding(0, Palette.LIST_CONTENT_INSET);
+            list.padding(Palette.LIST_CONTENT_INSET, 0);
             list.widthRel(1f);
             list.height(NetworkUiKit.selectionListHeight(layout.contentH));
             for (final NetworkEntry entry : networks) {
@@ -666,7 +667,7 @@ public final class NetworkTerminalUI {
             nameWidget.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.LIST_ROW_H).padding(0, Palette.NETWORK_ROW_INSET)
+                .childPadding(8).widthRel(1f).height(Palette.LIST_ROW_H)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(NetworkUiKit.statusDotWidget(c));
             if (entry.networkID != 0) {
@@ -682,6 +683,7 @@ public final class NetworkTerminalUI {
             final ButtonWidget<?> row = new ButtonWidget<>()
                 .child(rowContent)
                 .widthRel(1f).height(Palette.LIST_ROW_H)
+                .padding(Palette.LIST_ROW_PADDING_H, 0)
                 .background(Styles.rowBg(bg))
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
@@ -707,7 +709,7 @@ public final class NetworkTerminalUI {
             list.background(Styles.listBg());
             list.disableHoverBackground();
             list.childSeparator(IIcon.EMPTY_2PX);
-            list.padding(0, Palette.LIST_CONTENT_INSET);
+            list.padding(Palette.LIST_CONTENT_INSET, 0);
             list.widthRel(1f);
             list.height(layout.contentH);
             for (final DeviceInfo device : networkStatus.devices) {
@@ -724,7 +726,7 @@ public final class NetworkTerminalUI {
             type.expanded();
 
             final Flow row = Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.LIST_ROW_H).padding(0, Palette.NETWORK_ROW_INSET)
+                .childPadding(8).widthRel(1f).height(Palette.LIST_ROW_H).padding(Palette.LIST_ROW_PADDING_H, 0)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .background(Styles.rowBg(Palette.BG_ROW))
                 .disableHoverBackground()
@@ -750,7 +752,7 @@ public final class NetworkTerminalUI {
             list.background(Styles.listBg());
             list.disableHoverBackground();
             list.childSeparator(IIcon.EMPTY_2PX);
-            list.padding(0, Palette.LIST_CONTENT_INSET);
+            list.padding(Palette.LIST_CONTENT_INSET, 0);
             list.widthRel(1f);
             list.height(NetworkUiKit.memberListHeight(layout.contentH));
 
@@ -800,7 +802,7 @@ public final class NetworkTerminalUI {
             memberNameW.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.LIST_ROW_H).padding(0, Palette.NETWORK_ROW_INSET)
+                .childPadding(8).widthRel(1f).height(Palette.LIST_ROW_H)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(NetworkUiKit.badge(NetworkUiKit.roleName(role), rc))
                 .child(memberNameW)
@@ -809,6 +811,7 @@ public final class NetworkTerminalUI {
             final ButtonWidget<?> row = new ButtonWidget<>()
                 .child(rowContent)
                 .widthRel(1f).height(Palette.LIST_ROW_H)
+                .padding(Palette.LIST_ROW_PADDING_H, 0)
                 .background(Styles.rowBg(bg))
                 .disableHoverBackground();
             if (clickable) {

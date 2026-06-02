@@ -125,7 +125,8 @@ public final class NetworkUiKit {
         public static final int RAIL_ROW_H = 22;
         public static final int RAIL_ACTION_H = 24;
         public static final int LIST_ROW_GAP = 2;
-        public static final int NETWORK_ROW_INSET = 4;
+        public static final int LIST_ROW_PADDING_H = 4;
+        public static final int NETWORK_ROW_INSET = LIST_ROW_PADDING_H;
         public static final int LIST_CONTENT_INSET = 4;
         public static final int TERMINAL_RAIL_MIN_W = 96;
         public static final int TERMINAL_CONTENT_MIN_W = 160;
@@ -134,7 +135,6 @@ public final class NetworkUiKit {
         public static final int BADGE_H = 16;
         public static final int BADGE_MIN_W = 24;
         public static final int BADGE_PADDING_H = 4;
-        public static final int BADGE_MARGIN_H = 4;
         public static final int BORDER_RADIUS_PANEL = 6;
         public static final int BORDER_RADIUS_ROW = 4;
         public static final int BORDER_RADIUS_BADGE = 3;
@@ -799,8 +799,7 @@ public final class NetworkUiKit {
     public static Flow badge(final String text, final int bgColor) {
         return Flow.row()
             .width(badgeWidth(text)).height(Palette.BADGE_H)
-            .padding(0, Palette.BADGE_PADDING_H)
-            .margin(0, Palette.BADGE_MARGIN_H)
+            .padding(Palette.BADGE_PADDING_H, 0)
             .mainAxisAlignment(Alignment.MainAxis.CENTER)
             .background(new Rectangle().cornerRadius(Palette.BORDER_RADIUS_BADGE).color(bgColor))
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
@@ -836,8 +835,7 @@ public final class NetworkUiKit {
     public static Flow idPill(final int networkID) {
         return Flow.row()
             .width(idPillWidth(networkID)).height(Palette.ID_PILL_H)
-            .padding(0, Palette.BADGE_PADDING_H)
-            .margin(0, Palette.BADGE_MARGIN_H)
+            .padding(Palette.BADGE_PADDING_H, 0)
             .mainAxisAlignment(Alignment.MainAxis.CENTER)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(new Rectangle().cornerRadius(Palette.BORDER_RADIUS_BADGE).color(Palette.BG_ID_PILL))
