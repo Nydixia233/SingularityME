@@ -269,9 +269,10 @@ public class NetworkUiKitTest {
     @Test
     public void exposesCompactNetworkListMetrics() {
         assertEquals(6, Palette.STATUS_DOT_SIZE);
-        assertEquals(3, Palette.NETWORK_ROW_INSET);
+        assertEquals(4, Palette.NETWORK_ROW_INSET);
         assertEquals(4, Palette.LIST_CONTENT_INSET);
         assertEquals(4, Palette.BADGE_PADDING_H);
+        assertEquals(4, Palette.BADGE_MARGIN_H);
         assertEquals(32, Palette.ID_PILL_MIN_W);
         assertEquals(2, Palette.LIST_ROW_GAP);
     }
