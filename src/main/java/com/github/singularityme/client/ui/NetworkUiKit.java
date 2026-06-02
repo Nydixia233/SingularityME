@@ -210,9 +210,9 @@ public final class NetworkUiKit {
      * @return 面板宽度
      */
     public static int terminalPanelWidth(final int displayWidth, final int guiScale) {
-        final int scale = Math.max(1, guiScale);
+        final int scale = terminalReferenceScale(guiScale);
         final int viewportWidth = Math.round(displayWidth * Palette.TERMINAL_PANEL_VIEWPORT_W / scale);
-        return clampScaledPanelSize(viewportWidth, 480, Palette.TERMINAL_PANEL_MAX_W, scale, terminalMinimumWidth());
+        return Math.min(Palette.TERMINAL_PANEL_MAX_W, Math.max(480, viewportWidth));
     }
 
     /**
@@ -223,25 +223,42 @@ public final class NetworkUiKit {
      * @return 面板高度
      */
     public static int terminalPanelHeight(final int displayHeight, final int guiScale) {
-        final int scale = Math.max(1, guiScale);
+        final int scale = terminalReferenceScale(guiScale);
         final int viewportHeight = Math.round(displayHeight * Palette.TERMINAL_PANEL_VIEWPORT_H / scale);
-        return clampScaledPanelSize(viewportHeight, 316, Palette.TERMINAL_PANEL_MAX_H, scale, terminalMinimumHeight());
+        return Math.min(Palette.TERMINAL_PANEL_MAX_H, Math.max(316, viewportHeight));
     }
 
     /**
-     * 以 guiScale=2 的视觉尺寸为参考缩放最小/最大面板限制。
+     * 终端布局以 guiScale=2 为参考，超过 2 时只缩放视觉层，不重新压缩内部骨架。
      *
-     * <p>
-     * Minecraft 的 GUI 坐标会随 guiScale 放大成物理像素。若直接使用固定 GUI 坐标 min/max，
-     * guiScale=3/4 会把面板强行撑成过大的物理尺寸，因此这里把限制值按参考缩放折算。
-     * </p>
+     * @param guiScale Minecraft GUI 缩放值
+     * @return 逻辑布局计算使用的参考缩放
      */
-    private static int clampScaledPanelSize(final int target, final int baseMin, final int baseMax, final int guiScale,
-        final int absoluteMin) {
-        final float factor = 2.0f / Math.max(1, guiScale);
-        final int scaledMin = Math.max(absoluteMin, Math.min(baseMin, Math.max(1, Math.round(baseMin * factor))));
-        final int scaledMax = Math.min(baseMax, Math.max(scaledMin, Math.round(baseMax * factor)));
-        return Math.min(scaledMax, Math.max(scaledMin, target));
+    private static int terminalReferenceScale(final int guiScale) {
+        return Math.min(2, Math.max(1, guiScale));
+    }
+
+    /**
+     * 计算网络终端面板视觉缩放，保持 guiScale=3/4 与 guiScale=2 的物理像素观感一致。
+     *
+     * @param guiScale Minecraft GUI 缩放值
+     * @return 面板 transform 缩放比例
+     */
+    public static float terminalVisualScale(final int guiScale) {
+        final int scale = Math.max(1, guiScale);
+        if (scale <= 2) return 1.0f;
+        return 2.0f / scale;
+    }
+
+    /**
+     * 按终端视觉缩放折算尺寸，供需要手动折算的局部控件使用。
+     *
+     * @param value    guiScale=2 参考尺寸
+     * @param guiScale Minecraft GUI 缩放值
+     * @return 折算后的最小 1px 尺寸
+     */
+    public static int terminalScaledPx(final int value, final int guiScale) {
+        return Math.max(1, Math.round(value * terminalVisualScale(guiScale)));
     }
 
     /** 终端两栏布局的最小宽度，防止高 guiScale 下内容列被压出面板。 */
@@ -390,6 +407,18 @@ public final class NetworkUiKit {
      */
     public static TerminalLayout terminalLayout(final int panelW, final int panelH) {
         return new TerminalLayout(panelW, panelH);
+    }
+
+    /**
+     * 计算网络终端固定坐标布局；guiScale 由面板视觉缩放处理，内部骨架保持参考尺寸。
+     *
+     * @param panelW   面板宽度
+     * @param panelH   面板高度
+     * @param guiScale Minecraft GUI 缩放值
+     * @return 固定坐标布局指标
+     */
+    public static TerminalLayout terminalLayout(final int panelW, final int panelH, final int guiScale) {
+        return terminalLayout(panelW, panelH);
     }
 
     // ---- MUI2 样式工厂 ----

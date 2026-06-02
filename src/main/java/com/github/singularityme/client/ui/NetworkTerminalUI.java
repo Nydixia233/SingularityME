@@ -104,6 +104,22 @@ public final class NetworkTerminalUI {
 
     private enum Panel { HOME, CONNECTION, MEMBERS, SETTINGS, CREATE }
 
+    /** 以 guiScale=2 为参考整体缩放终端面板，避免高 GUI 缩放下内部控件比例变胖。 */
+    private static final class ReferenceScaledPanel extends ModularPanel {
+
+        private final float visualScale;
+
+        ReferenceScaledPanel(final String name, final float visualScale) {
+            super(name);
+            this.visualScale = visualScale;
+        }
+
+        @Override
+        public float getScale() {
+            return this.visualScale * super.getScale();
+        }
+    }
+
     private static final class TerminalState {
         final int x, y, z, dim;
         final List<NetworkEntry> networks = new ArrayList<>();
@@ -152,12 +168,13 @@ public final class NetworkTerminalUI {
             final int guiScale = Math.max(1, scaled.getScaleFactor());
             final int panelW = NetworkUiKit.terminalPanelWidth(mc.displayWidth, guiScale);
             final int panelH = NetworkUiKit.terminalPanelHeight(mc.displayHeight, guiScale);
+            final float visualScale = NetworkUiKit.terminalVisualScale(guiScale);
 
-            panel = new ModularPanel("network_terminal")
+            panel = new ReferenceScaledPanel("network_terminal", visualScale)
                 .size(panelW, panelH)
                 .background(new ShadowDrawable(Styles.panelBg(), 6, 0x80000000));
 
-            layout = NetworkUiKit.terminalLayout(panelW, panelH);
+            layout = NetworkUiKit.terminalLayout(panelW, panelH, guiScale);
 
             // 导航栏
             navBar = Flow.row();

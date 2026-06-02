@@ -68,10 +68,23 @@ public class NetworkUiKitTest {
         assertEquals(700, NetworkUiKit.terminalPanelHeight(1440, 1));
         assertEquals(594, NetworkUiKit.terminalPanelWidth(2048, 2));
         assertEquals(359, NetworkUiKit.terminalPanelHeight(1088, 2));
-        assertEquals(396, NetworkUiKit.terminalPanelWidth(2048, 3));
-        assertEquals(239, NetworkUiKit.terminalPanelHeight(1088, 3));
+        assertEquals(594, NetworkUiKit.terminalPanelWidth(2048, 3));
+        assertEquals(359, NetworkUiKit.terminalPanelHeight(1088, 3));
+        assertEquals(594, NetworkUiKit.terminalPanelWidth(2048, 4));
+        assertEquals(359, NetworkUiKit.terminalPanelHeight(1088, 4));
         assertEquals(480, NetworkUiKit.terminalPanelWidth(800, 1));
         assertEquals(317, NetworkUiKit.terminalPanelHeight(480, 1));
+    }
+
+    /** 终端内部控件以 guiScale=2 为参考；更高缩放需要缩小 GUI 坐标尺寸，保持物理像素观感一致。 */
+    @Test
+    public void computesTerminalVisualScale() {
+        assertEquals(1.0f, NetworkUiKit.terminalVisualScale(1), 0.001f);
+        assertEquals(1.0f, NetworkUiKit.terminalVisualScale(2), 0.001f);
+        assertEquals(2.0f / 3.0f, NetworkUiKit.terminalVisualScale(3), 0.001f);
+        assertEquals(0.5f, NetworkUiKit.terminalVisualScale(4), 0.001f);
+        assertEquals(20, NetworkUiKit.terminalScaledPx(30, 3));
+        assertEquals(15, NetworkUiKit.terminalScaledPx(30, 4));
     }
 
     /** 网络终端使用固定坐标骨架，避免顶层 Flow 相对布局在游戏内溢出或拉伸。 */
@@ -103,15 +116,20 @@ public class NetworkUiKitTest {
     /** 高 GUI 缩放下不使用固定 GUI 坐标最小宽高硬撑面板，避免 guiScale=3/4 下整体变胖。 */
     @Test
     public void keepsTerminalLayoutBoundedAtHighGuiScale() {
-        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(396, 239);
+        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(
+            NetworkUiKit.terminalPanelWidth(2048, 3),
+            NetworkUiKit.terminalPanelHeight(1088, 3),
+            3);
 
-        assertEquals(96, layout.railW);
-        assertEquals(128, layout.contentX);
-        assertEquals(248, layout.contentW);
-        assertEquals(107, layout.contentH);
-        assertEquals(63, layout.railListH);
+        assertEquals(8, layout.navX);
+        assertEquals(30, layout.navH);
+        assertEquals(136, layout.railW);
+        assertEquals(168, layout.contentX);
+        assertEquals(406, layout.contentW);
+        assertEquals(227, layout.contentH);
+        assertEquals(183, layout.railListH);
         assertTrue(layout.contentY + layout.contentH < layout.bottomY);
-        assertTrue(layout.railListH >= 56);
+        assertTrue(layout.railListH >= 72);
     }
 
     /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
