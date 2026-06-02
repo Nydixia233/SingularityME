@@ -153,6 +153,7 @@ gui.singularityme.network_terminal.panel.settings=设置
 gui.singularityme.network_terminal.panel.health=健康
 gui.singularityme.network_terminal.panel.create=创建
 gui.singularityme.network_terminal.no_network_selected=未选择网络
+gui.singularityme.network_terminal.badge.default=默认
 gui.singularityme.network_terminal.sort_by=排序: %s
 gui.singularityme.network_terminal.total=总计: %s
 gui.singularityme.network_terminal.field.name=名称
@@ -164,6 +165,7 @@ gui.singularityme.network_terminal.selection.set_default=设为默认
 gui.singularityme.network_terminal.selection.clear_default=清除默认
 gui.singularityme.network_terminal.selection.filter=过滤
 gui.singularityme.network_terminal.confirm.delete_body=删除网络“%s”？
+gui.singularityme.network_terminal.confirm.delete_warning=此操作不可撤销
 gui.singularityme.network_terminal.confirm.yes=确认
 gui.singularityme.network_terminal.confirm.cancel=取消
 gui.singularityme.network_terminal.action.add=添加
@@ -189,14 +191,15 @@ gui.singularityme.network_terminal.info.blocked=已拉黑
 gui.singularityme.network_terminal.info.default=默认
 gui.singularityme.network_terminal.yes=是
 gui.singularityme.network_terminal.no=否
+gui.singularityme.network_terminal.security.public=公开
+gui.singularityme.network_terminal.security.encrypted=加密
+gui.singularityme.network_terminal.security.private=私有
 
 # Network Terminal — Settings
 gui.singularityme.network_terminal.settings.name=名称
 gui.singularityme.network_terminal.settings.password=密码
 gui.singularityme.network_terminal.settings.security=安全级别
 gui.singularityme.network_terminal.settings.color=颜色
-gui.singularityme.network_terminal.settings.cycle_security=切换安全级别
-gui.singularityme.network_terminal.settings.cycle_color=切换颜色
 gui.singularityme.network_terminal.settings.apply=应用
 gui.singularityme.network_terminal.settings.delete=删除
 
@@ -205,6 +208,7 @@ gui.singularityme.network_terminal.members.add=添加
 gui.singularityme.network_terminal.members.promote=提升
 gui.singularityme.network_terminal.members.demote=降级
 gui.singularityme.network_terminal.members.remove=移除
+gui.singularityme.network_terminal.members.empty=暂无其他成员
 
 # Network Terminal — Create
 gui.singularityme.network_terminal.create.name=名称

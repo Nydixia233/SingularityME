@@ -15,6 +15,7 @@ import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
+import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 /**
@@ -138,6 +139,26 @@ public final class NetworkUiKit {
         final int g = (int) (((color >> 8) & 0xFF) + (255 - ((color >> 8) & 0xFF)) * clamped);
         final int b = (int) ((color & 0xFF) + (255 - (color & 0xFF)) * clamped);
         return 0xFF000000 | r << 16 | g << 8 | b;
+    }
+
+    /**
+     * 列表选中态使用低饱和强调色，避免整行高亮过亮。
+     *
+     * @param color ARGB 或 RGB 颜色值
+     * @return 适合整行背景的 ARGB 颜色
+     */
+    public static int selectedRowColor(final int color) {
+        return darken(0xFF000000 | color, 0.32f);
+    }
+
+    /**
+     * 将颜色格式化为 6 位大写 RGB 文本。
+     *
+     * @param color ARGB 或 RGB 颜色值
+     * @return 6 位 RGB 十六进制字符串
+     */
+    public static String rgbHex(final int color) {
+        return String.format("%06X", color & 0xFFFFFF);
     }
 
     // ---- MUI2 样式工厂 ----
@@ -479,10 +500,23 @@ public final class NetworkUiKit {
 
     /** 构建默认网络标记 "D"。 */
     public static Flow defaultBadge() {
-        return badge("D", Palette.BADGE_DEFAULT);
+        return badge(defaultBadgeText(), Palette.BADGE_DEFAULT);
+    }
+
+    /** 返回默认网络徽章文本。 */
+    public static String defaultBadgeText() {
+        return tr("gui.singularityme.network_terminal.badge.default");
     }
 
     // ---- 布局辅助组件（对齐 HTML 参考样式）----
+
+    /** 构建小型状态圆点组件，用于替代语义不明的方块。 */
+    @SuppressWarnings("unchecked")
+    public static Flow statusDotWidget(final int color) {
+        return Flow.row()
+            .width(10).height(10)
+            .background(Styles.statusDot(0xFF000000 | color));
+    }
 
     /**
      * 构建选中摘要栏（对应 HTML .selection-summary）。
@@ -519,7 +553,9 @@ public final class NetworkUiKit {
             .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 10)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .background(Styles.rowBg(Palette.BG_ROW));
-        row.child(new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL));
+        final TextWidget labelWidget = new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL);
+        labelWidget.width(92);
+        row.child(labelWidget);
         final TextWidget val = new TextWidget(IKey.str(value)).color(valueColor);
         val.expanded();
         row.child(val);
@@ -534,9 +570,63 @@ public final class NetworkUiKit {
         final Flow row = Flow.row()
             .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER);
-        row.child(new TextWidget(IKey.str(label)).color(Palette.TEXT_LABEL));
+        final TextWidget labelWidget = new TextWidget(IKey.str(label)).color(Palette.TEXT_LABEL);
+        labelWidget.width(76);
+        row.child(labelWidget);
         row.child(input);
         return row;
+    }
+
+    /** 构建颜色只读字段，显示状态圆点和 #RRGGBB。 */
+    @SuppressWarnings("unchecked")
+    public static Flow colorReadonly(final int color) {
+        return Flow.row()
+            .childPadding(6).height(Palette.ROW_H).expanded()
+            .padding(0, 8)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .background(Styles.inputBg())
+            .child(statusDotWidget(color))
+            .child(new TextWidget(IKey.str("#" + rgbHex(color))).color(0xFF000000 | color));
+    }
+
+    /** 构建安全级别分段控件。 */
+    @SuppressWarnings("unchecked")
+    public static Flow securitySegmentRow(final SecurityLevel selected,
+        final Consumer<SecurityLevel> onSelect) {
+        final Flow row = Flow.row()
+            .childPadding(4).height(Palette.ROW_H).expanded()
+            .padding(3, 4)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .background(Styles.inputBg());
+        for (final SecurityLevel level : SecurityLevel.values()) {
+            row.child(securitySegment(selected, level, () -> onSelect.accept(level)));
+        }
+        return row;
+    }
+
+    /** 构建单个安全级别分段按钮。 */
+    public static ButtonWidget<?> securitySegment(final SecurityLevel selected, final SecurityLevel option,
+        final Runnable action) {
+        final boolean active = selected == option;
+        final ButtonWidget<?> button = new ButtonWidget<>()
+            .overlay(IKey.str(securityChoiceName(option)))
+            .width(62).height(Palette.ID_PILL_H)
+            .background(active ? Styles.rowBg(securityColor(option)) : IDrawable.NONE)
+            .disableHoverBackground()
+            .onMousePressed(mb -> {
+                action.run();
+                return true;
+            });
+        return button;
+    }
+
+    /** 返回表单分段控件中的安全级别名称。 */
+    public static String securityChoiceName(final SecurityLevel security) {
+        return switch (security) {
+            case PUBLIC -> tr("gui.singularityme.network_terminal.security.public");
+            case ENCRYPTED -> tr("gui.singularityme.network_terminal.security.encrypted");
+            case PRIVATE -> tr("gui.singularityme.network_terminal.security.private");
+        };
     }
 
     /**
@@ -554,7 +644,7 @@ public final class NetworkUiKit {
             final int swatchSize = selected ? 26 : 22;
             row.child(new ButtonWidget<>()
                 .width(swatchSize).height(swatchSize)
-                .background(selected ? Styles.rowBg(color) : Styles.swatch(color))
+                .background(selected ? Styles.rowBg(lighten(color, 0.18f)) : Styles.swatch(color))
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
                     onSelect.accept(color & 0xFFFFFF);

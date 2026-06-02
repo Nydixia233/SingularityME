@@ -72,6 +72,7 @@ gui.singularityme.network_terminal.panel.settings=Settings
 gui.singularityme.network_terminal.panel.health=Health
 gui.singularityme.network_terminal.panel.create=Create
 gui.singularityme.network_terminal.no_network_selected=No network selected
+gui.singularityme.network_terminal.badge.default=Default
 gui.singularityme.network_terminal.sort_by=Sort by: %s
 gui.singularityme.network_terminal.total=Total: %s
 gui.singularityme.network_terminal.field.name=Name
@@ -83,6 +84,7 @@ gui.singularityme.network_terminal.selection.set_default=Set Default
 gui.singularityme.network_terminal.selection.clear_default=Clear Default
 gui.singularityme.network_terminal.selection.filter=Filter
 gui.singularityme.network_terminal.confirm.delete_body=Delete network "%s"?
+gui.singularityme.network_terminal.confirm.delete_warning=This cannot be undone
 gui.singularityme.network_terminal.confirm.yes=Confirm
 gui.singularityme.network_terminal.confirm.cancel=Cancel
 gui.singularityme.network_terminal.action.add=Add
@@ -108,14 +110,15 @@ gui.singularityme.network_terminal.info.blocked=Blocked
 gui.singularityme.network_terminal.info.default=Default
 gui.singularityme.network_terminal.yes=Yes
 gui.singularityme.network_terminal.no=No
+gui.singularityme.network_terminal.security.public=Public
+gui.singularityme.network_terminal.security.encrypted=Encrypted
+gui.singularityme.network_terminal.security.private=Private
 
 # Network Terminal — Settings
 gui.singularityme.network_terminal.settings.name=Name
 gui.singularityme.network_terminal.settings.password=Password
 gui.singularityme.network_terminal.settings.security=Security
 gui.singularityme.network_terminal.settings.color=Color
-gui.singularityme.network_terminal.settings.cycle_security=Cycle Security
-gui.singularityme.network_terminal.settings.cycle_color=Cycle Color
 gui.singularityme.network_terminal.settings.apply=Apply
 gui.singularityme.network_terminal.settings.delete=Delete
 
@@ -124,6 +127,7 @@ gui.singularityme.network_terminal.members.add=Add
 gui.singularityme.network_terminal.members.promote=Promote
 gui.singularityme.network_terminal.members.demote=Demote
 gui.singularityme.network_terminal.members.remove=Remove
+gui.singularityme.network_terminal.members.empty=No other members
 
 # Network Terminal — Create
 gui.singularityme.network_terminal.create.name=Name

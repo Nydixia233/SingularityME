@@ -213,7 +213,7 @@ public final class NetworkTerminalUI {
             return new ButtonWidget<>()
                 .overlay(IKey.str(text))
                 .height(30).padding(0, 10)
-                .background(active ? Styles.rowBg(Palette.BTN_ACTIVE) : IDrawable.NONE)
+                .background(active ? Styles.rowBg(Palette.BG_ROW) : IDrawable.NONE)
                 .disableHoverBackground()
                 .onMousePressed(mb -> { action.run(); return true; });
         }
@@ -248,10 +248,11 @@ public final class NetworkTerminalUI {
             final NetworkEntry sel = selectedEntry();
             if (sel != null) {
                 final int c = NetworkUiKit.entryColor(sel);
-                networkBar.child(new TextWidget(IKey.str("\u25A0")).color(c));
+                networkBar.child(NetworkUiKit.statusDotWidget(c));
                 networkBar.child(new TextWidget(IKey.str(sel.name)).color(c));
-                networkBar.child(new TextWidget(IKey.str(sel.networkID == 0 ? "-" : "#" + sel.networkID))
-                    .color(Palette.TEXT_MUTED));
+                if (sel.networkID != 0) {
+                    networkBar.child(NetworkUiKit.idPill(sel.networkID));
+                }
                 if (sel.networkID != 0 && sel.networkID == defaultNetworkID) {
                     networkBar.child(NetworkUiKit.defaultBadge());
                 }
@@ -266,38 +267,45 @@ public final class NetworkTerminalUI {
             final NetworkEntry sel = selectedEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
 
-            final Flow info = Flow.column().childPadding(4).widthRel(1f).coverChildrenHeight().padding(0, 12);
-            info.child(infoRow("ID", "#" + sel.networkID));
-            info.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
-            info.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
-            info.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.security"),
+            final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight().padding(0, 12);
+            final Flow lineA = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
+            lineA.child(infoRow("ID", "#" + sel.networkID));
+            lineA.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
+            rows.child(lineA);
+
+            final Flow lineB = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
+            lineB.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
+            lineB.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.security"),
                 NetworkUiKit.securityName(sel)));
-            info.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
+            rows.child(lineB);
+
+            final Flow lineC = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
+            lineC.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
                 NetworkUiKit.accessName(sel)));
-            info.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.created"),
-                formatTimestamp(sel.createdAtMillis)));
-            info.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.modified"),
-                formatTimestamp(sel.lastModifiedMillis)));
-            contentArea.child(info);
+            lineC.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.members"),
+                String.valueOf(sel.adminPlayerIDs.size() + sel.memberPlayerIDs.size() + 1)));
+            rows.child(lineC);
 
             if (networkStatus == null) {
-                contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading")));
-                return;
+                rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading"), "-"));
+            } else {
+                final int devices = networkStatus.devices.size();
+                final int online = countLoadedDevices();
+                final Flow lineD = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
+                lineD.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.devices"),
+                    devices + " / " + online));
+                lineD.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"),
+                    formatEnergy(networkStatus.currentPower, networkStatus.maxPower)));
+                rows.child(lineD);
             }
 
-            final int devices = networkStatus.devices.size();
-            final int online = countLoadedDevices();
-            final int members = sel.adminPlayerIDs.size() + sel.memberPlayerIDs.size() + 1;
-            final Flow summary = Flow.column().childPadding(4).widthRel(1f).coverChildrenHeight().padding(0, 12);
-            summary.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.devices"),
-                String.valueOf(devices)));
-            summary.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.online"),
-                String.valueOf(online)));
-            summary.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"),
-                formatEnergy(networkStatus.currentPower, networkStatus.maxPower)));
-            summary.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.members"),
-                String.valueOf(members)));
-            contentArea.child(summary);
+            final Flow lineE = Flow.row().childPadding(4).widthRel(1f).height(Palette.ROW_H);
+            lineE.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.created"),
+                formatTimestamp(sel.createdAtMillis)));
+            lineE.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.modified"),
+                formatTimestamp(sel.lastModifiedMillis)));
+            rows.child(lineE);
+            contentArea.child(rows);
         }
 
         // ---- SELECTION ----
@@ -365,7 +373,7 @@ public final class NetworkTerminalUI {
             final boolean sel = entry.networkID == selectedNetworkID;
             final boolean def = entry.networkID != 0 && entry.networkID == defaultNetworkID;
             final int c = NetworkUiKit.entryColor(entry);
-            final int bg = sel ? NetworkUiKit.darken(c, 0.32f) : Palette.BG_ROW;
+            final int bg = sel ? NetworkUiKit.selectedRowColor(c) : Palette.BG_ROW;
             final String name = entry.networkID == 0
                 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : entry.name;
 
@@ -376,7 +384,7 @@ public final class NetworkTerminalUI {
             final Flow rowContent = Flow.row()
                 .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str("\u25A0")).color(c));
+                .child(NetworkUiKit.statusDotWidget(c));
             if (entry.networkID != 0) {
                 rowContent.child(NetworkUiKit.idPill(entry.networkID));
             } else {
@@ -472,6 +480,9 @@ public final class NetworkTerminalUI {
                 list.child(buildMemberRow(sel.blockedPlayerIDs.get(i),
                     i < sel.blockedNames.size() ? sel.blockedNames.get(i) : "#" + sel.blockedPlayerIDs.get(i),
                     AccessLevel.BLOCKED, true));
+            if (sel.adminPlayerIDs.isEmpty() && sel.memberPlayerIDs.isEmpty() && sel.blockedPlayerIDs.isEmpty()) {
+                list.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.members.empty")));
+            }
             contentArea.child(list);
 
             contentArea.child(Flow.row()
@@ -505,7 +516,8 @@ public final class NetworkTerminalUI {
                 .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 8)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(NetworkUiKit.badge(NetworkUiKit.roleName(role), rc))
-                .child(memberNameW);
+                .child(memberNameW)
+                .child(NetworkUiKit.idPill(pid));
 
             final ButtonWidget<?> row = new ButtonWidget<>()
                 .child(rowContent)
@@ -560,20 +572,17 @@ public final class NetworkTerminalUI {
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.security"),
-                new TextWidget(IKey.str(NetworkUiKit.securityName(selectedSecurity)))
-                    .color(Palette.TEXT_PRIMARY)));
+                NetworkUiKit.securitySegmentRow(selectedSecurity, level -> {
+                    selectedSecurity = level;
+                    renderContent();
+                })));
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.color"),
-                new TextWidget(IKey.str("\u25A0 #" + String.format("%06X", selectedColor)))
-                    .color(0xFF000000 | selectedColor)));
+                NetworkUiKit.colorReadonly(selectedColor)));
             contentArea.child(colorSwatchRow());
 
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
-                .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_security"),
-                    120, this::cycleSecurity))
-                .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_color"),
-                    120, this::cycleColor))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.apply"),
                     140, this::applySettings)));
 
@@ -582,23 +591,6 @@ public final class NetworkTerminalUI {
                     .child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.delete"),
                         140, () -> showDeleteConfirm(sel))));
             }
-        }
-
-        void cycleSecurity() {
-            final SecurityLevel[] vals = SecurityLevel.values();
-            selectedSecurity = vals[(selectedSecurity.ordinal() + 1) % vals.length];
-            renderContent();
-        }
-
-        /** GTNH 网络 8 色调色板循环 */
-        void cycleColor() {
-            int idx = -1;
-            for (int i = 0; i < COLOR_PRESETS.length; i++) {
-                if ((COLOR_PRESETS[i] & 0xFFFFFF) == (selectedColor & 0xFFFFFF)) { idx = i; break; }
-            }
-            // 自定义颜色不在预设表中时，从第一个预设重新开始循环。
-            selectedColor = COLOR_PRESETS[(idx + 1) % COLOR_PRESETS.length];
-            renderContent();
         }
 
         void applySettings() {
@@ -747,6 +739,9 @@ public final class NetworkTerminalUI {
             bottomArea.child(statusText(
                 NetworkUiKit.trf("gui.singularityme.network_terminal.confirm.delete_body", entry.name),
                 Palette.BTN_DANGER_NORMAL));
+            bottomArea.child(statusText(
+                NetworkUiKit.tr("gui.singularityme.network_terminal.confirm.delete_warning"),
+                Palette.TEXT_MUTED));
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.confirm.yes"),
                     140, () -> {
@@ -779,20 +774,17 @@ public final class NetworkTerminalUI {
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.security"),
-                new TextWidget(IKey.str(NetworkUiKit.securityName(selectedSecurity)))
-                    .color(Palette.TEXT_PRIMARY)));
+                NetworkUiKit.securitySegmentRow(selectedSecurity, level -> {
+                    selectedSecurity = level;
+                    renderContent();
+                })));
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.color"),
-                new TextWidget(IKey.str("\u25A0 #" + String.format("%06X", selectedColor)))
-                    .color(0xFF000000 | selectedColor)));
+                NetworkUiKit.colorReadonly(selectedColor)));
             contentArea.child(colorSwatchRow());
 
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
-                .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_security"),
-                    120, this::cycleSecurity))
-                .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.cycle_color"),
-                    120, this::cycleColor))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.create.confirm"),
                     140, this::confirmCreate)));
         }

@@ -102,16 +102,30 @@ body {
 
 /* 色块 (colorSwatch) */
 .swatch {
-  width: 14px;
-  height: 14px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   border: 1px solid var(--border-swatch);
   border-radius: var(--radius-swatch);
   cursor: pointer;
   transition: transform 0.15s;
 }
-.swatch:hover { transform: scale(1.25); }
-.swatch.selected { width: 18px; height: 18px; }
+.swatch:hover { transform: scale(1.08); }
+.swatch.selected {
+  width: 26px;
+  height: 26px;
+  outline: 2px solid var(--text-primary);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.25);
+}
+
+/* 状态圆点 (statusDotWidget) */
+.status-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
 
 /* 徽章 (badge) */
 .badge {

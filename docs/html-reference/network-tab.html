@@ -332,11 +332,11 @@ function renderList() {
       row.appendChild(star);
     }
 
-    // 默认网络标记 D
+    // 默认网络标记
     if (isDefault) {
       const d = document.createElement('span');
       d.className = 'badge';
-      d.textContent = 'D';
+      d.textContent = '默认';
       d.style.backgroundColor = 'var(--badge-default)';
       row.appendChild(d);
     }

@@ -48,7 +48,11 @@
     white-space: nowrap;
   }
   .nav-btn:hover { background: rgba(255,255,255,0.05); }
-  .nav-btn.active { background: var(--btn-active); color: var(--text-primary); }
+  .nav-btn.active {
+    background: var(--bg-row);
+    color: var(--text-primary);
+    box-shadow: inset 0 -2px 0 var(--btn-normal);
+  }
 
   /* ── 内容区 ── */
   .content {
@@ -109,6 +113,9 @@
   }
   .network-row:not(:last-child) { border-bottom: none; }
   .network-row:hover { filter: brightness(1.1); }
+  .network-row.selected {
+    box-shadow: inset 3px 0 0 currentColor;
+  }
   .network-row .name {
     flex: 1; min-width: 0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -158,11 +165,35 @@
   .field-row .readonly-field {
     flex: 1; min-width: 0;
   }
+  .security-segments {
+    flex: 1; min-width: 0;
+    height: var(--row-h);
+    display: flex; align-items: center;
+    gap: 4px;
+    padding: 3px 4px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-input);
+    border-radius: var(--radius-row);
+  }
+  .security-segment {
+    min-width: 62px;
+    height: var(--id-pill-h);
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-badge);
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .security-segment.active {
+    color: var(--text-badge);
+    background: var(--security-private);
+  }
 
   /* ── 颜色调色板 ── */
   .color-palette {
     display: flex; flex-wrap: wrap;
     gap: var(--gap-sm);
+    padding-left: 92px;
   }
 
   /* ── 预览条 ── */
@@ -196,6 +227,11 @@
     flex: 1; min-width: 0;
     color: var(--text-secondary);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .home-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 0 var(--pad-lg) var(--gap-lg);
   }
 
   /* ── 空状态 ── */
@@ -272,16 +308,13 @@ const ACCESS = {
 };
 
 // ── 面板枚举 ──
-const PANEL = { SELECTION:"SELECTION", MEMBERS:"MEMBERS", SETTINGS:"SETTINGS", INFO:"INFO", CREATE:"CREATE" };
+const PANEL = { HOME:"HOME", SELECTION:"SELECTION", MEMBERS:"MEMBERS", SETTINGS:"SETTINGS", CREATE:"CREATE" };
 const PANEL_LABELS = {
-  SELECTION: "网络选择", MEMBERS: "成员管理", SETTINGS: "网络设置", INFO: "网络信息", CREATE: "创建网络"
-};
-const PANEL_ICONS = {
-  SELECTION: "🧭", MEMBERS: "🏷️", SETTINGS: "⚙️", INFO: "📄", CREATE: "✨"
+  HOME: "主页", SELECTION: "选择", MEMBERS: "成员", SETTINGS: "设置", CREATE: "创建"
 };
 
 // ── 状态 ──
-let panel = PANEL.SELECTION;
+let panel = PANEL.HOME;
 let selectedNetworkID = 1;
 let selectedMemberID = -1;
 let selectedColor = 0x4A90E2;
@@ -301,8 +334,11 @@ const roleColor = r => ACCESS[r]?.color || 'var(--access-none)';
 const entry = () => MOCK_NETWORKS.find(e => e.networkID === selectedNetworkID);
 
 function buildColorSwatch(color, selected, size) {
-  const s = selected ? (size||18) : (size||14);
+  const s = selected ? (size||26) : (size||22);
   return `<span class="swatch${selected?' selected':''}" style="background:#${(color&0xFFFFFF).toString(16).padStart(6,'0')};width:${s}px;height:${s}px;"></span>`;
+}
+function buildStatusDot(color) {
+  return `<span class="status-dot" style="background:#${(color&0xFFFFFF).toString(16).padStart(6,'0')};"></span>`;
 }
 function buildBadge(text, bgColor) {
   return `<span class="badge" style="background:${bgColor};">${text}</span>`;
@@ -324,20 +360,20 @@ function render() {
   bar.innerHTML = `
     <span class="bar-title">${PANEL_LABELS[panel]}</span>
     ${sel ? `
-      ${buildColorSwatch(sel.color, false, 10)}
+      ${buildStatusDot(sel.color)}
       <span class="bar-name" style="color:${entryColor(sel)};">${sel.name}</span>
       ${buildIdPill(sel.networkID)}
-      ${sel.networkID === DEFAULT_NETWORK_ID ? buildBadge('D', 'var(--badge-default)') : ''}
+      ${sel.networkID === DEFAULT_NETWORK_ID ? buildBadge('默认', 'var(--badge-default)') : ''}
     ` : ''}
   `;
   content.appendChild(bar);
 
   // 按面板渲染
   switch (panel) {
+    case PANEL.HOME:      renderHome(content); break;
     case PANEL.SELECTION: renderSelection(content); break;
     case PANEL.MEMBERS:   renderMembers(content); break;
     case PANEL.SETTINGS:  renderSettings(content); break;
-    case PANEL.INFO:      renderInfo(content); break;
     case PANEL.CREATE:    renderCreate(content); break;
   }
 }
@@ -348,7 +384,7 @@ function renderNav() {
   nav.innerHTML = Object.entries(PANEL).map(([key, val]) => {
     const active = panel === val;
     return `<button class="nav-btn${active?' active':''}" data-panel="${val}">
-      ${PANEL_ICONS[val]} ${PANEL_LABELS[val]}
+      ${PANEL_LABELS[val]}
     </button>`;
   }).join('');
 
@@ -358,6 +394,29 @@ function renderNav() {
       render();
     });
   });
+}
+
+// ── 主页面板 ──
+function renderHome(content) {
+  const sel = entry();
+  if (!sel) { content.innerHTML += '<div class="empty-state">请先选择一个网络</div>'; return; }
+
+  const totalMembers = sel.adminPlayerIDs.length + sel.memberPlayerIDs.length + 1;
+  const grid = document.createElement('div');
+  grid.className = 'home-grid';
+  grid.innerHTML = `
+    ${buildInfoLine('ID', '#' + sel.networkID)}
+    ${buildInfoLine('名称', sel.name)}
+    ${buildInfoLine('拥有者', sel.ownerName)}
+    ${buildInfoLine('安全', secInfo(sel).name)}
+    ${buildInfoLine('权限', accInfo(sel).name)}
+    ${buildInfoLine('成员', String(totalMembers))}
+    ${buildInfoLine('设备', '14 / 12')}
+    ${buildInfoLine('能量', '120000 / 300000 AE')}
+    ${buildInfoLine('创建时间', '2026-06-02 12:00:00')}
+    ${buildInfoLine('修改时间', '2026-06-02 12:30:00')}
+  `;
+  content.appendChild(grid);
 }
 
 // ── 网络选择面板 ──
@@ -376,14 +435,14 @@ function renderSelection(content) {
   listInner.innerHTML = MOCK_NETWORKS.map(e => {
     const sel = e.networkID === selectedNetworkID;
     const color = entryColor(e);
-    return `<div class="network-row" data-nid="${e.networkID}"
-      style="background:${sel?darken(color,0.32):'var(--bg-row)'};border-color:${sel?color:'var(--border-row)'};">
-      ${buildColorSwatch(e.color, false)}
+    return `<div class="network-row${sel?' selected':''}" data-nid="${e.networkID}"
+      style="background:${sel?darken(color,0.32):'var(--bg-row)'};border-color:var(--border-row);color:${sel?color:'var(--border-row)'};">
+      ${buildStatusDot(e.color)}
       ${buildIdPill(e.networkID)}
       <span class="name" style="color:${sel?'#FFF':'var(--text-secondary)'};">${e.name}</span>
       ${buildBadge(secInfo(e).short, secInfo(e).color)}
       ${buildBadge(accInfo(e).short, accInfo(e).color)}
-      ${e.networkID===DEFAULT_NETWORK_ID?buildBadge('D','var(--badge-default)'):''}
+      ${e.networkID===DEFAULT_NETWORK_ID?buildBadge('默认','var(--badge-default)'):''}
     </div>`;
   }).join('');
   scroll.appendChild(listInner);
@@ -450,6 +509,7 @@ function renderMembers(content) {
       style="background:${sel2?darken(rc,0.25):'var(--bg-row)'};border-color:${sel2?rc:'var(--border-row)'};cursor:${role==='OWNER'?'default':'pointer'};">
       ${buildBadge(ACCESS[role]?.roleName||role, rc)}
       <span class="name" style="color:var(--text-primary);">${name}</span>
+      ${buildIdPill(pid)}
     </div>`;
   };
 
@@ -458,6 +518,9 @@ function renderMembers(content) {
   sel.adminPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.adminNames[i]||('#'+pid), 'ADMIN'));
   sel.memberPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.memberNames[i]||('#'+pid), 'MEMBER'));
   sel.blockedPlayerIDs.forEach((pid,i) => rows += buildMemberRow(pid, sel.blockedNames[i]||('#'+pid), 'BLOCKED'));
+  if (!sel.adminPlayerIDs.length && !sel.memberPlayerIDs.length && !sel.blockedPlayerIDs.length) {
+    rows += `<div class="network-row" style="justify-content:center;color:var(--text-empty);">暂无其他成员</div>`;
+  }
   listInner.innerHTML = rows;
   scroll.appendChild(listInner);
   content.appendChild(scroll);
@@ -527,16 +590,18 @@ function renderSettings(content) {
         <span class="field-label">名称</span>
         <input type="text" id="settingsNameInput" value="${sel.name}" maxlength="64">
       </div>
-      ${selectedSecurity === 'ENCRYPTED' ? `
       <div class="field-row">
         <span class="field-label">密码</span>
         <input type="password" id="settingsPasswordInput" placeholder="新密码 (留空不变)" maxlength="64">
-      </div>` : ''}
+      </div>
       <div class="field-row">
         <span class="field-label">安全级别</span>
-        <div class="readonly-field">${secName(selectedSecurity)}</div>
+        ${buildSecuritySegments()}
       </div>
-      <div style="color:var(--text-label);font-weight:700;">颜色</div>
+      <div class="field-row">
+        <span class="field-label">颜色</span>
+        <div class="readonly-field">${buildStatusDot(selectedColor)} #${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0').toUpperCase()}</div>
+      </div>
       <div class="color-palette" id="colorPaletteSettings">
         ${PALETTE_COLORS.map(c => {
           const sel2 = (c & 0xFFFFFF) === (selectedColor & 0xFFFFFF);
@@ -564,18 +629,12 @@ function renderSettings(content) {
   const actions = document.createElement('div');
   actions.className = 'actions';
   actions.innerHTML = `
-    <button class="btn btn-xs" id="cycleSecurityBtn">切换安全级别</button>
     <button class="btn btn-xs" id="applySettingsBtn">应用设置</button>
     ${sel.isOwner ? '<button class="btn btn-xs btn-danger" id="deleteNetworkBtn">删除网络</button>' : ''}
   `;
   content.appendChild(actions);
 
-  document.getElementById('cycleSecurityBtn').addEventListener('click', () => {
-    const vals = Object.keys(SECURITY);
-    const idx = vals.indexOf(selectedSecurity);
-    selectedSecurity = vals[(idx + 1) % vals.length];
-    render();
-  });
+  bindSecuritySegments(content);
   document.getElementById('applySettingsBtn').addEventListener('click', () => {
     const name = document.getElementById('settingsNameInput').value.trim() || sel.name;
     alert(`[模拟] 应用设置: 名称="${name}", 颜色=#${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0')}, 安全级别=${selectedSecurity}`);
@@ -592,34 +651,27 @@ function renderSettings(content) {
   }
 }
 
-// ── 信息面板 ──
-function renderInfo(content) {
-  const sel = entry();
-  if (!sel) { content.innerHTML += '<div class="empty-state">请先选择一个网络</div>'; return; }
-
-  const scroll = document.createElement('div');
-  scroll.className = 'scroll-box';
-  scroll.style.padding = '0 12px';
-  const totalMembers = sel.adminPlayerIDs.length + sel.memberPlayerIDs.length;
-  scroll.innerHTML = `
-    <div style="display:flex;flex-direction:column;">
-      ${buildInfoLine('网络 ID', '#' + sel.networkID)}
-      ${buildInfoLine('名称', sel.name)}
-      ${buildInfoLine('安全级别', secInfo(sel).name)}
-      ${buildInfoLine('访问级别', accInfo(sel).name)}
-      ${buildInfoLine('成员数', String(totalMembers))}
-      ${buildInfoLine('所有者', sel.ownerName)}
-      ${buildInfoLine('密码保护', sel.isPasswordProtected ? '是' : '否')}
-    </div>
-  `;
-  content.appendChild(scroll);
-}
-
 function buildInfoLine(label, value) {
   return `<div class="info-row">
     <span class="info-label">${label}</span>
     <span class="info-value">${value}</span>
   </div>`;
+}
+
+function buildSecuritySegments() {
+  return `<div class="security-segments">
+    ${Object.keys(SECURITY).map(key => `<span class="security-segment${selectedSecurity===key?' active':''}" data-security="${key}"
+      style="${selectedSecurity===key ? `background:${SECURITY[key].color};` : ''}">${SECURITY[key].name}</span>`).join('')}
+  </div>`;
+}
+
+function bindSecuritySegments(root) {
+  root.querySelectorAll('.security-segment').forEach(seg => {
+    seg.addEventListener('click', () => {
+      selectedSecurity = seg.dataset.security;
+      render();
+    });
+  });
 }
 
 // ── 创建面板 ──
@@ -632,16 +684,18 @@ function renderCreate(content) {
         <span class="field-label">名称</span>
         <input type="text" id="createNameInput" placeholder="输入网络名称..." maxlength="64">
       </div>
-      ${selectedSecurity === 'ENCRYPTED' ? `
       <div class="field-row">
         <span class="field-label">密码</span>
         <input type="password" id="createPasswordInput" placeholder="设置密码..." maxlength="64">
-      </div>` : ''}
+      </div>
       <div class="field-row">
         <span class="field-label">安全级别</span>
-        <div class="readonly-field">${secName(selectedSecurity)}</div>
+        ${buildSecuritySegments()}
       </div>
-      <div style="color:var(--text-label);font-weight:700;">颜色</div>
+      <div class="field-row">
+        <span class="field-label">颜色</span>
+        <div class="readonly-field">${buildStatusDot(selectedColor)} #${(selectedColor&0xFFFFFF).toString(16).padStart(6,'0').toUpperCase()}</div>
+      </div>
       <div class="color-palette" id="colorPaletteCreate">
         ${PALETTE_COLORS.map(c => {
           const sel2 = (c & 0xFFFFFF) === (selectedColor & 0xFFFFFF);
@@ -668,17 +722,11 @@ function renderCreate(content) {
   const actions = document.createElement('div');
   actions.className = 'actions';
   actions.innerHTML = `
-    <button class="btn btn-xs" id="cycleSecurityCreateBtn">切换安全级别</button>
     <button class="btn btn-xs" id="confirmCreateBtn">确认创建</button>
   `;
   content.appendChild(actions);
 
-  document.getElementById('cycleSecurityCreateBtn').addEventListener('click', () => {
-    const vals = Object.keys(SECURITY);
-    const idx = vals.indexOf(selectedSecurity);
-    selectedSecurity = vals[(idx + 1) % vals.length];
-    render();
-  });
+  bindSecuritySegments(content);
   document.getElementById('confirmCreateBtn').addEventListener('click', () => {
     const name = document.getElementById('createNameInput').value.trim();
     if (!name) { alert('请输入网络名称'); return; }

@@ -31,4 +31,25 @@ public class NetworkUiKitTest {
         assertEquals(0xFFFFFFFF, NetworkUiKit.darken(0xFFFFFFFF, 2.0f));
         assertEquals(0xFF000000, NetworkUiKit.darken(0xFFFFFFFF, -1.0f));
     }
+
+    /** 选中列表行只使用低饱和强调色，避免整行接近原色高亮。 */
+    @Test
+    public void selectedRowColorDarkensAccent() {
+        assertEquals(0xFF172E48, NetworkUiKit.selectedRowColor(0xFF4A90E2));
+        assertEquals(0xFF172E48, NetworkUiKit.selectedRowColor(0x004A90E2));
+    }
+
+    /** 颜色展示统一为 6 位大写 RGB，不泄露 alpha。 */
+    @Test
+    public void formatsRgbHexUppercase() {
+        assertEquals("4A90E2", NetworkUiKit.rgbHex(0xFF4A90E2));
+        assertEquals("00000A", NetworkUiKit.rgbHex(0x0000000A));
+    }
+
+    /** 默认网络徽章使用明确语义文本，避免单字母 D 在中文界面中像残留缩写。 */
+    @Test
+    public void defaultBadgeTextIsSemantic() {
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_terminal.badge.default"),
+            NetworkUiKit.defaultBadgeText());
+    }
 }
