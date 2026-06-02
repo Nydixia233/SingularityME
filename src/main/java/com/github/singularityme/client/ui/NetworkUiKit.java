@@ -96,10 +96,14 @@ public final class NetworkUiKit {
 
         // 尺寸
         public static final int ROW_H = 36;
-        public static final int COMPACT_ROW_H = 30;
+        public static final int COMPACT_ROW_H = 28;
         public static final int INFO_LABEL_W = 82;
         public static final int FORM_LABEL_W = 76;
-        public static final int TERMINAL_RAIL_W = 176;
+        public static final int TERMINAL_PANEL_MAX_W = 680;
+        public static final int TERMINAL_PANEL_MAX_H = 460;
+        public static final float TERMINAL_PANEL_VIEWPORT_W = 0.82f;
+        public static final float TERMINAL_PANEL_VIEWPORT_H = 0.82f;
+        public static final int TERMINAL_RAIL_W = 160;
         public static final int TERMINAL_GAP = 8;
         /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
         public static final int TEXT_ROW_H = 20;
@@ -184,10 +188,41 @@ public final class NetworkUiKit {
         return Math.max(48, available / buttonCount);
     }
 
+    /**
+     * 计算网络终端面板宽度，限制大屏下的视觉占比。
+     *
+     * @param displayWidth Minecraft 实际显示宽度
+     * @param guiScale     GUI 缩放倍率
+     * @return 面板宽度
+     */
+    public static int terminalPanelWidth(final int displayWidth, final int guiScale) {
+        final int scale = Math.max(1, guiScale);
+        final int viewportWidth = (int) (displayWidth * Palette.TERMINAL_PANEL_VIEWPORT_W / scale);
+        return Math.min(Palette.TERMINAL_PANEL_MAX_W, Math.max(360, viewportWidth));
+    }
+
+    /**
+     * 计算网络终端面板高度，避免覆盖过多游戏画面。
+     *
+     * @param displayHeight Minecraft 实际显示高度
+     * @param guiScale      GUI 缩放倍率
+     * @return 面板高度
+     */
+    public static int terminalPanelHeight(final int displayHeight, final int guiScale) {
+        final int scale = Math.max(1, guiScale);
+        final int viewportHeight = (int) (displayHeight * Palette.TERMINAL_PANEL_VIEWPORT_H / scale);
+        return Math.min(Palette.TERMINAL_PANEL_MAX_H, Math.max(320, viewportHeight));
+    }
+
     /** 计算主页信息列宽；空间不足时退化为单列。 */
     public static int homeInfoColumnWidth(final int contentWidth) {
-        if (contentWidth < 520) return Math.max(0, contentWidth);
+        if (!homeInfoUsesTwoColumns(contentWidth)) return Math.max(0, contentWidth);
         return Math.max(0, (contentWidth - 2) / 2);
+    }
+
+    /** 判断主页信息是否应使用两列紧凑布局。 */
+    public static boolean homeInfoUsesTwoColumns(final int contentWidth) {
+        return contentWidth >= 440;
     }
 
     /** 计算选择页列表高度，优先扩展列表区域，减少上方空白。 */
@@ -568,11 +603,24 @@ public final class NetworkUiKit {
     @SuppressWarnings("unchecked")
     public static Flow badge(final String text, final int bgColor) {
         return Flow.row()
-            .coverChildrenHeight()
-            .padding(3, Palette.BADGE_PADDING_H)
+            .width(badgeWidth(text)).height(Palette.BADGE_H)
+            .mainAxisAlignment(Alignment.MainAxis.CENTER)
             .background(new Rectangle().cornerRadius(Palette.BORDER_RADIUS_BADGE).color(bgColor))
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .child(new TextWidget(IKey.str(text)).color(Palette.TEXT_BADGE));
+    }
+
+    /** 按文本估算徽章宽度，避免在拉伸行内变成整条色块。 */
+    public static int badgeWidth(final String text) {
+        int textWidth = 0;
+        if (text != null) {
+            for (int offset = 0; offset < text.length();) {
+                final int codePoint = text.codePointAt(offset);
+                textWidth += codePoint < 128 ? 7 : 12;
+                offset += Character.charCount(codePoint);
+            }
+        }
+        return Math.max(Palette.BADGE_MIN_W, textWidth + 18);
     }
 
     /** 构建 ID 胶囊（如 #1、#42）。 */

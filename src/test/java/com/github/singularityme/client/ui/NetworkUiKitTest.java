@@ -1,6 +1,8 @@
 package com.github.singularityme.client.ui;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -56,42 +58,63 @@ public class NetworkUiKitTest {
     /** 导航按钮使用稳定宽度，避免激活背景只绘制成小方块。 */
     @Test
     public void computesStableNavButtonWidth() {
-        assertEquals(144, NetworkUiKit.navButtonWidth(760, 5));
+        assertEquals(128, NetworkUiKit.navButtonWidth(680, 5));
         assertEquals(96, NetworkUiKit.navButtonWidth(520, 5));
+    }
+
+    @Test
+    public void capsTerminalPanelSize() {
+        assertEquals(680, NetworkUiKit.terminalPanelWidth(2560, 1));
+        assertEquals(460, NetworkUiKit.terminalPanelHeight(1440, 1));
+        assertEquals(656, NetworkUiKit.terminalPanelWidth(800, 1));
+        assertEquals(393, NetworkUiKit.terminalPanelHeight(480, 1));
     }
 
     /** 网络终端使用固定坐标骨架，避免顶层 Flow 相对布局在游戏内溢出或拉伸。 */
     @Test
     public void computesFixedTerminalLayout() {
-        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(760, 520);
+        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(680, 460);
 
         assertEquals(8, layout.navX);
         assertEquals(8, layout.navY);
-        assertEquals(744, layout.navW);
+        assertEquals(664, layout.navW);
         assertEquals(40, layout.navH);
         assertEquals(12, layout.networkX);
         assertEquals(58, layout.networkY);
-        assertEquals(736, layout.networkW);
+        assertEquals(656, layout.networkW);
         assertEquals(36, layout.networkH);
         assertEquals(12, layout.railX);
         assertEquals(104, layout.railY);
-        assertEquals(176, layout.railW);
-        assertEquals(404, layout.railH);
-        assertEquals(196, layout.contentX);
+        assertEquals(160, layout.railW);
+        assertEquals(344, layout.railH);
+        assertEquals(180, layout.contentX);
         assertEquals(104, layout.contentY);
-        assertEquals(552, layout.contentW);
-        assertEquals(356, layout.contentH);
-        assertEquals(196, layout.bottomX);
-        assertEquals(468, layout.bottomY);
-        assertEquals(552, layout.bottomW);
+        assertEquals(488, layout.contentW);
+        assertEquals(296, layout.contentH);
+        assertEquals(180, layout.bottomX);
+        assertEquals(408, layout.bottomY);
+        assertEquals(488, layout.bottomW);
         assertEquals(40, layout.bottomH);
     }
 
     /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
     @Test
     public void computesHomeInfoColumnWidth() {
-        assertEquals(275, NetworkUiKit.homeInfoColumnWidth(552));
+        assertEquals(243, NetworkUiKit.homeInfoColumnWidth(488));
         assertEquals(360, NetworkUiKit.homeInfoColumnWidth(360));
+    }
+
+    @Test
+    public void detectsHomeInfoColumnMode() {
+        assertTrue(NetworkUiKit.homeInfoUsesTwoColumns(488));
+        assertFalse(NetworkUiKit.homeInfoUsesTwoColumns(360));
+    }
+
+    @Test
+    public void computesStableBadgeWidth() {
+        assertEquals(25, NetworkUiKit.badgeWidth("*"));
+        assertEquals(42, NetworkUiKit.badgeWidth("默认"));
+        assertEquals(67, NetworkUiKit.badgeWidth("Default"));
     }
 
     /** 表单与主页标签使用固定宽度，避免值列和输入框起点抖动。 */

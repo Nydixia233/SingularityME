@@ -146,8 +146,8 @@ public final class NetworkTerminalUI {
 
         ModularPanel buildPanel() {
             final int guiScale = Math.max(1, Minecraft.getMinecraft().gameSettings.guiScale);
-            final int panelW = Math.min(760, (int) (Minecraft.getMinecraft().displayWidth * 0.92f / guiScale));
-            final int panelH = Math.min(520, (int) (Minecraft.getMinecraft().displayHeight * 0.92f / guiScale));
+            final int panelW = NetworkUiKit.terminalPanelWidth(Minecraft.getMinecraft().displayWidth, guiScale);
+            final int panelH = NetworkUiKit.terminalPanelHeight(Minecraft.getMinecraft().displayHeight, guiScale);
 
             panel = new ModularPanel("network_terminal")
                 .size(panelW, panelH)
@@ -174,13 +174,13 @@ public final class NetworkTerminalUI {
 
             // 内容区
             networkRail = Flow.column()
-                .childPadding(6).pos(layout.railX, layout.railY).size(layout.railW, layout.railH)
-                .padding(6)
+                .childPadding(4).pos(layout.railX, layout.railY).size(layout.railW, layout.railH)
+                .padding(5)
                 .background(Styles.listBg());
             panel.child(networkRail);
 
             contentArea = Flow.column()
-                .childPadding(6).pos(layout.contentX, layout.contentY).size(layout.contentW, layout.contentH);
+                .childPadding(5).pos(layout.contentX, layout.contentY).size(layout.contentW, layout.contentH);
             panel.child(contentArea);
 
             // 底部操作区
@@ -333,7 +333,7 @@ public final class NetworkTerminalUI {
             nameWidget.expanded();
 
             final Flow rowContent = Flow.row()
-                .childPadding(6).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(0, 6)
+                .childPadding(4).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(0, 5)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(NetworkUiKit.statusDotWidget(color))
                 .child(nameWidget);
@@ -375,7 +375,7 @@ public final class NetworkTerminalUI {
             final List<Flow> infoRows = homeInfoRows(sel);
             final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight();
             final int columnWidth = NetworkUiKit.homeInfoColumnWidth(layout.contentW);
-            if (layout.contentW >= 520) {
+            if (NetworkUiKit.homeInfoUsesTwoColumns(layout.contentW)) {
                 for (int i = 0; i < infoRows.size(); i += 2) {
                     final Flow pair = Flow.row().childPadding(2).widthRel(1f)
                         .height(Palette.COMPACT_ROW_H)
@@ -398,8 +398,12 @@ public final class NetworkTerminalUI {
                 return;
             }
 
-            contentArea.child(progressBar(energyFraction(), Palette.SECURITY_ENCRYPTED));
-            contentArea.child(progressBar(onlineFraction(), Palette.SECURITY_PUBLIC));
+            if (networkStatus.maxPower > 0.0) {
+                contentArea.child(progressBar(energyFraction(), Palette.SECURITY_ENCRYPTED));
+            }
+            if (!networkStatus.devices.isEmpty()) {
+                contentArea.child(progressBar(onlineFraction(), Palette.SECURITY_PUBLIC));
+            }
             contentArea.child(homeHealthWarnings());
             contentArea.child(homeDeviceCounts());
         }
