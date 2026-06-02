@@ -101,15 +101,15 @@ public final class NetworkTerminalUI {
         return false;
     }
 
-    private enum Panel { HOME, SELECTION, CONNECTION, MEMBERS, STATISTICS, SETTINGS, HEALTH, CREATE }
+    private enum Panel { HOME, CONNECTION, MEMBERS, SETTINGS, CREATE }
 
     private static final class TerminalState {
         final int x, y, z, dim;
         final List<NetworkEntry> networks = new ArrayList<>();
-        int selectedNetworkID;
+        int selectedNetworkID = -1;
         int selectedMemberID = -1;
         int defaultNetworkID;
-        Panel currentPanel = Panel.SELECTION;
+        Panel currentPanel = Panel.HOME;
         int selectedColor = 0x4A90E2;
         SecurityLevel selectedSecurity = SecurityLevel.PRIVATE;
         PacketNetworkStatus networkStatus;
@@ -120,6 +120,7 @@ public final class NetworkTerminalUI {
         TerminalLayout layout;
         Flow navBar;
         Flow networkBar;
+        Flow networkRail;
         Flow contentArea;
         Flow bottomArea;
         int navButtonWidth;
@@ -172,6 +173,12 @@ public final class NetworkTerminalUI {
             panel.child(networkBar);
 
             // 内容区
+            networkRail = Flow.column()
+                .childPadding(6).pos(layout.railX, layout.railY).size(layout.railW, layout.railH)
+                .padding(6)
+                .background(Styles.listBg());
+            panel.child(networkRail);
+
             contentArea = Flow.column()
                 .childPadding(6).pos(layout.contentX, layout.contentY).size(layout.contentW, layout.contentH);
             panel.child(contentArea);
@@ -204,7 +211,7 @@ public final class NetworkTerminalUI {
                         currentPanel = p;
                         panelFirstRender = true;
                         buildNavButtons();
-                        if (isStatusPanel(p) && selectedEntry() != null) {
+                        if (isStatusPanel(p) && selectedRealEntry() != null) {
                             requestNetworkStatus();
                         }
                         renderContent();
@@ -226,16 +233,14 @@ public final class NetworkTerminalUI {
 
         @SuppressWarnings({ "unchecked", "rawtypes" })
         void renderContent() {
+            renderNetworkRail();
             contentArea.removeAll();
             updateNetworkBar();
             switch (currentPanel) {
                 case HOME -> renderHome();
-                case SELECTION -> renderSelection();
                 case CONNECTION -> renderConnection();
                 case MEMBERS -> renderMembers();
-                case STATISTICS -> renderStatistics();
                 case SETTINGS -> renderSettings();
-                case HEALTH -> renderHealth();
                 case CREATE -> renderCreate();
             }
             panelFirstRender = false;
@@ -252,15 +257,108 @@ public final class NetworkTerminalUI {
             final NetworkEntry sel = selectedEntry();
             if (sel != null) {
                 final int c = NetworkUiKit.entryColor(sel);
+                final String name = sel.networkID == 0
+                    ? NetworkUiKit.tr("gui.singularityme.network_tab.default")
+                    : sel.name;
                 networkBar.child(NetworkUiKit.statusDotWidget(c));
-                networkBar.child(new TextWidget(IKey.str(sel.name)).color(c));
+                networkBar.child(new TextWidget(IKey.str(name)).color(c));
                 if (sel.networkID != 0) {
                     networkBar.child(NetworkUiKit.idPill(sel.networkID));
                 }
                 if (sel.networkID != 0 && sel.networkID == defaultNetworkID) {
                     networkBar.child(NetworkUiKit.defaultBadge());
                 }
+            } else {
+                networkBar.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.no_selection")))
+                    .color(Palette.TEXT_EMPTY));
             }
+        }
+
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        void renderNetworkRail() {
+            networkRail.removeAll();
+            networkRail.child(Flow.row()
+                .mainAxisAlignment(Alignment.MainAxis.SPACE_BETWEEN)
+                .widthRel(1f).height(Palette.TEXT_ROW_H)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_terminal.rail.title")))
+                    .color(Palette.TEXT_PRIMARY))
+                .child(new TextWidget(IKey.str(
+                    NetworkUiKit.trf("gui.singularityme.network_tab.total", visibleNetworkCount())))
+                    .color(Palette.TEXT_MUTED)));
+
+            networkRail.child(Flow.row()
+                .childPadding(6).widthRel(1f).height(Palette.COMPACT_ROW_H)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_terminal.selection.filter")))
+                    .color(Palette.TEXT_LABEL))
+                .child(filterInput.widthRel(1f).expanded()));
+
+            final ListWidget list = new ListWidget();
+            list.background(IDrawable.NONE);
+            list.widthRel(1f);
+            list.height(Math.max(96, layout.railH - 116));
+            for (final NetworkEntry entry : networks) {
+                if (matchesFilter(entry)) {
+                    list.child(buildRailRow(entry));
+                }
+            }
+            networkRail.child(list);
+
+            final NetworkEntry sel = selectedRealEntry();
+            final boolean isDefault = sel != null && sel.networkID == defaultNetworkID;
+            final String btnText = isDefault
+                ? NetworkUiKit.tr("gui.singularityme.network_terminal.selection.clear_default")
+                : NetworkUiKit.tr("gui.singularityme.network_terminal.selection.set_default");
+            final boolean canSet = sel != null && NetworkUiKit.canAccess(sel);
+            networkRail.child(makeBtn(btnText, Math.max(120, layout.railW - 12), () -> {
+                if (sel == null) return;
+                final int nextDefault = isDefault ? 0 : sel.networkID;
+                SingularityChannel.CHANNEL.sendToServer(new PacketSetDefaultNetwork(nextDefault));
+                defaultNetworkID = nextDefault;
+                renderContent();
+            }, canSet));
+        }
+
+        private ButtonWidget<?> buildRailRow(final NetworkEntry entry) {
+            final boolean selected = entry.networkID == selectedNetworkID;
+            final boolean isDefault = entry.networkID != 0 && entry.networkID == defaultNetworkID;
+            final int color = NetworkUiKit.entryColor(entry);
+            final int bg = selected ? NetworkUiKit.selectedRowColor(color) : Palette.BG_ROW;
+            final String name = entry.networkID == 0
+                ? NetworkUiKit.tr("gui.singularityme.network_tab.default")
+                : "#" + entry.networkID + " " + entry.name;
+            final TextWidget nameWidget = new TextWidget(IKey.str(name))
+                .color(selected ? Palette.TEXT_BADGE : Palette.TEXT_SECONDARY);
+            nameWidget.expanded();
+
+            final Flow rowContent = Flow.row()
+                .childPadding(6).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(0, 6)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .child(NetworkUiKit.statusDotWidget(color))
+                .child(nameWidget);
+            if (isDefault) {
+                rowContent.child(NetworkUiKit.defaultBadge());
+            }
+
+            return new ButtonWidget<>()
+                .child(rowContent)
+                .widthRel(1f).height(Palette.COMPACT_ROW_H)
+                .background(Styles.rowBg(bg))
+                .disableHoverBackground()
+                .onMousePressed(mb -> {
+                    selectedNetworkID = entry.networkID;
+                    selectedMemberID = -1;
+                    networkStatus = null;
+                    if (currentPanel == Panel.SETTINGS) {
+                        panelFirstRender = true;
+                    }
+                    if (isStatusPanel(currentPanel) && entry.networkID != 0) {
+                        requestNetworkStatus();
+                    }
+                    renderContent();
+                    return true;
+                });
         }
 
         // ---- HOME ----
@@ -268,8 +366,11 @@ public final class NetworkTerminalUI {
         @SuppressWarnings("unchecked")
         void renderHome() {
             bottomArea.removeAll();
-            final NetworkEntry sel = selectedEntry();
-            if (sel == null) { contentArea.child(emptyState()); return; }
+            final NetworkEntry sel = selectedRealEntry();
+            if (sel == null) {
+                contentArea.child(unassignedState());
+                return;
+            }
 
             final List<Flow> infoRows = homeInfoRows(sel);
             final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight();
@@ -291,6 +392,16 @@ public final class NetworkTerminalUI {
                 }
             }
             contentArea.child(rows);
+
+            if (networkStatus == null) {
+                contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading")));
+                return;
+            }
+
+            contentArea.child(progressBar(energyFraction(), Palette.SECURITY_ENCRYPTED));
+            contentArea.child(progressBar(onlineFraction(), Palette.SECURITY_PUBLIC));
+            contentArea.child(homeHealthWarnings());
+            contentArea.child(homeDeviceCounts());
         }
 
         private List<Flow> homeInfoRows(final NetworkEntry sel) {
@@ -302,24 +413,100 @@ public final class NetworkTerminalUI {
                 NetworkUiKit.securityName(sel)));
             rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
                 NetworkUiKit.accessName(sel)));
+            rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.default"),
+                sel.networkID == defaultNetworkID
+                    ? NetworkUiKit.tr("gui.singularityme.network_terminal.yes")
+                    : NetworkUiKit.tr("gui.singularityme.network_terminal.no")));
             rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.members"),
                 String.valueOf(sel.adminPlayerIDs.size() + sel.memberPlayerIDs.size() + 1)));
 
             if (networkStatus == null) {
-                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading"), "-"));
+                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.devices"), "-"));
+                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"), "-"));
             } else {
                 final int devices = networkStatus.devices.size();
                 final int online = countLoadedDevices();
                 rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.devices"),
-                    devices + " / " + online));
+                    online + " / " + devices));
+                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.health.online_rate"),
+                    formatPercent(onlineFraction())));
                 rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"),
                     formatEnergy(networkStatus.currentPower, networkStatus.maxPower)));
+                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.health.power"),
+                    NetworkUiKit.tr(isPowered()
+                        ? "gui.singularityme.network_terminal.health.powered"
+                        : "gui.singularityme.network_terminal.health.unpowered")));
+                rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.health"),
+                    homeHealthLabel()));
             }
 
             rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.created"),
                 formatTimestamp(sel.createdAtMillis)));
             rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.modified"),
                 formatTimestamp(sel.lastModifiedMillis)));
+            return rows;
+        }
+
+        @SuppressWarnings("unchecked")
+        private Flow unassignedState() {
+            return Flow.column()
+                .childPadding(6).widthRel(1f).height(86)
+                .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .background(Styles.cardBg())
+                .child(new TextWidget(IKey.str(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.home.unassigned_title")))
+                    .color(Palette.TEXT_PRIMARY))
+                .child(new TextWidget(IKey.str(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.home.unassigned_body")))
+                    .color(Palette.TEXT_EMPTY));
+        }
+
+        @SuppressWarnings("unchecked")
+        private Flow homeHealthWarnings() {
+            final Flow warnings = Flow.column().childPadding(3).widthRel(1f).coverChildrenHeight();
+            boolean hasWarning = false;
+            final int total = networkStatus.devices.size();
+            final int loaded = countLoadedDevices();
+            final int offline = total - loaded;
+            if (!hasDeviceType("TileSingularityPowerCore")) {
+                warnings.child(statusText(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.health.warn.no_power_core"),
+                    Palette.BTN_DANGER_NORMAL));
+                hasWarning = true;
+            }
+            if (total > 0 && loaded == 0) {
+                warnings.child(statusText(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.health.warn.all_offline"),
+                    Palette.BTN_DANGER_NORMAL));
+                hasWarning = true;
+            } else if (offline > 0) {
+                warnings.child(statusText(
+                    NetworkUiKit.trf("gui.singularityme.network_terminal.health.warn.some_offline", offline),
+                    Palette.SECURITY_ENCRYPTED));
+                hasWarning = true;
+            }
+            if (!hasWarning) {
+                warnings.child(statusText(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.health.healthy"),
+                    Palette.SECURITY_PUBLIC));
+            }
+            return warnings;
+        }
+
+        @SuppressWarnings("unchecked")
+        private Flow homeDeviceCounts() {
+            final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight();
+            final Map<String, Integer> counts = deviceTypeCounts();
+            if (counts.isEmpty()) return rows;
+            int rendered = 0;
+            for (final Map.Entry<String, Integer> entry : counts.entrySet()) {
+                if (rendered >= 4) break;
+                rows.child(infoRow(
+                    NetworkUiKit.deviceTypeLabel(entry.getKey()),
+                    NetworkUiKit.trf("gui.singularityme.network_terminal.stat.count_row", entry.getValue())));
+                rendered++;
+            }
             return rows;
         }
 
@@ -432,7 +619,7 @@ public final class NetworkTerminalUI {
         @SuppressWarnings({ "unchecked", "rawtypes" })
         void renderConnection() {
             bottomArea.removeAll();
-            if (selectedEntry() == null) { contentArea.child(emptyState()); return; }
+            if (selectedRealEntry() == null) { contentArea.child(emptyState()); return; }
             if (networkStatus == null) {
                 contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading")));
                 return;
@@ -474,7 +661,7 @@ public final class NetworkTerminalUI {
         @SuppressWarnings({ "unchecked", "rawtypes" })
         void renderMembers() {
             bottomArea.removeAll();
-            final NetworkEntry sel = selectedEntry();
+            final NetworkEntry sel = selectedRealEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
 
             final ListWidget list = new ListWidget();
@@ -548,7 +735,7 @@ public final class NetworkTerminalUI {
         void addMember() {
             final String name = memberNameVal.getStringValue();
             if (name.isEmpty()) return;
-            final NetworkEntry sel = selectedEntry();
+            final NetworkEntry sel = selectedRealEntry();
             if (sel == null) return;
             SingularityChannel.CHANNEL.sendToServer(new PacketAddMemberByName(sel.networkID, name));
             memberNameVal.setStringValue("");
@@ -563,7 +750,7 @@ public final class NetworkTerminalUI {
         @SuppressWarnings("unchecked")
         void renderSettings() {
             bottomArea.removeAll();
-            final NetworkEntry sel = selectedEntry();
+            final NetworkEntry sel = selectedRealEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
 
             // 首次进入 SETTINGS 面板时从已选网络读取真实值
@@ -608,7 +795,7 @@ public final class NetworkTerminalUI {
         }
 
         void applySettings() {
-            final NetworkEntry sel = selectedEntry();
+            final NetworkEntry sel = selectedRealEntry();
             if (sel == null) return;
             final String name = settingsNameVal.getStringValue();
             final String pw = settingsPwVal.getStringValue();
@@ -762,7 +949,11 @@ public final class NetworkTerminalUI {
                     140, () -> {
                         SingularityChannel.CHANNEL.sendToServer(new PacketDeleteNetwork(entry.networkID));
                         selectedNetworkID = 0;
-                        currentPanel = Panel.SELECTION;
+                        selectedMemberID = -1;
+                        networkStatus = null;
+                        currentPanel = Panel.HOME;
+                        panelFirstRender = true;
+                        buildNavButtons();
                         requestNetworkData();
                     }))
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.confirm.cancel"),
@@ -878,6 +1069,7 @@ public final class NetworkTerminalUI {
 
         void requestNetworkStatus() {
             networkStatus = null;
+            if (selectedNetworkID <= 0) return;
             SingularityChannel.CHANNEL.sendToServer(new PacketRequestNetworkStatus(selectedNetworkID));
         }
 
@@ -891,15 +1083,16 @@ public final class NetworkTerminalUI {
             networks.clear();
             networks.addAll(packet.networks);
             defaultNetworkID = packet.defaultNetworkID;
-            if (selectedNetworkID != 0) {
-                boolean found = false;
-                for (final NetworkEntry e : networks) {
-                    if (e.networkID == selectedNetworkID) { found = true; break; }
-                }
-                if (!found) { selectedNetworkID = 0; selectedMemberID = -1; }
+            if (!containsNetwork(selectedNetworkID)) {
+                selectedNetworkID = initialNetworkID(packet.deviceNetworkID);
+                selectedMemberID = -1;
+                networkStatus = null;
             }
             if (networkStatus != null && networkStatus.networkID != selectedNetworkID) {
                 networkStatus = null;
+            }
+            if (networkStatus == null && isStatusPanel(currentPanel) && selectedRealEntry() != null) {
+                requestNetworkStatus();
             }
             renderContent();
         }
@@ -913,6 +1106,27 @@ public final class NetworkTerminalUI {
             return null;
         }
 
+        private NetworkEntry selectedRealEntry() {
+            final NetworkEntry entry = selectedEntry();
+            return entry != null && entry.networkID != 0 ? entry : null;
+        }
+
+        private boolean containsNetwork(final int networkID) {
+            for (final NetworkEntry e : networks) {
+                if (e.networkID == networkID) return true;
+            }
+            return false;
+        }
+
+        private int initialNetworkID(final int deviceNetworkID) {
+            if (deviceNetworkID != 0 && containsNetwork(deviceNetworkID)) return deviceNetworkID;
+            if (defaultNetworkID != 0 && containsNetwork(defaultNetworkID)) return defaultNetworkID;
+            for (final NetworkEntry e : networks) {
+                if (e.networkID != 0) return e.networkID;
+            }
+            return containsNetwork(0) ? 0 : -1;
+        }
+
         private int visibleNetworkCount() {
             int c = 0;
             for (final NetworkEntry e : networks) { if (e.networkID != 0 && matchesFilter(e)) c++; }
@@ -923,12 +1137,12 @@ public final class NetworkTerminalUI {
             final String filter = filterVal.getStringValue();
             if (filter == null || filter.trim().isEmpty()) return true;
             final String needle = filter.trim().toLowerCase();
-            return entry.name.toLowerCase().contains(needle) || ("#" + entry.networkID).contains(needle);
+            final String name = entry.name == null ? "" : entry.name;
+            return name.toLowerCase().contains(needle) || ("#" + entry.networkID).contains(needle);
         }
 
         private static boolean isStatusPanel(final Panel panel) {
-            return panel == Panel.HOME || panel == Panel.CONNECTION || panel == Panel.STATISTICS
-                || panel == Panel.HEALTH;
+            return panel == Panel.HOME || panel == Panel.CONNECTION;
         }
 
         private int countLoadedDevices() {
@@ -953,6 +1167,41 @@ public final class NetworkTerminalUI {
             return (float) Math.max(0.0, Math.min(1.0, networkStatus.currentPower / networkStatus.maxPower));
         }
 
+        private float onlineFraction() {
+            if (networkStatus == null || networkStatus.devices.isEmpty()) return 0f;
+            return (float) countLoadedDevices() / (float) networkStatus.devices.size();
+        }
+
+        private boolean isPowered() {
+            return networkStatus != null && networkStatus.maxPower > 0.0 && networkStatus.currentPower > 0.0;
+        }
+
+        private String homeHealthLabel() {
+            if (networkStatus == null) return "-";
+            final int total = networkStatus.devices.size();
+            final int loaded = countLoadedDevices();
+            final int offline = total - loaded;
+            if (!hasDeviceType("TileSingularityPowerCore")) {
+                return NetworkUiKit.tr("gui.singularityme.network_terminal.health.warn.no_power_core");
+            }
+            if (total > 0 && loaded == 0) {
+                return NetworkUiKit.tr("gui.singularityme.network_terminal.health.warn.all_offline");
+            }
+            if (offline > 0) {
+                return NetworkUiKit.trf("gui.singularityme.network_terminal.health.warn.some_offline", offline);
+            }
+            return NetworkUiKit.tr("gui.singularityme.network_terminal.health.healthy");
+        }
+
+        private Map<String, Integer> deviceTypeCounts() {
+            final Map<String, Integer> counts = new LinkedHashMap<>();
+            if (networkStatus == null) return counts;
+            for (final DeviceInfo device : networkStatus.devices) {
+                counts.put(device.type, counts.getOrDefault(device.type, 0) + 1);
+            }
+            return counts;
+        }
+
         private static String formatLocation(final DeviceInfo device) {
             return NetworkUiKit.trf(
                 "gui.singularityme.network_tab.location",
@@ -964,6 +1213,10 @@ public final class NetworkTerminalUI {
 
         private static String formatEnergy(final double current, final double max) {
             return String.format("%.0f / %.0f AE", current, max);
+        }
+
+        private static String formatPercent(final float fraction) {
+            return String.format("%.0f%%", Math.max(0f, Math.min(1f, fraction)) * 100f);
         }
 
         private static String formatTimestamp(final long millis) {

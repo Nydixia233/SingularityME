@@ -56,8 +56,8 @@ public class NetworkUiKitTest {
     /** 导航按钮使用稳定宽度，避免激活背景只绘制成小方块。 */
     @Test
     public void computesStableNavButtonWidth() {
-        assertEquals(88, NetworkUiKit.navButtonWidth(760, 8));
-        assertEquals(58, NetworkUiKit.navButtonWidth(520, 8));
+        assertEquals(144, NetworkUiKit.navButtonWidth(760, 5));
+        assertEquals(96, NetworkUiKit.navButtonWidth(520, 5));
     }
 
     /** 网络终端使用固定坐标骨架，避免顶层 Flow 相对布局在游戏内溢出或拉伸。 */
@@ -73,20 +73,24 @@ public class NetworkUiKitTest {
         assertEquals(58, layout.networkY);
         assertEquals(736, layout.networkW);
         assertEquals(36, layout.networkH);
-        assertEquals(12, layout.contentX);
+        assertEquals(12, layout.railX);
+        assertEquals(104, layout.railY);
+        assertEquals(176, layout.railW);
+        assertEquals(404, layout.railH);
+        assertEquals(196, layout.contentX);
         assertEquals(104, layout.contentY);
-        assertEquals(736, layout.contentW);
+        assertEquals(552, layout.contentW);
         assertEquals(356, layout.contentH);
-        assertEquals(12, layout.bottomX);
+        assertEquals(196, layout.bottomX);
         assertEquals(468, layout.bottomY);
-        assertEquals(736, layout.bottomW);
+        assertEquals(552, layout.bottomW);
         assertEquals(40, layout.bottomH);
     }
 
     /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
     @Test
     public void computesHomeInfoColumnWidth() {
-        assertEquals(367, NetworkUiKit.homeInfoColumnWidth(736));
+        assertEquals(275, NetworkUiKit.homeInfoColumnWidth(552));
         assertEquals(360, NetworkUiKit.homeInfoColumnWidth(360));
     }
 

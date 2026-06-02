@@ -99,6 +99,8 @@ public final class NetworkUiKit {
         public static final int COMPACT_ROW_H = 30;
         public static final int INFO_LABEL_W = 82;
         public static final int FORM_LABEL_W = 76;
+        public static final int TERMINAL_RAIL_W = 176;
+        public static final int TERMINAL_GAP = 8;
         /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
         public static final int TEXT_ROW_H = 20;
         public static final int BADGE_H = 22;
@@ -216,6 +218,10 @@ public final class NetworkUiKit {
         public final int networkY;
         public final int networkW;
         public final int networkH;
+        public final int railX;
+        public final int railY;
+        public final int railW;
+        public final int railH;
         public final int contentX;
         public final int contentY;
         public final int contentW;
@@ -234,13 +240,17 @@ public final class NetworkUiKit {
             this.networkY = 58;
             this.networkW = Math.max(0, panelW - 24);
             this.networkH = Palette.ROW_H;
-            this.bottomX = 12;
+            this.railX = 12;
+            this.railY = 104;
+            this.railW = Palette.TERMINAL_RAIL_W;
+            this.railH = Math.max(96, panelH - this.railY - 12);
+            this.contentX = this.railX + this.railW + Palette.TERMINAL_GAP;
+            this.contentY = this.railY;
+            this.contentW = Math.max(96, panelW - this.contentX - 12);
+            this.bottomX = this.contentX;
             this.bottomY = Math.max(104, panelH - 52);
-            this.bottomW = this.networkW;
+            this.bottomW = this.contentW;
             this.bottomH = 40;
-            this.contentX = 12;
-            this.contentY = 104;
-            this.contentW = this.networkW;
             this.contentH = Math.max(96, this.bottomY - this.contentY - 8);
         }
     }
