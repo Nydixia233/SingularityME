@@ -13,9 +13,11 @@ import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
+import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -309,6 +311,43 @@ public final class NetworkUiKit {
     /** 计算内容视口扣除内边距后的实际可用宽度，避免子项按外框宽度布局后被裁切。 */
     public static int terminalContentInnerWidth(final int contentWidth) {
         return Math.max(0, contentWidth - Palette.CONTENT_VIEWPORT_PAD * 2);
+    }
+
+    /** 获取指定网络的已缓存状态快照；无缓存或未分配网络返回 null。 */
+    public static PacketNetworkStatus cachedStatusForNetwork(final Map<Integer, PacketNetworkStatus> cache,
+        final int networkID) {
+        if (cache == null || networkID <= 0) return null;
+        final PacketNetworkStatus status = cache.get(networkID);
+        return status != null && status.networkID == networkID ? status : null;
+    }
+
+    /** 状态快照未返回时使用稳定占位文本，避免 UI 在 loading 帧中改变结构高度。 */
+    public static String statusValueOrPending(final PacketNetworkStatus status, final String value) {
+        return status == null ? "-" : value;
+    }
+
+    /** 主页顶部能量概览：现有 / 容量（百分比）。 */
+    public static String formatHomeEnergyOverview(final PacketNetworkStatus status) {
+        if (status == null) return "-";
+        return formatCompactEnergy(status.currentPower) + " / " + formatCompactEnergy(status.maxPower)
+            + " (" + formatWholePercent(status.currentPower, status.maxPower) + ")";
+    }
+
+    /** 主页顶部在线率概览：在线 / 总数（百分比）。 */
+    public static String formatHomeOnlineOverview(final PacketNetworkStatus status) {
+        if (status == null) return "-";
+        final int total = status.devices.size();
+        int loaded = 0;
+        for (final PacketNetworkStatus.DeviceInfo device : status.devices) {
+            if (device.loaded) loaded++;
+        }
+        return loaded + " / " + total + " (" + formatWholePercent(loaded, total) + ")";
+    }
+
+    private static String formatWholePercent(final double current, final double max) {
+        if (max <= 0.0) return "0%";
+        final double fraction = Math.max(0.0, Math.min(1.0, current / max));
+        return String.format(Locale.ROOT, "%.0f%%", fraction * 100D);
     }
 
     /** 计算主页概览指标卡宽度，保持指标行稳定均分。 */

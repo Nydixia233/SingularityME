@@ -2,11 +2,18 @@ package com.github.singularityme.client.ui;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.junit.Test;
 
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
+import com.github.singularityme.network.packet.PacketNetworkStatus;
 
 /** 验证网络 UI 设备类型展示辅助方法。 */
 public class NetworkUiKitTest {
@@ -158,6 +165,52 @@ public class NetworkUiKitTest {
         assertEquals(398, NetworkUiKit.terminalContentInnerWidth(406));
         assertEquals(198, NetworkUiKit.homeInfoColumnWidth(NetworkUiKit.terminalContentInnerWidth(406)));
         assertEquals(96, NetworkUiKit.metricCardWidth(NetworkUiKit.terminalContentInnerWidth(406), 4));
+    }
+
+    /** 切换网络时优先复用已收到的状态快照，避免内容区进入空白 loading 中间帧。 */
+    @Test
+    public void reusesCachedStatusForSelectedNetwork() {
+        final Map<Integer, PacketNetworkStatus> cache = new LinkedHashMap<>();
+        final PacketNetworkStatus status = new PacketNetworkStatus(13, 120D, 240D, Collections.emptyList());
+        cache.put(status.networkID, status);
+
+        assertSame(status, NetworkUiKit.cachedStatusForNetwork(cache, 13));
+        assertNull(NetworkUiKit.cachedStatusForNetwork(cache, 14));
+        assertNull(NetworkUiKit.cachedStatusForNetwork(cache, 0));
+    }
+
+    /** 状态包未返回时用稳定占位值填充主页指标，避免切换后指标行忽然消失再出现。 */
+    @Test
+    public void usesPendingStatusPlaceholderWhileLoading() {
+        final PacketNetworkStatus status = new PacketNetworkStatus(13, 120D, 240D, Collections.emptyList());
+
+        assertEquals("-", NetworkUiKit.statusValueOrPending(null, "120 AE"));
+        assertEquals("120 AE", NetworkUiKit.statusValueOrPending(status, "120 AE"));
+    }
+
+    /** 主页顶部能量显示为现有/容量（百分比），状态未返回时保持占位。 */
+    @Test
+    public void formatsHomeEnergyOverview() {
+        assertEquals("-", NetworkUiKit.formatHomeEnergyOverview(null));
+        assertEquals("120 AE / 240 AE (50%)", NetworkUiKit.formatHomeEnergyOverview(
+            new PacketNetworkStatus(13, 120D, 240D, Collections.emptyList())));
+        assertEquals("900.00T AE / 900.00T AE (100%)", NetworkUiKit.formatHomeEnergyOverview(
+            new PacketNetworkStatus(13, 900_000_000_000_000D, 900_000_000_000_000D, Collections.emptyList())));
+    }
+
+    /** 主页顶部在线率显示为在线/总数（百分比）。 */
+    @Test
+    public void formatsHomeOnlineOverview() {
+        assertEquals("-", NetworkUiKit.formatHomeOnlineOverview(null));
+        assertEquals("0 / 0 (0%)", NetworkUiKit.formatHomeOnlineOverview(
+            new PacketNetworkStatus(13, 0D, 0D, Collections.emptyList())));
+        assertEquals("1 / 2 (50%)", NetworkUiKit.formatHomeOnlineOverview(new PacketNetworkStatus(
+            13,
+            0D,
+            0D,
+            java.util.Arrays.asList(
+                new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 1, 2, 3, 0, true),
+                new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 4, 5, 6, 0, false)))));
     }
 
     /** 终端表面色保持参考稿的深蓝灰层级，避免内容区退回纯黑或高对比闪烁。 */

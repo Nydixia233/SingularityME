@@ -43,3 +43,4 @@
 | 2026-06-02 | MUI2 widthRel 子项横向溢出 | `ERROR-20260602-mui2-widthrel-row-overflow.md` |
 | 2026-06-02 | Network Terminal 只适配单一 guiScale | `ERROR-20260602-network-terminal-gui-scale.md` |
 | 2026-06-02 | Network Terminal 背景 hover 闪烁与主页内宽裁切 | `ERROR-20260602-network-terminal-hover-overflow.md` |
+| 2026-06-03 | Network Terminal 切换网络时 loading 中间帧闪烁 | `ERROR-20260603-network-terminal-status-switch-flicker.md` |
