@@ -13,6 +13,9 @@ import java.util.Map;
 
 import org.junit.Test;
 
+import com.cleanroommc.modularui.api.drawable.IDrawable;
+import com.cleanroommc.modularui.api.widget.IWidget;
+import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
@@ -410,5 +413,18 @@ public class NetworkUiKitTest {
         assertEquals(12, row.getArea().getPadding().getRight());
         assertEquals(0, row.getArea().getPadding().getTop());
         assertEquals(0, row.getArea().getPadding().getBottom());
+    }
+
+    /** 色块视觉必须挂在 ButtonWidget 本体上，避免内部 Flow 抢占 MUI2 的 hover/click 命中链。 */
+    @Test
+    public void rendersColorSwatchesOnClickableButtonItself() {
+        final Flow row = NetworkUiKit.colorSwatchRow(new int[] { 0x4A90E2 }, 0x4A90E2, ignored -> {});
+        final IWidget child = row.getChildren().get(0);
+
+        assertTrue(child instanceof ButtonWidget);
+        final ButtonWidget<?> button = (ButtonWidget<?>) child;
+        assertTrue(IDrawable.isVisible(button.getBackground()));
+        assertTrue(IDrawable.isVisible(button.getOverlay()));
+        assertTrue(button.getChildren().isEmpty());
     }
 }

@@ -1045,22 +1045,11 @@ public final class NetworkUiKit {
             .crossAxisAlignment(Alignment.CrossAxis.CENTER);
         for (final int color : presets) {
             final boolean selected = (selectedColor & 0xFFFFFF) == (color & 0xFFFFFF);
-            final Flow swatch = Flow.row()
-                .width(Palette.SWATCH_BUTTON_SIZE)
-                .height(Palette.SWATCH_BUTTON_SIZE)
-                .mainAxisAlignment(Alignment.MainAxis.CENTER)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .background(selected ? Styles.rowBg(lighten(color, 0.18f)) : IDrawable.NONE)
-                .disableHoverBackground();
-            swatch.child(Flow.row()
-                .width(Palette.SWATCH_INNER_SIZE)
-                .height(Palette.SWATCH_INNER_SIZE)
-                .background(Styles.swatch(color))
-                .disableHoverBackground());
             row.child(new ButtonWidget<>()
-                .child(swatch)
                 .width(Palette.SWATCH_BUTTON_SIZE).height(Palette.SWATCH_BUTTON_SIZE)
-                .background(IDrawable.NONE)
+                .padding((Palette.SWATCH_BUTTON_SIZE - Palette.SWATCH_INNER_SIZE) / 2)
+                .background(selected ? Styles.rowBg(lighten(color, 0.18f)) : Styles.rowBg(Palette.BG_ROW))
+                .overlay(Styles.swatch(color))
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
                     onSelect.accept(color & 0xFFFFFF);
