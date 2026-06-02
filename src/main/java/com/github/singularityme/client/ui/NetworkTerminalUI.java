@@ -29,6 +29,7 @@ import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
 import com.github.singularityme.client.ui.NetworkUiKit.Styles;
+import com.github.singularityme.client.ui.NetworkUiKit.TerminalLayout;
 import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.core.SingularityNetworkRegistry;
@@ -116,6 +117,7 @@ public final class NetworkTerminalUI {
         boolean panelFirstRender = true;
 
         ModularPanel panel;
+        TerminalLayout layout;
         Flow navBar;
         Flow networkBar;
         Flow contentArea;
@@ -150,33 +152,34 @@ public final class NetworkTerminalUI {
                 .size(panelW, panelH)
                 .background(new ShadowDrawable(Styles.panelBg(), 6, 0x80000000));
 
-            final Flow root = Flow.column().widthRel(1f).heightRel(1f);
+            layout = NetworkUiKit.terminalLayout(panelW, panelH);
 
             // 导航栏
-            navBar = Flow.row()
-                .childPadding(4).widthRel(1f).coverChildrenHeight()
-                .padding(4).margin(8)
-                .background(Styles.headerGradient(Palette.BG_LIST));
+            navBar = Flow.row();
+            navBar.childPadding(4).pos(layout.navX, layout.navY).size(layout.navW, layout.navH);
+            navBar.padding(4);
+            navBar.crossAxisAlignment(Alignment.CrossAxis.CENTER);
+            navBar.background(Styles.headerGradient(Palette.BG_LIST));
             navButtonWidth = NetworkUiKit.navButtonWidth(panelW, Panel.values().length);
             buildNavButtons();
-            root.child(navBar);
+            panel.child(navBar);
 
             // 网络信息栏
             networkBar = Flow.row()
-                .childPadding(8).widthRel(1f)
-                .height(Palette.ROW_H).padding(0, 12)
+                .childPadding(8).pos(layout.networkX, layout.networkY).size(layout.networkW, layout.networkH)
+                .padding(0, 12)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER);
-            root.child(networkBar);
+            panel.child(networkBar);
 
             // 内容区
-            contentArea = Flow.column().widthRel(1f).expanded();
-            root.child(contentArea);
+            contentArea = Flow.column()
+                .childPadding(6).pos(layout.contentX, layout.contentY).size(layout.contentW, layout.contentH);
+            panel.child(contentArea);
 
             // 底部操作区
             bottomArea = Flow.column()
-                .childPadding(8).widthRel(1f).coverChildrenHeight()
-                .padding(0, 12).margin(10, 0);
-            root.child(bottomArea);
+                .childPadding(8).pos(layout.bottomX, layout.bottomY).size(layout.bottomW, layout.bottomH);
+            panel.child(bottomArea);
 
             // 输入控件
             memberNameInput = makeInput(memberNameVal);
@@ -186,7 +189,6 @@ public final class NetworkTerminalUI {
             settingsNameInput = makeInput(settingsNameVal);
             settingsPasswordInput = makeInput(settingsPwVal);
 
-            panel.child(root);
             return panel;
         }
 
@@ -269,7 +271,7 @@ public final class NetworkTerminalUI {
             final NetworkEntry sel = selectedEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
 
-            final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight().padding(0, 12);
+            final Flow rows = Flow.column().childPadding(2).widthRel(1f).coverChildrenHeight();
             rows.child(infoRow("ID", "#" + sel.networkID));
             rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.name"), sel.name));
             rows.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.info.owner"), sel.ownerName));
@@ -326,7 +328,7 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
             list.widthRel(1f);
-            list.expanded();
+            list.height(Math.max(120, layout.contentH - 116));
             for (final NetworkEntry entry : networks) {
                 if (matchesFilter(entry)) {
                     list.child(buildSelectionRow(entry));
@@ -417,7 +419,7 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
             list.widthRel(1f);
-            list.expanded();
+            list.height(layout.contentH);
             for (final DeviceInfo device : networkStatus.devices) {
                 list.child(buildDeviceRow(device));
             }
@@ -455,7 +457,7 @@ public final class NetworkTerminalUI {
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
             list.widthRel(1f);
-            list.expanded();
+            list.height(Math.max(120, layout.contentH - 48));
 
             list.child(buildMemberRow(sel.ownerPlayerID, sel.ownerName, AccessLevel.OWNER, false));
             for (int i = 0; i < sel.adminPlayerIDs.size(); i++)
@@ -572,15 +574,14 @@ public final class NetworkTerminalUI {
                 NetworkUiKit.colorReadonly(selectedColor)));
             contentArea.child(colorSwatchRow());
 
-            bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
+            final Flow actionRow = Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.apply"),
-                    140, this::applySettings)));
-
+                    140, this::applySettings));
             if (sel.isOwner) {
-                bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
-                    .child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.delete"),
-                        140, () -> showDeleteConfirm(sel))));
+                actionRow.child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.delete"),
+                    140, () -> showDeleteConfirm(sel)));
             }
+            bottomArea.child(actionRow);
         }
 
         void applySettings() {
@@ -687,7 +688,7 @@ public final class NetworkTerminalUI {
         }
 
         private Flow infoRow(String label, String value) {
-            return NetworkUiKit.infoRowFixed(label, value);
+            return NetworkUiKit.infoRowCompact(label, value);
         }
 
         private Flow statusText(final String text) {
@@ -725,11 +726,12 @@ public final class NetworkTerminalUI {
         }
 
         private void showDeleteConfirm(final NetworkEntry entry) {
+            contentArea.removeAll();
             bottomArea.removeAll();
-            bottomArea.child(statusText(
+            contentArea.child(statusText(
                 NetworkUiKit.trf("gui.singularityme.network_terminal.confirm.delete_body", entry.name),
                 Palette.BTN_DANGER_NORMAL));
-            bottomArea.child(statusText(
+            contentArea.child(statusText(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.confirm.delete_warning"),
                 Palette.TEXT_MUTED));
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)

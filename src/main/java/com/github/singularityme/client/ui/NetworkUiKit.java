@@ -96,6 +96,7 @@ public final class NetworkUiKit {
 
         // 尺寸
         public static final int ROW_H = 36;
+        public static final int COMPACT_ROW_H = 30;
         /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
         public static final int TEXT_ROW_H = 20;
         public static final int BADGE_H = 22;
@@ -175,6 +176,64 @@ public final class NetworkUiKit {
         final int gaps = Math.max(0, buttonCount - 1) * 4;
         final int available = Math.max(0, panelWidth - navOuterMargin - navInnerPadding - gaps);
         return Math.max(48, available / buttonCount);
+    }
+
+    /**
+     * 网络终端固定坐标布局指标。
+     *
+     * <p>
+     * 顶层不再依赖 {@link Flow} 的 expanded/widthRel 组合，避免不同 MUI2 求解阶段把浏览器式
+     * flex/grid 预期解释成溢出或过度拉伸。
+     * </p>
+     */
+    public static final class TerminalLayout {
+
+        public final int navX;
+        public final int navY;
+        public final int navW;
+        public final int navH;
+        public final int networkX;
+        public final int networkY;
+        public final int networkW;
+        public final int networkH;
+        public final int contentX;
+        public final int contentY;
+        public final int contentW;
+        public final int contentH;
+        public final int bottomX;
+        public final int bottomY;
+        public final int bottomW;
+        public final int bottomH;
+
+        private TerminalLayout(final int panelW, final int panelH) {
+            this.navX = 8;
+            this.navY = 8;
+            this.navW = Math.max(0, panelW - 16);
+            this.navH = 40;
+            this.networkX = 12;
+            this.networkY = 58;
+            this.networkW = Math.max(0, panelW - 24);
+            this.networkH = Palette.ROW_H;
+            this.bottomX = 12;
+            this.bottomY = Math.max(104, panelH - 52);
+            this.bottomW = this.networkW;
+            this.bottomH = 40;
+            this.contentX = 12;
+            this.contentY = 104;
+            this.contentW = this.networkW;
+            this.contentH = Math.max(96, this.bottomY - this.contentY - 8);
+        }
+    }
+
+    /**
+     * 计算网络终端固定坐标布局。
+     *
+     * @param panelW 面板宽度
+     * @param panelH 面板高度
+     * @return 固定坐标布局指标
+     */
+    public static TerminalLayout terminalLayout(final int panelW, final int panelH) {
+        return new TerminalLayout(panelW, panelH);
     }
 
     // ---- MUI2 样式工厂 ----
@@ -573,6 +632,22 @@ public final class NetworkUiKit {
         labelWidget.width(92);
         row.child(labelWidget);
         final TextWidget val = new TextWidget(IKey.str(value)).color(valueColor);
+        val.expanded();
+        row.child(val);
+        return row;
+    }
+
+    /** 构建主页紧凑信息行，保证常用属性在一屏内展示。 */
+    @SuppressWarnings("unchecked")
+    public static Flow infoRowCompact(final String label, final String value) {
+        final Flow row = Flow.row()
+            .childPadding(8).widthRel(1f).height(Palette.COMPACT_ROW_H).padding(0, 10)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .background(Styles.rowBg(Palette.BG_ROW));
+        final TextWidget labelWidget = new TextWidget(IKey.str(label + ":")).color(Palette.TEXT_LABEL);
+        labelWidget.width(92);
+        row.child(labelWidget);
+        final TextWidget val = new TextWidget(IKey.str(value)).color(Palette.TEXT_PRIMARY);
         val.expanded();
         row.child(val);
         return row;

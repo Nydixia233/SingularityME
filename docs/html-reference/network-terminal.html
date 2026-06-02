@@ -16,7 +16,8 @@
   .frame {
     width: min(92vw, 760px);
     height: min(92vh, 520px);
-    display: flex; flex-direction: column;
+    position: relative;
+    display: block;
     background: rgba(20, 25, 35, 0.93);
     border: 1px solid var(--border-panel);
     border-radius: var(--radius-panel);
@@ -25,12 +26,16 @@
 
   /* ── 导航栏 ── */
   .nav {
+    position: absolute;
+    left: 8px; top: 8px;
+    width: calc(100% - 16px);
+    height: 40px;
+    box-sizing: border-box;
     display: flex; align-items: center;
-    flex-shrink: 0;
     background: var(--bg-list);
     border: 1px solid var(--border-list);
     border-radius: var(--radius-row);
-    margin: var(--gap-md);
+    margin: 0;
     padding: 4px;
     gap: 4px;
   }
@@ -56,16 +61,20 @@
 
   /* ── 内容区 ── */
   .content {
-    flex: 1 1 0;
-    display: flex; flex-direction: column;
-    min-height: 0;
+    position: absolute;
+    left: 12px; right: 12px;
+    top: 58px; bottom: 12px;
+    display: block;
     overflow: hidden;
   }
 
   /* ── 网络信息条 ── */
   .network-bar {
+    position: absolute;
+    left: 0; right: 0; top: 0;
+    height: var(--row-h);
+    box-sizing: border-box;
     display: flex; align-items: center;
-    flex-shrink: 0;
     padding: var(--pad-sm) var(--pad-lg);
     gap: var(--gap-md);
   }
@@ -82,15 +91,22 @@
 
   /* ── 滚动盒 ── */
   .scroll-box {
-    flex: 1 1 0; min-height: 120px;
+    position: absolute;
+    left: 0; right: 0;
+    top: 46px; bottom: 52px;
+    min-height: 120px;
     overflow-y: auto; overflow-x: hidden;
     padding: var(--gap-sm) var(--pad-lg);
   }
 
   /* ── 列表元信息 ── */
   .list-meta {
+    position: absolute;
+    left: 0; right: 0;
+    top: 42px;
+    height: 20px;
+    box-sizing: border-box;
     display: flex; justify-content: space-between; align-items: center;
-    flex-shrink: 0;
     padding: 4px var(--pad-lg);
     color: var(--text-muted); font-size: 12px;
   }
@@ -123,9 +139,12 @@
 
   /* ── 选中摘要栏 ── */
   .selection-summary {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 46px;
+    box-sizing: border-box;
     display: flex; align-items: center;
-    flex-shrink: 0;
-    margin: var(--gap-sm) var(--pad-lg) 0;
+    margin: 0;
     padding: var(--pad-md); gap: var(--gap-md);
     background: var(--bg-list);
     border: 1px solid;
@@ -139,9 +158,12 @@
 
   /* ── 操作行 ── */
   .actions {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 40px;
+    box-sizing: border-box;
     display: flex; align-items: center;
-    flex-shrink: 0;
-    padding: 0 var(--pad-lg) var(--gap-lg);
+    padding: 0;
     gap: var(--gap-md);
     flex-wrap: wrap;
   }
@@ -229,9 +251,18 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .home-grid {
+    position: absolute;
+    left: 0; right: 0;
+    top: 46px; bottom: 52px;
     display: flex;
     flex-direction: column;
-    padding: 0 var(--pad-lg) var(--gap-lg);
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .list-meta + .scroll-box {
+    top: 70px;
+    bottom: 98px;
   }
 
   /* ── 空状态 ── */

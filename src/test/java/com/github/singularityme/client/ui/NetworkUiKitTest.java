@@ -59,4 +59,27 @@ public class NetworkUiKitTest {
         assertEquals(88, NetworkUiKit.navButtonWidth(760, 8));
         assertEquals(58, NetworkUiKit.navButtonWidth(520, 8));
     }
+
+    /** 网络终端使用固定坐标骨架，避免顶层 Flow 相对布局在游戏内溢出或拉伸。 */
+    @Test
+    public void computesFixedTerminalLayout() {
+        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(760, 520);
+
+        assertEquals(8, layout.navX);
+        assertEquals(8, layout.navY);
+        assertEquals(744, layout.navW);
+        assertEquals(40, layout.navH);
+        assertEquals(12, layout.networkX);
+        assertEquals(58, layout.networkY);
+        assertEquals(736, layout.networkW);
+        assertEquals(36, layout.networkH);
+        assertEquals(12, layout.contentX);
+        assertEquals(104, layout.contentY);
+        assertEquals(736, layout.contentW);
+        assertEquals(356, layout.contentH);
+        assertEquals(12, layout.bottomX);
+        assertEquals(468, layout.bottomY);
+        assertEquals(736, layout.bottomW);
+        assertEquals(40, layout.bottomH);
+    }
 }
