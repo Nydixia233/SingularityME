@@ -1,7 +1,8 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [string] $BuildLibs,
-    [string] $ModsDir,
+    [string[]] $ModsDir,
+    [string] $TargetsFile,
     [string] $JarPattern = 'singularityme-*.jar',
     [switch] $Once,
     [switch] $Watch,
@@ -27,6 +28,179 @@ function Resolve-DefaultBuildLibs {
 
     $projectRoot = Split-Path -Parent $PSScriptRoot
     return (Join-Path $projectRoot 'build\libs')
+}
+
+function Get-OptionalStringProperty {
+    param(
+        [object] $InputObject,
+        [string] $PropertyName
+    )
+
+    $property = $InputObject.PSObject.Properties[$PropertyName]
+    if ($null -eq $property -or $null -eq $property.Value) {
+        return $null
+    }
+
+    return [string] $property.Value
+}
+
+function Get-OptionalBoolProperty {
+    param(
+        [object] $InputObject,
+        [string] $PropertyName,
+        [bool] $DefaultValue
+    )
+
+    $property = $InputObject.PSObject.Properties[$PropertyName]
+    if ($null -eq $property -or $null -eq $property.Value) {
+        return $DefaultValue
+    }
+
+    return [bool] $property.Value
+}
+
+function Resolve-PathOrLiteral {
+    param([string] $Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        throw 'Deploy target path is empty.'
+    }
+
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return $Path
+    }
+
+    return (Resolve-Path -LiteralPath $Path).Path
+}
+
+function New-DeployTarget {
+    param(
+        [string] $Name,
+        [string] $ModsDirectory
+    )
+
+    $resolvedModsDir = Resolve-PathOrLiteral -Path $ModsDirectory
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        $Name = $resolvedModsDir
+    }
+
+    return [pscustomobject]@{
+        Name = $Name
+        ModsDir = $resolvedModsDir
+    }
+}
+
+function ConvertTo-DeployTarget {
+    param(
+        [object] $TargetSpec,
+        [int] $Index
+    )
+
+    $name = Get-OptionalStringProperty -InputObject $TargetSpec -PropertyName 'name'
+    if ([string]::IsNullOrWhiteSpace($name)) {
+        $name = "target-$Index"
+    }
+
+    $kind = Get-OptionalStringProperty -InputObject $TargetSpec -PropertyName 'kind'
+    if ([string]::IsNullOrWhiteSpace($kind)) {
+        $kind = 'mods-dir'
+    }
+
+    $modsPath = Get-OptionalStringProperty -InputObject $TargetSpec -PropertyName 'modsDir'
+    $rootPath = Get-OptionalStringProperty -InputObject $TargetSpec -PropertyName 'path'
+
+    switch ($kind.ToLowerInvariant()) {
+        'mods-dir' {
+            if ([string]::IsNullOrWhiteSpace($modsPath)) {
+                $modsPath = $rootPath
+            }
+        }
+        'prism-instance' {
+            if ([string]::IsNullOrWhiteSpace($rootPath)) {
+                throw "Deploy target '$name' is missing path."
+            }
+            $modsPath = Join-Path $rootPath '.minecraft\mods'
+        }
+        'server-root' {
+            if ([string]::IsNullOrWhiteSpace($rootPath)) {
+                throw "Deploy target '$name' is missing path."
+            }
+            $modsPath = Join-Path $rootPath 'mods'
+        }
+        default {
+            throw "Unsupported deploy target kind '$kind' for '$name'. Use mods-dir, prism-instance, or server-root."
+        }
+    }
+
+    return New-DeployTarget -Name $name -ModsDirectory $modsPath
+}
+
+function Get-DefaultDeployTargetSpecs {
+    return @(
+        [pscustomobject]@{
+            name = 'GTNH290test'
+            kind = 'prism-instance'
+            path = Join-Path $env:APPDATA 'PrismLauncher\instances\GTNH290test'
+        },
+        [pscustomobject]@{
+            name = 'GTNH290test2'
+            kind = 'prism-instance'
+            path = Join-Path $env:APPDATA 'PrismLauncher\instances\GTNH290test2'
+        },
+        [pscustomobject]@{
+            name = 'GTNH daily test server'
+            kind = 'server-root'
+            path = 'E:\GTNH Test Server\GTNH-daily-2026-06-02+549-server-java17-25'
+        }
+    )
+}
+
+function Resolve-TargetsFromFile {
+    param([string] $Path)
+
+    $resolvedTargetsFile = Resolve-PathOrLiteral -Path $Path
+    if (-not (Test-Path -LiteralPath $resolvedTargetsFile -PathType Leaf)) {
+        throw "Deploy targets file does not exist: $resolvedTargetsFile"
+    }
+
+    $config = Get-Content -LiteralPath $resolvedTargetsFile -Raw | ConvertFrom-Json
+    if ($null -eq $config.targets) {
+        throw "Deploy targets file must contain a targets array: $resolvedTargetsFile"
+    }
+
+    return @($config.targets)
+}
+
+function Resolve-DeployTargets {
+    $targetSpecs = @()
+
+    if ($null -ne $ModsDir -and $ModsDir.Count -gt 0) {
+        $targets = @()
+        for ($i = 0; $i -lt $ModsDir.Count; $i++) {
+            $targets += New-DeployTarget -Name "mods-dir-$($i + 1)" -ModsDirectory $ModsDir[$i]
+        }
+        return $targets
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($TargetsFile)) {
+        $targetSpecs = Resolve-TargetsFromFile -Path $TargetsFile
+    } else {
+        $targetSpecs = Get-DefaultDeployTargetSpecs
+    }
+
+    $targetsFromSpecs = @()
+    for ($i = 0; $i -lt $targetSpecs.Count; $i++) {
+        if (-not (Get-OptionalBoolProperty -InputObject $targetSpecs[$i] -PropertyName 'enabled' -DefaultValue $true)) {
+            continue
+        }
+        $targetsFromSpecs += ConvertTo-DeployTarget -TargetSpec $targetSpecs[$i] -Index ($i + 1)
+    }
+
+    if ($targetsFromSpecs.Count -eq 0) {
+        throw 'No deploy targets are enabled.'
+    }
+
+    return $targetsFromSpecs
 }
 
 function Get-LatestReleaseJar {
@@ -97,15 +271,17 @@ function Wait-ForStableFile {
     throw "Jar did not become stable within $StableTimeoutSeconds seconds: $Path"
 }
 
-function Deploy-LatestJar {
-    $source = Get-LatestReleaseJar
-    Wait-ForStableFile -Path $source.FullName
+function Deploy-JarToTarget {
+    param(
+        [System.IO.FileInfo] $Source,
+        [object] $Target
+    )
 
-    if (-not (Test-Path -LiteralPath $script:ResolvedModsDir -PathType Container)) {
-        throw "Mods directory does not exist: $script:ResolvedModsDir"
+    if (-not (Test-Path -LiteralPath $Target.ModsDir -PathType Container)) {
+        throw "Mods directory does not exist for '$($Target.Name)': $($Target.ModsDir)"
     }
 
-    $oldJars = @(Get-ChildItem -LiteralPath $script:ResolvedModsDir -Filter $JarPattern | Where-Object {
+    $oldJars = @(Get-ChildItem -LiteralPath $Target.ModsDir -Filter $JarPattern | Where-Object {
             -not $_.PSIsContainer
         })
     foreach ($oldJar in $oldJars) {
@@ -114,18 +290,28 @@ function Deploy-LatestJar {
         }
     }
 
-    $destination = Join-Path $script:ResolvedModsDir $source.Name
+    $destination = Join-Path $Target.ModsDir $Source.Name
     $copied = $false
-    if ($PSCmdlet.ShouldProcess($destination, "Copy $($source.Name)")) {
-        Copy-Item -LiteralPath $source.FullName -Destination $destination -Force
+    if ($PSCmdlet.ShouldProcess($destination, "Copy $($Source.Name)")) {
+        Copy-Item -LiteralPath $Source.FullName -Destination $destination -Force
         $copied = $true
     }
 
     if ($copied) {
-        Write-DeployLog "Deployed $($source.Name) -> $script:ResolvedModsDir"
+        Write-DeployLog "Deployed $($Source.Name) -> [$($Target.Name)] $($Target.ModsDir)"
     } elseif ($WhatIfPreference) {
-        Write-DeployLog "WhatIf: would deploy $($source.Name) -> $script:ResolvedModsDir"
+        Write-DeployLog "WhatIf: would deploy $($Source.Name) -> [$($Target.Name)] $($Target.ModsDir)"
     }
+}
+
+function Deploy-LatestJar {
+    $source = Get-LatestReleaseJar
+    Wait-ForStableFile -Path $source.FullName
+
+    foreach ($target in $script:ResolvedTargets) {
+        Deploy-JarToTarget -Source $source -Target $target
+    }
+
     return $source
 }
 
@@ -136,17 +322,7 @@ if ($Once.IsPresent -and $Watch.IsPresent) {
 $runWatch = $Watch.IsPresent
 $runOnce = $Once.IsPresent -or -not $runWatch
 $script:ResolvedBuildLibs = Resolve-DefaultBuildLibs
-
-if ([string]::IsNullOrWhiteSpace($ModsDir)) {
-    $defaultInstanceName = 'GTNH290' + [char] 0x914D + [char] 0x65B9
-    $ModsDir = Join-Path $env:APPDATA "PrismLauncher\instances\$defaultInstanceName\.minecraft\mods"
-}
-
-$script:ResolvedModsDir = if ([System.IO.Path]::IsPathRooted($ModsDir)) {
-    $ModsDir
-} else {
-    (Resolve-Path -LiteralPath $ModsDir).Path
-}
+$script:ResolvedTargets = Resolve-DeployTargets
 
 if ($runOnce) {
     Deploy-LatestJar | Out-Null
@@ -154,7 +330,9 @@ if ($runOnce) {
 }
 
 Write-DeployLog "Watching $script:ResolvedBuildLibs"
-Write-DeployLog "Target mods directory: $script:ResolvedModsDir"
+foreach ($target in $script:ResolvedTargets) {
+    Write-DeployLog "Target [$($target.Name)]: $($target.ModsDir)"
+}
 Write-DeployLog 'Press Ctrl+C to stop.'
 
 $lastSignature = ''

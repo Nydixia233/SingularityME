@@ -267,7 +267,7 @@ $env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
 # 完整构建
 .\gradlew.bat build -x spotlessJavaCheck
 
-# 部署到测试实例
+# 部署到多人联机测试目标
 .\deploy-mod.bat -Once
 
 # 带兼容模式运行
