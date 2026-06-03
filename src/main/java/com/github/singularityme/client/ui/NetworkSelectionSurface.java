@@ -134,7 +134,7 @@ public final class NetworkSelectionSurface {
             .padding(0, 6)
             .disableHoverBackground()
             .onMousePressed(mb -> {
-                runPrimaryAction();
+                performPrimaryAction();
                 return true;
             });
         rebuild();
@@ -309,10 +309,7 @@ public final class NetworkSelectionSurface {
                 ? NetworkUiKit.tr("gui.singularityme.network_terminal.selection.clear_default")
                 : NetworkUiKit.tr("gui.singularityme.network_terminal.selection.set_default");
         }
-        if (selected != null && NetworkUiKit.canSelfJoin(selected)) {
-            return NetworkUiKit.tr("gui.singularityme.network_action.join");
-        }
-        return NetworkUiKit.tr("gui.singularityme.network_tab.select");
+        return NetworkUiKit.deviceAssignmentActionText(selected, delegate.deviceNetworkID());
     }
 
     private boolean isPrimaryActionEnabled(final NetworkEntry selected) {
@@ -320,12 +317,11 @@ public final class NetworkSelectionSurface {
         if (mode == Mode.TERMINAL_DEFAULT) {
             return selected.networkID != 0 && NetworkUiKit.canAccess(selected);
         }
-        return selected.networkID != delegate.deviceNetworkID()
-            && !NetworkUiKit.isBlocked(selected)
-            && (selected.networkID == 0 || NetworkUiKit.canAccess(selected) || NetworkUiKit.canSelfJoin(selected));
+        return NetworkUiKit.canAssignDeviceTo(selected, delegate.deviceNetworkID());
     }
 
-    private void runPrimaryAction() {
+    /** 执行当前选择表面的主动作，供底部按钮和设备摘要按钮共用。 */
+    public void performPrimaryAction() {
         final NetworkEntry selected = selectedEntry();
         if (!isPrimaryActionEnabled(selected)) return;
         if (mode == Mode.TERMINAL_DEFAULT) {

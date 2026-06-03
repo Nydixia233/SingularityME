@@ -188,7 +188,7 @@ public final class NetworkUiKit {
      * @return 适合整行背景的 ARGB 颜色
      */
     public static int selectedRowColor(final int color) {
-        return darken(0xFF000000 | color, 0.32f);
+        return darken(0xFF000000 | color, 0.25f);
     }
 
     /**
@@ -802,6 +802,51 @@ public final class NetworkUiKit {
         return AccessLevel.fromOrdinal(entry.accessLevelOrdinal) == AccessLevel.BLOCKED;
     }
 
+    /** 判断设备选择页能否把当前设备分配到目标网络。 */
+    public static boolean canAssignDeviceTo(final NetworkEntry entry, final int deviceNetworkID) {
+        if (entry == null) return false;
+        if (entry.networkID == deviceNetworkID) return false;
+        if (isBlocked(entry)) return false;
+        if (entry.networkID == 0) return true;
+        return canAccess(entry) || canSelfJoin(entry);
+    }
+
+    /** 返回设备选择页主动作按钮文案。 */
+    public static String deviceAssignmentActionText(final NetworkEntry entry, final int deviceNetworkID) {
+        if (entry == null) return tr("gui.singularityme.network_tab.no_selection");
+        if (entry.networkID == deviceNetworkID) return tr("gui.singularityme.network_tab.action.current");
+        if (entry.networkID == 0) return tr("gui.singularityme.network_tab.action.unassign");
+        if (!canAssignDeviceTo(entry, deviceNetworkID)) return tr("gui.singularityme.network_tab.action.unavailable");
+        if (isEncryptedJoinRequired(entry)) return tr("gui.singularityme.network_tab.action.password_assign");
+        if (isPublicJoinAvailable(entry)) return tr("gui.singularityme.network_tab.action.join_assign");
+        return tr("gui.singularityme.network_tab.action.assign");
+    }
+
+    /** 返回设备选择页目标网络的操作说明。 */
+    public static String deviceAssignmentHint(final NetworkEntry entry, final int deviceNetworkID) {
+        if (entry == null) return tr("gui.singularityme.network_tab.no_selection");
+        if (entry.networkID == deviceNetworkID) return tr("gui.singularityme.network_tab.hint.current");
+        if (isBlocked(entry)) return tr("gui.singularityme.network_action.blocked");
+        if (entry.networkID == 0) return tr("gui.singularityme.network_tab.hint.unassign");
+        if (isEncryptedJoinRequired(entry)) return tr("gui.singularityme.network_tab.hint.password_join");
+        if (isPublicJoinAvailable(entry)) return tr("gui.singularityme.network_tab.hint.public_join");
+        if (!canAssignDeviceTo(entry, deviceNetworkID)) {
+            return SecurityLevel.fromOrdinal(entry.securityOrdinal) == SecurityLevel.PRIVATE
+                ? tr("gui.singularityme.network_action.private_network")
+                : tr("gui.singularityme.network_action.no_access");
+        }
+        return tr("gui.singularityme.network_tab.hint.assign");
+    }
+
+    /** 返回设备选择页操作说明的提示色。 */
+    public static int deviceAssignmentHintColor(final NetworkEntry entry, final int deviceNetworkID) {
+        if (entry == null || entry.networkID == deviceNetworkID) return Palette.TEXT_MUTED;
+        if (isBlocked(entry) || !canAssignDeviceTo(entry, deviceNetworkID)) return Palette.BTN_DANGER_NORMAL;
+        if (isEncryptedJoinRequired(entry)) return Palette.SECURITY_ENCRYPTED;
+        if (isPublicJoinAvailable(entry)) return Palette.SECURITY_PUBLIC;
+        return entry.networkID == 0 ? Palette.TEXT_MUTED : Palette.BTN_NORMAL;
+    }
+
     /** 根据操作成功/失败语义返回共享结果提示色。 */
     public static int actionResultColor(final NetworkActionResult result) {
         if (result == null) return Palette.TEXT_MUTED;
@@ -901,9 +946,9 @@ public final class NetworkUiKit {
         return badge(accessShort(entry), color);
     }
 
-    /** 构建当前网络标记 "*"。 */
+    /** 构建当前设备网络标记。 */
     public static Flow currentBadge() {
-        return badge("*", Palette.BADGE_CURRENT);
+        return badge(currentBadgeText(), Palette.BADGE_CURRENT);
     }
 
     /** 构建默认网络标记 "D"。 */
@@ -914,6 +959,11 @@ public final class NetworkUiKit {
     /** 返回默认网络徽章文本。 */
     public static String defaultBadgeText() {
         return tr("gui.singularityme.network_terminal.badge.default");
+    }
+
+    /** 返回当前设备网络徽章文本。 */
+    public static String currentBadgeText() {
+        return tr("gui.singularityme.network_tab.badge.current");
     }
 
     // ---- 布局辅助组件（对齐 HTML 参考样式）----

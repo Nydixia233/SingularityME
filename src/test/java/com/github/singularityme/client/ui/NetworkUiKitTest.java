@@ -54,8 +54,8 @@ public class NetworkUiKitTest {
     /** 选中列表行只使用低饱和强调色，避免整行接近原色高亮。 */
     @Test
     public void selectedRowColorDarkensAccent() {
-        assertEquals(0xFF172E48, NetworkUiKit.selectedRowColor(0xFF4A90E2));
-        assertEquals(0xFF172E48, NetworkUiKit.selectedRowColor(0x004A90E2));
+        assertEquals(0xFF122438, NetworkUiKit.selectedRowColor(0xFF4A90E2));
+        assertEquals(0xFF122438, NetworkUiKit.selectedRowColor(0x004A90E2));
     }
 
     /** 颜色展示统一为 6 位大写 RGB，不泄露 alpha。 */
@@ -70,6 +70,13 @@ public class NetworkUiKitTest {
     public void defaultBadgeTextIsSemantic() {
         assertEquals(NetworkUiKit.tr("gui.singularityme.network_terminal.badge.default"),
             NetworkUiKit.defaultBadgeText());
+    }
+
+    /** 当前设备网络徽章必须使用明确语义文本，避免 "*" 在设备选择页看起来像异常符号。 */
+    @Test
+    public void currentBadgeTextIsSemantic() {
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.badge.current"),
+            NetworkUiKit.currentBadgeText());
     }
 
     /** 导航按钮使用稳定宽度，避免激活背景只绘制成小方块。 */
@@ -494,9 +501,73 @@ public class NetworkUiKitTest {
         assertEquals(Palette.TEXT_MUTED, NetworkUiKit.actionResultColor(null));
     }
 
+    /** 设备分配主动作应随目标网络状态变化，减少“点了会发生什么”的猜测。 */
+    @Test
+    public void describesDeviceAssignmentPrimaryActions() {
+        final NetworkEntry current = entry(7, SecurityLevel.PRIVATE, AccessLevel.MEMBER);
+        final NetworkEntry unassigned = entry(0, SecurityLevel.PUBLIC, AccessLevel.NONE);
+        final NetworkEntry publicGuest = entry(8, SecurityLevel.PUBLIC, AccessLevel.NONE);
+        final NetworkEntry encryptedGuest = entry(8, SecurityLevel.ENCRYPTED, AccessLevel.NONE);
+        final NetworkEntry privateGuest = entry(8, SecurityLevel.PRIVATE, AccessLevel.NONE);
+
+        assertFalse(NetworkUiKit.canAssignDeviceTo(current, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.current"),
+            NetworkUiKit.deviceAssignmentActionText(current, 7));
+
+        assertTrue(NetworkUiKit.canAssignDeviceTo(unassigned, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.unassign"),
+            NetworkUiKit.deviceAssignmentActionText(unassigned, 7));
+
+        assertTrue(NetworkUiKit.canAssignDeviceTo(publicGuest, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.join_assign"),
+            NetworkUiKit.deviceAssignmentActionText(publicGuest, 7));
+
+        assertTrue(NetworkUiKit.canAssignDeviceTo(encryptedGuest, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.password_assign"),
+            NetworkUiKit.deviceAssignmentActionText(encryptedGuest, 7));
+
+        assertFalse(NetworkUiKit.canAssignDeviceTo(privateGuest, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.unavailable"),
+            NetworkUiKit.deviceAssignmentActionText(privateGuest, 7));
+    }
+
+    /** 设备分配提示文字必须解释可用/不可用原因，并用稳定颜色表达状态。 */
+    @Test
+    public void explainsDeviceAssignmentState() {
+        final NetworkEntry current = entry(7, SecurityLevel.PRIVATE, AccessLevel.MEMBER);
+        final NetworkEntry publicGuest = entry(8, SecurityLevel.PUBLIC, AccessLevel.NONE);
+        final NetworkEntry encryptedGuest = entry(8, SecurityLevel.ENCRYPTED, AccessLevel.NONE);
+        final NetworkEntry privateGuest = entry(8, SecurityLevel.PRIVATE, AccessLevel.NONE);
+        final NetworkEntry blocked = entry(8, SecurityLevel.PUBLIC, AccessLevel.BLOCKED);
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.current"),
+            NetworkUiKit.deviceAssignmentHint(current, 7));
+        assertEquals(Palette.TEXT_MUTED, NetworkUiKit.deviceAssignmentHintColor(current, 7));
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.public_join"),
+            NetworkUiKit.deviceAssignmentHint(publicGuest, 7));
+        assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.deviceAssignmentHintColor(publicGuest, 7));
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.password_join"),
+            NetworkUiKit.deviceAssignmentHint(encryptedGuest, 7));
+        assertEquals(Palette.SECURITY_ENCRYPTED, NetworkUiKit.deviceAssignmentHintColor(encryptedGuest, 7));
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_action.private_network"),
+            NetworkUiKit.deviceAssignmentHint(privateGuest, 7));
+        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.deviceAssignmentHintColor(privateGuest, 7));
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_action.blocked"),
+            NetworkUiKit.deviceAssignmentHint(blocked, 7));
+        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.deviceAssignmentHintColor(blocked, 7));
+    }
+
     private static NetworkEntry entry(final SecurityLevel security, final AccessLevel access) {
+        return entry(7, security, access);
+    }
+
+    private static NetworkEntry entry(final int id, final SecurityLevel security, final AccessLevel access) {
         return new NetworkEntry(
-            7,
+            id,
             1,
             access == AccessLevel.OWNER,
             "Alpha",

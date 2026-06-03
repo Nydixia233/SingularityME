@@ -15,6 +15,7 @@ import com.cleanroommc.modularui.screen.ModularScreen;
 import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
 import com.cleanroommc.modularui.utils.Alignment;
+import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
@@ -113,9 +114,10 @@ public final class NetworkTabUI {
 
             selectionSurface = new NetworkSelectionSurface(NetworkSelectionSurface.Mode.DEVICE_ASSIGN, this);
             final int bodyH = Math.max(190, panelH - 82);
+            final int railW = Math.min(236, Math.max(200, panelW / 3));
             root.child(Flow.row()
                 .childPadding(10).widthRel(1f).height(bodyH)
-                .child(selectionSurface.build(220, bodyH, Math.max(92, bodyH - 112)))
+                .child(selectionSurface.build(railW, bodyH, Math.max(92, bodyH - 112)))
                 .child(buildSummaryPanel().expanded()));
 
             panel.child(root);
@@ -124,25 +126,75 @@ public final class NetworkTabUI {
 
         private Flow buildSummaryPanel() {
             summaryArea = Flow.column()
-                .childPadding(8).heightRel(1f).padding(0, 10)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .background(Styles.cardBg());
+                .childPadding(6).heightRel(1f).padding(8)
+                .background(Styles.cardBg())
+                .disableHoverBackground();
             rebuildSummary();
             return summaryArea;
         }
 
+        @SuppressWarnings("unchecked")
         private void rebuildSummary() {
             if (summaryArea == null) return;
             summaryArea.removeAll();
             final NetworkEntry selected = selectedEntry();
-            summaryArea.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.device")))
-                .color(Palette.TEXT_MUTED));
-            summaryArea.child(new TextWidget(IKey.str(displayDeviceName())).color(Palette.TEXT_PRIMARY));
-            summaryArea.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.default_network")))
-                .color(Palette.TEXT_MUTED));
-            summaryArea.child(new TextWidget(IKey.str(displayDefaultName())).color(Palette.TEXT_PRIMARY));
-            summaryArea.child(new TextWidget(IKey.str(NetworkUiKit.trf("gui.singularityme.network_tab.selected",
-                selected == null ? "-" : displayEntry(selected)))).color(Palette.TEXT_MUTED));
+            final int accentColor = selected == null ? Palette.TEXT_MUTED : NetworkUiKit.entryColor(selected);
+
+            summaryArea.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.summary.title")))
+                .color(Palette.TEXT_PRIMARY));
+            summaryArea.child(NetworkUiKit.selectionBar(
+                selected == null
+                    ? NetworkUiKit.tr("gui.singularityme.network_tab.no_selection")
+                    : displayEntry(selected),
+                accentColor));
+            summaryArea.child(NetworkUiKit.infoRowCompact(
+                NetworkUiKit.tr("gui.singularityme.network_tab.summary.current"), displayDeviceName()));
+            summaryArea.child(NetworkUiKit.infoRowCompact(
+                NetworkUiKit.tr("gui.singularityme.network_tab.summary.default"), displayDefaultName()));
+            summaryArea.child(NetworkUiKit.infoRowCompact(
+                NetworkUiKit.tr("gui.singularityme.network_tab.summary.target"),
+                selected == null ? "-" : displayName(selected)));
+
+            if (selected != null) {
+                summaryArea.child(NetworkUiKit.infoRowCompact(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.info.security"),
+                    NetworkUiKit.securityName(selected)));
+                summaryArea.child(NetworkUiKit.infoRowCompact(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.info.access"),
+                    NetworkUiKit.accessName(selected)));
+                summaryArea.child(NetworkUiKit.infoRowCompact(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.info.default"),
+                    selected.networkID != 0 && selected.networkID == defaultNetworkID
+                        ? NetworkUiKit.tr("gui.singularityme.network_terminal.yes")
+                        : NetworkUiKit.tr("gui.singularityme.network_terminal.no")));
+            }
+
+            summaryArea.child(statusLine(
+                selected == null ? NetworkUiKit.tr("gui.singularityme.network_tab.no_selection")
+                    : NetworkUiKit.deviceAssignmentHint(selected, deviceNetworkID),
+                NetworkUiKit.deviceAssignmentHintColor(selected, deviceNetworkID)));
+            final ButtonWidget<?> summaryActionButton = new ButtonWidget<>()
+                .overlay(IKey.str(NetworkUiKit.deviceAssignmentActionText(selected, deviceNetworkID)))
+                .height(Palette.ROW_H).widthRel(1f).padding(0, 8)
+                .background(Styles.rowBg(NetworkUiKit.canAssignDeviceTo(selected, deviceNetworkID)
+                    ? Palette.BTN_NORMAL
+                    : Palette.BTN_DISABLED))
+                .disableHoverBackground()
+                .onMousePressed(mb -> {
+                    if (!NetworkUiKit.canAssignDeviceTo(selectedEntry(), deviceNetworkID)) return false;
+                    selectionSurface.performPrimaryAction();
+                    return true;
+                });
+            summaryArea.child(summaryActionButton);
+        }
+
+        @SuppressWarnings("unchecked")
+        private Flow statusLine(final String text, final int color) {
+            return Flow.row()
+                .childPadding(6).widthRel(1f).height(Palette.TEXT_ROW_H).padding(Palette.LIST_ROW_PADDING_H, 0)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .child(NetworkUiKit.statusDotWidget(color))
+                .child(new TextWidget(IKey.str(text)).color(color));
         }
 
         @Override
@@ -194,8 +246,9 @@ public final class NetworkTabUI {
         }
 
         private String displayEntry(final NetworkEntry entry) {
+            if (entry.networkID == 0) return displayName(entry);
             return "#" + entry.networkID + " " + displayName(entry) + " "
-                + NetworkUiKit.securityName(entry) + " " + NetworkUiKit.accessMark(entry);
+                + NetworkUiKit.securityShort(entry) + " " + NetworkUiKit.accessName(entry);
         }
 
         @Override
