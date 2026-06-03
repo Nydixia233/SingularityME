@@ -106,7 +106,7 @@ public final class NetworkUiKit {
         public static final int ROW_H = 26;
         public static final int LIST_ROW_H = 22;
         public static final int COMPACT_ROW_H = 22;
-        public static final int INFO_LABEL_W = 64;
+        public static final int INFO_LABEL_W = 44;
         public static final int FORM_LABEL_W = 76;
         public static final int FORM_CHILD_GAP = 8;
         public static final int TERMINAL_PANEL_MAX_W = 1120;
@@ -114,7 +114,7 @@ public final class NetworkUiKit {
         public static final float TERMINAL_PANEL_VIEWPORT_W = 0.58f;
         public static final float TERMINAL_PANEL_VIEWPORT_H = 0.66f;
         public static final int TERMINAL_RAIL_X = 8;
-        public static final int TERMINAL_RAIL_W = 168;
+        public static final int TERMINAL_RAIL_W = 208;
         public static final int TERMINAL_GAP = 12;
         public static final int TERMINAL_OUTER_PAD_X = 20;
         public static final int TERMINAL_NAV_H = 30;
@@ -322,7 +322,7 @@ public final class NetworkUiKit {
 
     /** 判断主页信息是否应使用两列紧凑布局。 */
     public static boolean homeInfoUsesTwoColumns(final int contentWidth) {
-        return contentWidth >= 376;
+        return contentWidth >= 336;
     }
 
     /** 计算内容视口扣除内边距后的实际可用宽度，避免子项按外框宽度布局后被裁切。 */
@@ -468,7 +468,7 @@ public final class NetworkUiKit {
             this.railY = Palette.TERMINAL_CONTENT_TOP;
             this.railW = Math.max(
                 Palette.TERMINAL_RAIL_MIN_W,
-                Math.min(Palette.TERMINAL_RAIL_W, Math.round(panelW * 0.30f)));
+                Math.min(Palette.TERMINAL_RAIL_W, Math.round(panelW * 0.36f)));
             this.contentX = this.railX + this.railW + Palette.TERMINAL_GAP;
             this.contentY = this.railY;
             this.contentW = Math.max(

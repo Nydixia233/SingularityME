@@ -215,7 +215,6 @@ public final class NetworkSelectionSurface {
             .childPadding(4).widthRel(1f).height(Palette.RAIL_ROW_H)
             .crossAxisAlignment(Alignment.CrossAxis.CENTER)
             .child(NetworkUiKit.statusDotWidget(color))
-            .child(NetworkUiKit.idPill(entry.networkID))
             .child(nameWidget);
         if (mode == Mode.DEVICE_ASSIGN && current) rowContent.child(NetworkUiKit.currentBadge());
         if (isDefault) rowContent.child(NetworkUiKit.defaultBadge());

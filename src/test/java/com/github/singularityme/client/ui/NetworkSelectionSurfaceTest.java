@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
+import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
@@ -29,7 +30,7 @@ public class NetworkSelectionSurfaceTest {
         final NetworkSelectionSurface surface = new NetworkSelectionSurface(
             NetworkSelectionSurface.Mode.DEVICE_ASSIGN,
             delegate);
-        final Flow root = surface.build(168, 267, 179);
+        final Flow root = surface.build(208, 267, 179);
 
         assertEquals(4, root.getChildren().size());
         final IWidget actionArea = root.getChildren().get(3);
@@ -43,6 +44,24 @@ public class NetworkSelectionSurfaceTest {
         assertSame(actionArea, root.getChildren().get(3));
         assertEquals(1, actionArea.getChildren().size());
         assertTrue(actionArea.getChildren().get(0) instanceof Flow);
+    }
+
+    /** 网络列表行只展示状态点、名称和状态徽章，不再在网络名称前重复展示 ID 胶囊。 */
+    @Test
+    public void omitsIdPillBeforeNetworkNameInSelectionRows() {
+        final FakeDelegate delegate = new FakeDelegate();
+        delegate.networks.add(entry(3, SecurityLevel.PUBLIC, AccessLevel.OWNER));
+        delegate.selectedNetworkID = 3;
+
+        final NetworkSelectionSurface surface = new NetworkSelectionSurface(
+            NetworkSelectionSurface.Mode.TERMINAL_DEFAULT,
+            delegate);
+        final Flow root = surface.build(208, 267, 179);
+        final ListWidget<?, ?> railList = (ListWidget<?, ?>) root.getChildren().get(2);
+        final ButtonWidget<?> row = (ButtonWidget<?>) railList.getChildren().get(0);
+        final Flow rowContent = (Flow) row.getChildren().get(0);
+
+        assertEquals(2, rowContent.getChildren().size());
     }
 
     private static NetworkEntry entry(final int networkID, final SecurityLevel security, final AccessLevel access) {
