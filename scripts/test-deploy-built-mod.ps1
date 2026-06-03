@@ -90,6 +90,34 @@ try {
         }
     }
 
+    $lockedModsDir = Join-Path $tempRoot 'locked-mods'
+    New-Item -ItemType Directory -Force -Path $lockedModsDir | Out-Null
+    $lockedJar = Join-Path $lockedModsDir 'singularityme-locked.jar'
+    Set-Content -LiteralPath $lockedJar -Value 'locked'
+    $lockedStream = [System.IO.File]::Open(
+        $lockedJar,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::None)
+    try {
+        $deployFailed = $false
+        try {
+            & $deployScript -Once -BuildLibs $buildLibs -ModsDir $lockedModsDir -Quiet
+        } catch {
+            $deployFailed = $true
+            $message = $_.Exception.Message
+            if ($message -notlike '*Stop any running Minecraft client/server*' -or
+                $message -notlike '*singularityme-locked.jar*') {
+                throw "Expected locked jar diagnostic, got: $message"
+            }
+        }
+        if (-not $deployFailed) {
+            throw 'Expected deploy to fail when an old Singularity ME jar is locked'
+        }
+    } finally {
+        $lockedStream.Dispose()
+    }
+
     Write-Host 'deploy-built-mod test passed'
 } finally {
     if (Test-Path -LiteralPath $tempRoot) {

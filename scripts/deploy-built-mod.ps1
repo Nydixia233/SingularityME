@@ -286,14 +286,26 @@ function Deploy-JarToTarget {
         })
     foreach ($oldJar in $oldJars) {
         if ($PSCmdlet.ShouldProcess($oldJar.FullName, 'Remove old Singularity ME jar')) {
-            Remove-Item -LiteralPath $oldJar.FullName -Force
+            try {
+                Remove-Item -LiteralPath $oldJar.FullName -Force
+            } catch [System.IO.IOException] {
+                throw "Cannot remove old Singularity ME jar '$($oldJar.FullName)'. Stop any running Minecraft client/server using this mods directory, then run deploy again."
+            } catch [System.UnauthorizedAccessException] {
+                throw "Cannot remove old Singularity ME jar '$($oldJar.FullName)'. Stop any running Minecraft client/server using this mods directory, check file permissions, then run deploy again."
+            }
         }
     }
 
     $destination = Join-Path $Target.ModsDir $Source.Name
     $copied = $false
     if ($PSCmdlet.ShouldProcess($destination, "Copy $($Source.Name)")) {
-        Copy-Item -LiteralPath $Source.FullName -Destination $destination -Force
+        try {
+            Copy-Item -LiteralPath $Source.FullName -Destination $destination -Force
+        } catch [System.IO.IOException] {
+            throw "Cannot copy Singularity ME jar to '$destination'. Stop any running Minecraft client/server using this mods directory, then run deploy again."
+        } catch [System.UnauthorizedAccessException] {
+            throw "Cannot copy Singularity ME jar to '$destination'. Stop any running Minecraft client/server using this mods directory, check file permissions, then run deploy again."
+        }
         $copied = $true
     }
 

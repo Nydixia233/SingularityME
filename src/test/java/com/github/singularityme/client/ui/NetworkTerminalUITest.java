@@ -1,7 +1,6 @@
 package com.github.singularityme.client.ui;
 
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -10,7 +9,6 @@ import java.util.List;
 
 import org.junit.Test;
 
-import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.value.StringValue;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
@@ -29,6 +27,10 @@ public class NetworkTerminalUITest {
         setField(state, "layout", NetworkUiKit.terminalLayout(594, 359));
         setField(state, "networkRail", Flow.column());
         setField(state, "filterInput", new TextFieldWidget().value(new StringValue("")));
+        setField(state, "selectionSurface",
+            new NetworkSelectionSurface(
+                NetworkSelectionSurface.Mode.TERMINAL_DEFAULT,
+                (NetworkSelectionSurface.Delegate) state));
         addNetwork(state, newEntry(1, "Alpha"));
         addNetwork(state, newEntry(2, "Beta"));
 
@@ -73,10 +75,8 @@ public class NetworkTerminalUITest {
     }
 
     private static ButtonWidget<?> railDefaultButton(final Object state) throws Exception {
-        final Flow rail = (Flow) getField(state, "networkRail");
-        final IWidget child = rail.getChildren().get(rail.getChildren().size() - 1);
-        assertTrue(child instanceof ButtonWidget);
-        return (ButtonWidget<?>) child;
+        final Object surface = getField(state, "selectionSurface");
+        return (ButtonWidget<?>) getField(surface, "actionButton");
     }
 
     private static Object getField(final Object target, final String name) throws Exception {

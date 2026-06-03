@@ -48,7 +48,7 @@
   - 编译：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat compileJava compileMixinJava -x spotlessJavaCheck`
   - 构建：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat build -x spotlessJavaCheck`
   - Spotless：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat spotlessJavaCheck`
-  - 本地联机一键启动：`./start-test-env.bat`（启动默认 GTNH 测试服务器与 `GTNH290test` Prism 实例；目标路径由脚本参数和 `scripts/` 默认配置管理）
+  - 本地联机一键启动：`./start-test-env.bat`（默认先构建、部署，再启动 GTNH 测试服务器与 `GTNH290test` Prism 实例；目标路径由脚本参数和 `scripts/` 默认配置管理）
   - 部署：`./deploy-mod.bat -Once`（自动部署到脚本当前配置的多人联机测试目标）
 - ModularUI2 依赖通过 GTNH Maven 仓库解析，`dependencies.gradle` 中声明 `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`
 - 当前默认部署目标由 `scripts/deploy-built-mod.ps1` 管理，用于两个 PrismLauncher 客户端实例和一个 GTNH 测试服务端；文档不记录本地绝对路径。

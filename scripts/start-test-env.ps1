@@ -6,8 +6,12 @@ param(
     [string] $ServerRoot = 'E:\GTNH Test Server\GTNH-daily-2026-06-02+549-server-java17-25',
     [string] $ServerScript = 'startserver-java9.bat',
     [string] $ServerAddress,
+    [string] $GradleTask = 'build',
     [int] $ClientDelaySeconds = 12,
     [switch] $DeployFirst,
+    [switch] $SkipBuild,
+    [switch] $SkipDeploy,
+    [switch] $NoLaunch,
     [switch] $ServerOnly,
     [switch] $ClientOnly,
     [switch] $Quiet
@@ -24,6 +28,32 @@ function Write-StartLog {
 
 function Resolve-ProjectRoot {
     return (Split-Path -Parent $PSScriptRoot)
+}
+
+function Invoke-BuildMod {
+    $projectRoot = Resolve-ProjectRoot
+    $gradleWrapper = Join-Path $projectRoot 'gradlew.bat'
+    if (-not (Test-Path -LiteralPath $gradleWrapper -PathType Leaf)) {
+        throw "Missing Gradle wrapper: $gradleWrapper"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($env:GRADLE_USER_HOME)) {
+        $env:GRADLE_USER_HOME = Join-Path $env:USERPROFILE '.gradle'
+    }
+
+    Write-StartLog "Building mod with Gradle task '$GradleTask'..."
+    if ($PSCmdlet.ShouldProcess($projectRoot, "Run Gradle task $GradleTask")) {
+        Push-Location $projectRoot
+        try {
+            & $gradleWrapper $GradleTask -x spotlessJavaCheck
+            if ($LASTEXITCODE -ne 0) {
+                throw "Gradle build failed with exit code $LASTEXITCODE."
+            }
+        } finally {
+            Pop-Location
+        }
+    }
+    Write-StartLog 'Build completed.'
 }
 
 function Resolve-ExistingDirectory {
@@ -135,12 +165,14 @@ function Invoke-DeployOnce {
         throw "Missing deploy script: $deployScript"
     }
 
+    Write-StartLog 'Deploying latest built mod jar...'
     if ($PSCmdlet.ShouldProcess('Singularity ME deploy targets', 'Deploy latest built mod jar')) {
         & $deployScript -Once
         if ($LASTEXITCODE -ne 0) {
             throw "Deploy failed with exit code $LASTEXITCODE."
         }
     }
+    Write-StartLog 'Deploy completed.'
 }
 
 function Start-GtnhServer {
@@ -187,8 +219,21 @@ if ($ServerOnly.IsPresent -and $ClientOnly.IsPresent) {
     throw 'Use either -ServerOnly or -ClientOnly, not both.'
 }
 
-if ($DeployFirst.IsPresent) {
+if (-not $SkipBuild.IsPresent) {
+    Invoke-BuildMod
+} else {
+    Write-StartLog 'Skipping build.'
+}
+
+if (-not $SkipDeploy.IsPresent) {
     Invoke-DeployOnce
+} else {
+    Write-StartLog 'Skipping deploy.'
+}
+
+if ($NoLaunch.IsPresent) {
+    Write-StartLog 'NoLaunch requested; build/deploy phase finished.'
+    exit 0
 }
 
 if (-not $ClientOnly.IsPresent) {

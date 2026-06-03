@@ -49,3 +49,4 @@
 | 2026-06-03 | MUI2 色块视觉子节点抢占点击目标 | `ERROR-20260603-mui2-color-swatch-click-target.md` |
 | 2026-06-03 | Network Terminal 默认按钮切换闪烁 | `ERROR-20260603-network-terminal-rail-default-button-flicker.md` |
 | 2026-06-03 | MUI2 文档误导项审计 | `ERROR-20260603-mui2-doc-audit.md` |
+| 2026-06-03 | 部署旧 Mod Jar 被运行中的客户端或服务端锁定 | `ERROR-20260603-deploy-locked-mod-jar.md` |

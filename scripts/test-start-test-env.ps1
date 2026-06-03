@@ -23,6 +23,8 @@ try {
         -PrismDir $prismDir `
         -ServerRoot $serverRoot `
         -ClientDelaySeconds 0 `
+        -SkipBuild `
+        -SkipDeploy `
         -WhatIf `
         -Quiet
 
@@ -31,6 +33,8 @@ try {
         -PrismDir $prismDir `
         -ServerRoot $serverRoot `
         -ServerOnly `
+        -SkipBuild `
+        -SkipDeploy `
         -WhatIf `
         -Quiet
 
@@ -39,6 +43,8 @@ try {
         -PrismDir $prismDir `
         -ServerRoot $serverRoot `
         -ClientOnly `
+        -SkipBuild `
+        -SkipDeploy `
         -WhatIf `
         -Quiet
 
