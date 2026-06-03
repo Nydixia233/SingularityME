@@ -14,6 +14,7 @@ import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
+import com.github.singularityme.network.packet.NetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
@@ -774,6 +775,23 @@ public final class NetworkUiKit {
             && AccessLevel.fromOrdinal(entry.accessLevelOrdinal) == AccessLevel.NONE;
     }
 
+    /** 判断公开网络访客是否可以自助加入。 */
+    public static boolean isPublicJoinAvailable(final NetworkEntry entry) {
+        return entry.networkID != 0 && SecurityLevel.fromOrdinal(entry.securityOrdinal) == SecurityLevel.PUBLIC
+            && AccessLevel.fromOrdinal(entry.accessLevelOrdinal) == AccessLevel.NONE;
+    }
+
+    /** 判断当前玩家是否已经是拥有者、管理员或成员。 */
+    public static boolean isMemberAccess(final NetworkEntry entry) {
+        final AccessLevel access = AccessLevel.fromOrdinal(entry.accessLevelOrdinal);
+        return access == AccessLevel.OWNER || access == AccessLevel.ADMIN || access == AccessLevel.MEMBER;
+    }
+
+    /** 判断访客是否可以通过共享选择表面发起自助加入流程。 */
+    public static boolean canSelfJoin(final NetworkEntry entry) {
+        return isPublicJoinAvailable(entry) || isEncryptedJoinRequired(entry);
+    }
+
     /**
      * 判断玩家是否被该网络封禁。
      *
@@ -782,6 +800,12 @@ public final class NetworkUiKit {
      */
     public static boolean isBlocked(final NetworkEntry entry) {
         return AccessLevel.fromOrdinal(entry.accessLevelOrdinal) == AccessLevel.BLOCKED;
+    }
+
+    /** 根据操作成功/失败语义返回共享结果提示色。 */
+    public static int actionResultColor(final NetworkActionResult result) {
+        if (result == null) return Palette.TEXT_MUTED;
+        return result.success ? Palette.SECURITY_PUBLIC : Palette.BTN_DANGER_NORMAL;
     }
 
     // ---- i18n 工具 ----

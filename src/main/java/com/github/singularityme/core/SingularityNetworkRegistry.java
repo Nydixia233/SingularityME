@@ -151,16 +151,34 @@ public class SingularityNetworkRegistry extends WorldSavedData {
         return true;
     }
 
-    public synchronized boolean joinEncryptedNetwork(final int networkID, final int playerID,
+    /** 统一处理公开/加密网络的自助加入，并返回可展示给客户端的明确结果。 */
+    public synchronized JoinNetworkResult joinNetwork(final int networkID, final int playerID,
         final String passwordHash) {
         final NetworkMeta meta = networks.get(networkID);
-        if (meta == null || meta.security != SecurityLevel.ENCRYPTED) return false;
-        if (meta.getAccessLevel(playerID) == AccessLevel.BLOCKED) return false;
-        if (meta.canAccess(playerID)) return true;
-        if (meta.passwordHash == null || !meta.passwordHash.equals(cleanHash(passwordHash))) return false;
+        if (meta == null) return JoinNetworkResult.NETWORK_NOT_FOUND;
+
+        final AccessLevel access = meta.getAccessLevel(playerID);
+        if (access == AccessLevel.BLOCKED) return JoinNetworkResult.BLOCKED;
+        if (access == AccessLevel.OWNER || access == AccessLevel.ADMIN || access == AccessLevel.MEMBER) {
+            return JoinNetworkResult.ALREADY_MEMBER;
+        }
+
+        if (meta.security == SecurityLevel.PRIVATE) return JoinNetworkResult.PRIVATE_NETWORK;
+        if (meta.security == SecurityLevel.ENCRYPTED) {
+            final String clean = cleanHash(passwordHash);
+            if (meta.passwordHash == null || clean == null) return JoinNetworkResult.PASSWORD_REQUIRED;
+            if (!meta.passwordHash.equals(clean)) return JoinNetworkResult.BAD_PASSWORD;
+        }
+
         meta.memberPlayerIDs.add(playerID);
         markDirty();
-        return true;
+        return JoinNetworkResult.JOINED;
+    }
+
+    public synchronized boolean joinEncryptedNetwork(final int networkID, final int playerID,
+        final String passwordHash) {
+        final JoinNetworkResult result = joinNetwork(networkID, playerID, passwordHash);
+        return result == JoinNetworkResult.JOINED || result == JoinNetworkResult.ALREADY_MEMBER;
     }
 
     public synchronized NetworkMeta getNetwork(final int networkID) {
@@ -367,6 +385,28 @@ public class SingularityNetworkRegistry extends WorldSavedData {
         if (hash == null) return null;
         final String trimmed = hash.trim();
         return trimmed.isEmpty() ? null : trimmed.toLowerCase();
+    }
+
+    /** 自助加入网络的服务端结果。 */
+    public enum JoinNetworkResult {
+        JOINED,
+        ALREADY_MEMBER,
+        NETWORK_NOT_FOUND,
+        PRIVATE_NETWORK,
+        PASSWORD_REQUIRED,
+        BAD_PASSWORD,
+        BLOCKED;
+
+        /** 判断该结果是否表示玩家已经具备成员身份。 */
+        public boolean isSuccess() {
+            return this == JOINED || this == ALREADY_MEMBER;
+        }
+
+        /** 从网络包中的 ordinal 安全还原加入结果。 */
+        public static JoinNetworkResult fromOrdinal(final int ordinal) {
+            final JoinNetworkResult[] values = values();
+            return ordinal >= 0 && ordinal < values.length ? values[ordinal] : NETWORK_NOT_FOUND;
+        }
     }
 
     public static final class NetworkMeta {

@@ -114,6 +114,18 @@ gui.singularityme.network_terminal.no=No
 gui.singularityme.network_terminal.security.public=Public
 gui.singularityme.network_terminal.security.encrypted=Encrypted
 gui.singularityme.network_terminal.security.private=Private
+gui.singularityme.network_action.join=Join Network
+gui.singularityme.network_action.success=Operation succeeded
+gui.singularityme.network_action.joined=Joined network
+gui.singularityme.network_action.already_member=Already joined
+gui.singularityme.network_action.device_assigned=Device assigned
+gui.singularityme.network_action.network_not_found=Network not found
+gui.singularityme.network_action.private_network=Private network
+gui.singularityme.network_action.password_required=Password required
+gui.singularityme.network_action.bad_password=Wrong password
+gui.singularityme.network_action.blocked=Access blocked
+gui.singularityme.network_action.device_unavailable=Device unavailable
+gui.singularityme.network_action.no_access=No permission
 
 # Network Terminal — Settings
 gui.singularityme.network_terminal.settings.name=Name

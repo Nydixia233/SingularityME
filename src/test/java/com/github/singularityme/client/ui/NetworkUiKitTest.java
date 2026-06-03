@@ -19,8 +19,11 @@ import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
+import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
+import com.github.singularityme.network.packet.NetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
+import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
 /** 验证网络 UI 设备类型展示辅助方法。 */
 public class NetworkUiKitTest {
@@ -436,5 +439,70 @@ public class NetworkUiKitTest {
         assertTrue(IDrawable.isVisible(button.getBackground()));
         assertTrue(IDrawable.isVisible(button.getOverlay()));
         assertTrue(button.getChildren().isEmpty());
+    }
+
+    /** 公开访客网络应显示为可自助加入，并且仍可访问以保持旧 UI 兼容。 */
+    @Test
+    public void detectsPublicGuestSelfJoin() {
+        final NetworkEntry entry = entry(SecurityLevel.PUBLIC, AccessLevel.NONE);
+
+        assertTrue(NetworkUiKit.canAccess(entry));
+        assertTrue(NetworkUiKit.isPublicJoinAvailable(entry));
+        assertTrue(NetworkUiKit.canSelfJoin(entry));
+        assertFalse(NetworkUiKit.isEncryptedJoinRequired(entry));
+        assertFalse(NetworkUiKit.isMemberAccess(entry));
+    }
+
+    /** 加密访客网络不应直接访问，应进入密码加入流程。 */
+    @Test
+    public void detectsEncryptedGuestPasswordJoin() {
+        final NetworkEntry entry = entry(SecurityLevel.ENCRYPTED, AccessLevel.NONE);
+
+        assertFalse(NetworkUiKit.canAccess(entry));
+        assertFalse(NetworkUiKit.isPublicJoinAvailable(entry));
+        assertTrue(NetworkUiKit.isEncryptedJoinRequired(entry));
+        assertTrue(NetworkUiKit.canSelfJoin(entry));
+        assertFalse(NetworkUiKit.isMemberAccess(entry));
+    }
+
+    /** 私有访客、拉黑玩家和已有成员在两种 GUI 中应得到一致权限判断。 */
+    @Test
+    public void classifiesPrivateBlockedAndMemberAccess() {
+        final NetworkEntry privateGuest = entry(SecurityLevel.PRIVATE, AccessLevel.NONE);
+        final NetworkEntry blocked = entry(SecurityLevel.PUBLIC, AccessLevel.BLOCKED);
+        final NetworkEntry member = entry(SecurityLevel.PRIVATE, AccessLevel.MEMBER);
+
+        assertFalse(NetworkUiKit.canAccess(privateGuest));
+        assertFalse(NetworkUiKit.canSelfJoin(privateGuest));
+
+        assertFalse(NetworkUiKit.canAccess(blocked));
+        assertTrue(NetworkUiKit.isBlocked(blocked));
+        assertFalse(NetworkUiKit.canSelfJoin(blocked));
+
+        assertTrue(NetworkUiKit.canAccess(member));
+        assertTrue(NetworkUiKit.isMemberAccess(member));
+        assertFalse(NetworkUiKit.canSelfJoin(member));
+    }
+
+    /** 操作结果颜色只按成功/失败语义映射，保证终端和设备选择界面反馈一致。 */
+    @Test
+    public void mapsActionResultColorsBySuccessFlag() {
+        assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.actionResultColor(NetworkActionResult.JOINED));
+        assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.actionResultColor(NetworkActionResult.DEVICE_ASSIGNED));
+        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.actionResultColor(NetworkActionResult.BAD_PASSWORD));
+        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.actionResultColor(NetworkActionResult.NO_ACCESS));
+        assertEquals(Palette.TEXT_MUTED, NetworkUiKit.actionResultColor(null));
+    }
+
+    private static NetworkEntry entry(final SecurityLevel security, final AccessLevel access) {
+        return new NetworkEntry(
+            7,
+            1,
+            access == AccessLevel.OWNER,
+            "Alpha",
+            0x4A90E2,
+            security.ordinal(),
+            access.ordinal(),
+            security == SecurityLevel.ENCRYPTED);
     }
 }

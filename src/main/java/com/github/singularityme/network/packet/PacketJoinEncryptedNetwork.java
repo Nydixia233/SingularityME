@@ -1,12 +1,6 @@
 package com.github.singularityme.network.packet;
 
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.world.World;
-
-import com.github.singularityme.core.SingularityNetworkRegistry;
-import com.github.singularityme.network.SingularityChannel;
-
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
@@ -70,21 +64,9 @@ public class PacketJoinEncryptedNetwork implements IMessage {
         }
 
         private static void handle(final PacketJoinEncryptedNetwork msg, final EntityPlayerMP player) {
-            final World world = NetworkTabPacketHelper.getLoadedWorld(msg.dim);
-            if (world == null) {
-                NetworkTabPacketHelper.sendNetworkTabData(player, 0);
-                return;
-            }
-
-            final int playerID = NetworkTabPacketHelper.getPlayerID(player);
-            if (playerID < 0) return;
-
-            final SingularityNetworkRegistry registry = NetworkTabPacketHelper.getRegistry(player);
-            registry.joinEncryptedNetwork(msg.networkID, playerID, msg.passwordHash);
-
-            final TileEntity te = NetworkTabPacketHelper.getTileEntityIfLoaded(world, msg.x, msg.y, msg.z);
-            final int deviceNetworkID = NetworkTabPacketHelper.getDeviceNetworkID(te);
-            SingularityChannel.CHANNEL.sendTo(new PacketNetworkTabData(registry, playerID, deviceNetworkID), player);
+            PacketJoinNetwork.Handler.handle(
+                new PacketJoinNetwork(msg.x, msg.y, msg.z, msg.dim, msg.networkID, msg.passwordHash, true),
+                player);
         }
     }
 }

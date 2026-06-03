@@ -4,6 +4,8 @@ import com.github.singularityme.network.packet.PacketAddMemberByName;
 import com.github.singularityme.network.packet.PacketCreateNetwork;
 import com.github.singularityme.network.packet.PacketDeleteNetwork;
 import com.github.singularityme.network.packet.PacketJoinEncryptedNetwork;
+import com.github.singularityme.network.packet.PacketJoinNetwork;
+import com.github.singularityme.network.packet.PacketNetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkTabData;
 import com.github.singularityme.network.packet.PacketOpenNetworkTab;
@@ -55,5 +57,7 @@ public final class SingularityChannel {
         CHANNEL
             .registerMessage(PacketRequestNetworkStatus.Handler.class, PacketRequestNetworkStatus.class, id++, Side.SERVER);
         CHANNEL.registerMessage(PacketNetworkStatus.Handler.class, PacketNetworkStatus.class, id++, Side.CLIENT);
+        CHANNEL.registerMessage(PacketJoinNetwork.Handler.class, PacketJoinNetwork.class, id++, Side.SERVER);
+        CHANNEL.registerMessage(PacketNetworkActionResult.Handler.class, PacketNetworkActionResult.class, id++, Side.CLIENT);
     }
 }

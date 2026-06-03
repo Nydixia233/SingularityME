@@ -9,32 +9,23 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.tileentity.TileEntity;
 
 import com.cleanroommc.modularui.api.drawable.IKey;
-import com.cleanroommc.modularui.api.drawable.IIcon;
 import com.cleanroommc.modularui.screen.GuiScreenWrapper;
 import com.cleanroommc.modularui.screen.ModularPanel;
 import com.cleanroommc.modularui.screen.ModularScreen;
 import com.cleanroommc.modularui.screen.UISettings;
 import com.cleanroommc.modularui.screen.viewport.ModularGuiContext;
 import com.cleanroommc.modularui.utils.Alignment;
-import com.cleanroommc.modularui.value.StringValue;
-import com.cleanroommc.modularui.widgets.ButtonWidget;
-import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
-import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
 import com.github.singularityme.client.ui.NetworkUiKit.Styles;
-import com.github.singularityme.core.SingularityNetworkRegistry;
 import com.github.singularityme.network.SingularityChannel;
-import com.github.singularityme.network.packet.PacketJoinEncryptedNetwork;
+import com.github.singularityme.network.packet.PacketNetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkTabData;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 import com.github.singularityme.network.packet.PacketRequestNetworkTabData;
-import com.github.singularityme.network.packet.PacketSetDeviceNetwork;
 
-/**
- * 设备网络分配标签页 — MUI2 重写版。
- */
+/** 设备网络分配 GUI，复用网络终端左侧的共享网络选择表面。 */
 public final class NetworkTabUI {
 
     private static WeakReference<TabState> activeState;
@@ -74,27 +65,34 @@ public final class NetworkTabUI {
         return false;
     }
 
-    // ---- 内部状态机 ----
+    public static boolean receiveActionResult(final PacketNetworkActionResult packet) {
+        final TabState state = activeState == null ? null : activeState.get();
+        if (state == null) return false;
+        if (Minecraft.getMinecraft().currentScreen instanceof GuiScreenWrapper w
+            && w.getScreen().isPanelOpen("network_tab")) {
+            state.receiveActionResult(packet);
+            return true;
+        }
+        return false;
+    }
 
-    private static final class TabState {
+    /** 设备网络分配 GUI 的本地状态与共享选择表面代理。 */
+    private static final class TabState implements NetworkSelectionSurface.Delegate {
+
         final int x, y, z, dim;
         final List<NetworkEntry> networks = new ArrayList<>();
         int selectedNetworkID;
         int deviceNetworkID;
         int defaultNetworkID;
-        boolean passwordMode;
 
-        ModularPanel panel;
-        ListWidget networkList;
-        Flow bottomArea;
-        ButtonWidget<?> selectBtn;
-        ButtonWidget<?> joinBtn;
-        ButtonWidget<?> cancelBtn;
-        TextFieldWidget passwordField;
-        StringValue passwordValue = new StringValue("");
+        NetworkSelectionSurface selectionSurface;
+        Flow summaryArea;
 
-        TabState(int x, int y, int z, int dim) {
-            this.x = x; this.y = y; this.z = z; this.dim = dim;
+        TabState(final int x, final int y, final int z, final int dim) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.dim = dim;
         }
 
         ModularPanel buildPanel() {
@@ -102,7 +100,7 @@ public final class NetworkTabUI {
             final int panelW = Math.min(480 * guiScale, 720);
             final int panelH = Math.min(300 * guiScale, 500);
 
-            panel = new ModularPanel("network_tab")
+            final ModularPanel panel = new ModularPanel("network_tab")
                 .size(panelW, panelH)
                 .background(new ShadowDrawable(Styles.panelBg(), 5, 0x80000000));
 
@@ -110,151 +108,46 @@ public final class NetworkTabUI {
                 .childPadding(10)
                 .widthRel(1f).heightRel(1f)
                 .padding(0, 14).margin(14, 0);
-
-            // 标题
             root.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.title")))
                 .color(Palette.TEXT_PRIMARY));
 
-            // 摘要行
-            root.child(buildSummaryRow());
-
-            // 列表头
+            selectionSurface = new NetworkSelectionSurface(NetworkSelectionSurface.Mode.DEVICE_ASSIGN, this);
+            final int bodyH = Math.max(190, panelH - 82);
             root.child(Flow.row()
-                .mainAxisAlignment(Alignment.MainAxis.SPACE_BETWEEN)
-                .widthRel(1f).height(Palette.TEXT_ROW_H)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str(
-                    NetworkUiKit.trf("gui.singularityme.network_tab.sort_by",
-                        NetworkUiKit.tr("gui.singularityme.network_tab.name"))))
-                    .color(Palette.TEXT_MUTED))
-                .child(new TextWidget(IKey.str(
-                    NetworkUiKit.trf("gui.singularityme.network_tab.total", "0")))
-                    .color(Palette.TEXT_MUTED)));
-
-            // 网络列表
-            networkList = new ListWidget();
-            networkList.background(Styles.listBg());
-            networkList.disableHoverBackground();
-            networkList.childSeparator(IIcon.EMPTY_2PX);
-            networkList.padding(Palette.LIST_CONTENT_INSET, 0);
-            networkList.widthRel(1f);
-            networkList.expanded();
-            root.child(networkList);
-
-            // 按钮
-            selectBtn = makeBtn(NetworkUiKit.tr("gui.singularityme.network_tab.select"),
-                180, Palette.BTN_NORMAL, this::onSelect, false);
-            joinBtn = makeBtn(NetworkUiKit.tr("gui.singularityme.network_tab.join"),
-                110, Palette.BTN_NORMAL, this::onJoin);
-            cancelBtn = makeBtn(NetworkUiKit.tr("gui.singularityme.network_tab.cancel"),
-                110, Palette.BTN_DANGER_NORMAL, this::onCancel);
-
-            passwordField = new TextFieldWidget()
-                .value(passwordValue)
-                .widthRel(1f).height(36)
-                .background(Styles.inputBg())
-                .autoUpdateOnChange(true);
-
-            bottomArea = Flow.column().childPadding(8).widthRel(1f).height(82);
-            root.child(bottomArea);
+                .childPadding(10).widthRel(1f).height(bodyH)
+                .child(selectionSurface.build(220, bodyH, Math.max(92, bodyH - 112)))
+                .child(buildSummaryPanel().expanded()));
 
             panel.child(root);
             return panel;
         }
 
-        private Flow buildSummaryRow() {
-            return Flow.row()
-                .childPadding(10)
-                .widthRel(1f).height(56)
-                .child(summaryBox(NetworkUiKit.tr("gui.singularityme.network_tab.device"), true))
-                .child(summaryBox(NetworkUiKit.tr("gui.singularityme.network_tab.default_network"), false));
-        }
-
-        private Flow summaryBox(String label, boolean isDevice) {
-            return Flow.column()
-                .expanded().heightRel(1f).padding(0, 10)
+        private Flow buildSummaryPanel() {
+            summaryArea = Flow.column()
+                .childPadding(8).heightRel(1f).padding(0, 10)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .background(Styles.cardBg())
-                .child(new TextWidget(IKey.str(label)).color(Palette.TEXT_MUTED))
-                .child(new TextWidget(IKey.dynamicKey(() ->
-                    IKey.str(isDevice ? displayDeviceName() : displayDefaultName())))
-                    .color(Palette.TEXT_PRIMARY));
+                .background(Styles.cardBg());
+            rebuildSummary();
+            return summaryArea;
         }
 
-        private String displayDeviceName() {
-            for (final NetworkEntry e : networks) {
-                if (e.networkID == deviceNetworkID) return e.name;
-            }
-            return deviceNetworkID == 0 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : "#" + deviceNetworkID;
+        private void rebuildSummary() {
+            if (summaryArea == null) return;
+            summaryArea.removeAll();
+            final NetworkEntry selected = selectedEntry();
+            summaryArea.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.device")))
+                .color(Palette.TEXT_MUTED));
+            summaryArea.child(new TextWidget(IKey.str(displayDeviceName())).color(Palette.TEXT_PRIMARY));
+            summaryArea.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.default_network")))
+                .color(Palette.TEXT_MUTED));
+            summaryArea.child(new TextWidget(IKey.str(displayDefaultName())).color(Palette.TEXT_PRIMARY));
+            summaryArea.child(new TextWidget(IKey.str(NetworkUiKit.trf("gui.singularityme.network_tab.selected",
+                selected == null ? "-" : displayEntry(selected)))).color(Palette.TEXT_MUTED));
         }
 
-        private String displayDefaultName() {
-            for (final NetworkEntry e : networks) {
-                if (e.networkID == defaultNetworkID) return e.name;
-            }
-            return defaultNetworkID == 0 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : "#" + defaultNetworkID;
-        }
-
-        // ---- 按钮工厂 ----
-
-        private static ButtonWidget<?> makeBtn(String text, int w, int bg, Runnable action) {
-            return makeBtn(text, w, bg, action, true);
-        }
-
-        private static ButtonWidget<?> makeBtn(String text, int w, int bg, Runnable action, boolean enabled) {
-            final ButtonWidget<?> button = new ButtonWidget<>();
-            button.overlay(IKey.str(text));
-            button.width(w);
-            button.height(36);
-            button.background(Styles.rowBg(bg));
-            button.onMousePressed(mb -> {
-                if (!button.isEnabled()) return false;
-                action.run();
-                return true;
-            });
-            button.setEnabled(enabled);
-            return button;
-        }
-
-        // ---- 交互 ----
-
-        void onSelect() {
-            final NetworkEntry sel = selectedEntry();
-            if (sel == null) return;
-            if (NetworkUiKit.isEncryptedJoinRequired(sel)) {
-                passwordMode = true;
-                passwordValue.setStringValue("");
-                rebuildBottom();
-                return;
-            }
-            SingularityChannel.CHANNEL.sendToServer(
-                new PacketSetDeviceNetwork(x, y, z, dim, sel.networkID));
-        }
-
-        void onJoin() {
-            final NetworkEntry sel = selectedEntry();
-            if (sel == null) return;
-            final String pw = passwordValue.getStringValue();
-            if (pw.isEmpty()) return;
-            SingularityChannel.CHANNEL.sendToServer(
-                new PacketJoinEncryptedNetwork(x, y, z, dim, sel.networkID,
-                    SingularityNetworkRegistry.sha256Hex(pw)));
-            passwordValue.setStringValue("");
-            passwordMode = false;
-            rebuildBottom();
-        }
-
-        void onCancel() {
-            passwordMode = false;
-            passwordValue.setStringValue("");
-            rebuildBottom();
-        }
-
-        // ---- 数据刷新 ----
-
-        void requestNetworkData() {
-            SingularityChannel.CHANNEL.sendToServer(
-                new PacketRequestNetworkTabData(x, y, z, dim));
+        @Override
+        public void requestNetworkData() {
+            SingularityChannel.CHANNEL.sendToServer(new PacketRequestNetworkTabData(x, y, z, dim));
         }
 
         void receive(final PacketNetworkTabData packet) {
@@ -262,113 +155,18 @@ public final class NetworkTabUI {
             networks.addAll(packet.networks);
             deviceNetworkID = packet.deviceNetworkID;
             defaultNetworkID = packet.defaultNetworkID;
-            // 仅在非密码模式时重置密码状态，避免用户输入中被清空
-            if (!passwordMode) {
-                passwordValue.setStringValue("");
-            }
             selectedNetworkID = packet.deviceNetworkID;
             if (selectedEntry() == null && !networks.isEmpty()) {
                 selectedNetworkID = networks.get(0).networkID;
             }
-            rebuildAll();
+            if (selectionSurface != null) selectionSurface.rebuild();
+            rebuildSummary();
         }
 
-        // ---- 重建 ----
-
-        @SuppressWarnings({ "unchecked", "rawtypes" })
-        void rebuildAll() {
-            networkList.removeAll();
-            for (final NetworkEntry entry : networks) {
-                networkList.child(buildRow(entry));
-            }
-            networkList.scheduleResize();
-            rebuildBottom();
+        void receiveActionResult(final PacketNetworkActionResult packet) {
+            if (selectionSurface != null) selectionSurface.receiveResult(packet);
+            requestNetworkData();
         }
-
-        @SuppressWarnings({ "unchecked", "rawtypes" })
-        void rebuildList() {
-            networkList.removeAll();
-            for (final NetworkEntry entry : networks) {
-                networkList.child(buildRow(entry));
-            }
-            networkList.scheduleResize();
-        }
-
-        @SuppressWarnings("unchecked")
-        void rebuildBottom() {
-            bottomArea.removeAll();
-
-            final NetworkEntry sel = selectedEntry();
-            final String barText = sel == null
-                ? NetworkUiKit.tr("gui.singularityme.network_tab.no_selection")
-                : NetworkUiKit.trf("gui.singularityme.network_tab.selected", displayEntry(sel));
-
-            final int accentColor = sel == null ? Palette.TEXT_MUTED : NetworkUiKit.entryColor(sel);
-            bottomArea.child(NetworkUiKit.selectionBar(barText, accentColor));
-
-            if (passwordMode) {
-                bottomArea.child(Flow.row()
-                    .childPadding(6).widthRel(1f).height(Palette.ROW_H)
-                    .child(passwordField)
-                    .child(joinBtn)
-                    .child(cancelBtn));
-            } else {
-                final boolean canAssign = sel != null
-                    && sel.networkID != deviceNetworkID
-                    && !NetworkUiKit.isBlocked(sel)
-                    && (sel.networkID == 0 || NetworkUiKit.canAccess(sel)
-                        || NetworkUiKit.isEncryptedJoinRequired(sel));
-                selectBtn.setEnabled(canAssign);
-                bottomArea.child(Flow.row().childPadding(6).widthRel(1f).height(Palette.ROW_H).child(selectBtn));
-            }
-        }
-
-        // ---- 行构建 ----
-
-        private ButtonWidget<?> buildRow(final NetworkEntry entry) {
-            final boolean selected = entry.networkID == selectedNetworkID;
-            final boolean current = entry.networkID == deviceNetworkID;
-            final boolean isDefault = entry.networkID != 0 && entry.networkID == defaultNetworkID;
-            final int color = NetworkUiKit.entryColor(entry);
-            final int bg = selected ? NetworkUiKit.darken(color, 0.32f) : Palette.BG_ROW;
-            final String name = entry.networkID == 0
-                ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : entry.name;
-
-            final TextWidget nameWidget = new TextWidget(IKey.str(name))
-                .color(selected ? 0xFFFFFFFF : Palette.TEXT_SECONDARY);
-            nameWidget.expanded();
-
-            final Flow rowContent = Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.ROW_H)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str("\u25A0")).color(color));
-            if (entry.networkID != 0) {
-                rowContent.child(NetworkUiKit.idPill(entry.networkID));
-            } else {
-                rowContent.child(new TextWidget(IKey.str("-")).color(Palette.TEXT_MUTED));
-            }
-            rowContent.child(nameWidget);
-            rowContent.child(NetworkUiKit.securityBadge(entry));
-            rowContent.child(NetworkUiKit.accessBadge(entry));
-            if (current) rowContent.child(NetworkUiKit.currentBadge());
-            if (isDefault) rowContent.child(NetworkUiKit.defaultBadge());
-
-            return new ButtonWidget<>()
-                .child(rowContent)
-                .widthRel(1f).height(Palette.ROW_H)
-                .padding(Palette.LIST_ROW_PADDING_H, 0)
-                .background(Styles.rowBg(bg))
-                .disableHoverBackground()
-                .onMousePressed(mb -> {
-                    selectedNetworkID = entry.networkID;
-                    passwordMode = false;
-                    rebuildList();
-                    rebuildBottom();
-                    return true;
-                });
-        }
-
-        // ---- 工具 ----
 
         private NetworkEntry selectedEntry() {
             for (final NetworkEntry e : networks) {
@@ -377,10 +175,80 @@ public final class NetworkTabUI {
             return null;
         }
 
-        private String displayEntry(NetworkEntry e) {
-            if (e == null) return "-";
-            return "#" + e.networkID + " " + e.name + " "
-                + NetworkUiKit.securityName(e) + " " + NetworkUiKit.accessMark(e);
+        private String displayDeviceName() {
+            for (final NetworkEntry e : networks) {
+                if (e.networkID == deviceNetworkID) return displayName(e);
+            }
+            return deviceNetworkID == 0 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : "#" + deviceNetworkID;
+        }
+
+        private String displayDefaultName() {
+            for (final NetworkEntry e : networks) {
+                if (e.networkID == defaultNetworkID) return displayName(e);
+            }
+            return defaultNetworkID == 0 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : "#" + defaultNetworkID;
+        }
+
+        private String displayName(final NetworkEntry entry) {
+            return entry.networkID == 0 ? NetworkUiKit.tr("gui.singularityme.network_tab.default") : entry.name;
+        }
+
+        private String displayEntry(final NetworkEntry entry) {
+            return "#" + entry.networkID + " " + displayName(entry) + " "
+                + NetworkUiKit.securityName(entry) + " " + NetworkUiKit.accessMark(entry);
+        }
+
+        @Override
+        public List<NetworkEntry> networks() {
+            return networks;
+        }
+
+        @Override
+        public int selectedNetworkID() {
+            return selectedNetworkID;
+        }
+
+        @Override
+        public int deviceNetworkID() {
+            return deviceNetworkID;
+        }
+
+        @Override
+        public int defaultNetworkID() {
+            return defaultNetworkID;
+        }
+
+        @Override
+        public int x() {
+            return x;
+        }
+
+        @Override
+        public int y() {
+            return y;
+        }
+
+        @Override
+        public int z() {
+            return z;
+        }
+
+        @Override
+        public int dim() {
+            return dim;
+        }
+
+        @Override
+        public void selectNetwork(final int networkID) {
+            selectedNetworkID = networkID;
+            if (selectionSurface != null) selectionSurface.rebuild();
+            rebuildSummary();
+        }
+
+        @Override
+        public void rebuildAfterSurfaceAction() {
+            requestNetworkData();
+            rebuildSummary();
         }
     }
 }

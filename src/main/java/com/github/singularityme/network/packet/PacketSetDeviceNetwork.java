@@ -5,6 +5,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import com.github.singularityme.core.SingularityNetworkRegistry;
+import com.github.singularityme.network.SingularityChannel;
 import com.github.singularityme.tile.ISingularityNetworkDevice;
 
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
@@ -73,6 +74,7 @@ public class PacketSetDeviceNetwork implements IMessage {
             final World world = NetworkTabPacketHelper.getLoadedWorld(msg.dim);
             if (world == null) {
                 NetworkTabPacketHelper.sendNetworkTabData(player, 0);
+                sendResult(player, NetworkActionResult.DEVICE_UNAVAILABLE, msg.newNetworkID);
                 return;
             }
 
@@ -80,6 +82,7 @@ public class PacketSetDeviceNetwork implements IMessage {
             final int currentNetworkID = NetworkTabPacketHelper.getDeviceNetworkID(te);
             if (!(te instanceof ISingularityNetworkDevice device)) {
                 NetworkTabPacketHelper.sendNetworkTabData(player, currentNetworkID);
+                sendResult(player, NetworkActionResult.DEVICE_UNAVAILABLE, msg.newNetworkID);
                 return;
             }
 
@@ -89,11 +92,20 @@ public class PacketSetDeviceNetwork implements IMessage {
             final SingularityNetworkRegistry registry = NetworkTabPacketHelper.getRegistry(player);
             if (msg.newNetworkID < 0 || (msg.newNetworkID != 0 && !registry.canAccess(msg.newNetworkID, playerID))) {
                 NetworkTabPacketHelper.sendNetworkTabData(player, currentNetworkID);
+                sendResult(player, NetworkActionResult.NO_ACCESS, msg.newNetworkID);
                 return;
             }
 
             device.setNetworkID(msg.newNetworkID);
             NetworkTabPacketHelper.sendNetworkTabData(player, device.getNetworkID());
+            sendResult(player, NetworkActionResult.DEVICE_ASSIGNED, msg.newNetworkID);
+        }
+
+        private static void sendResult(final EntityPlayerMP player, final NetworkActionResult result,
+            final int networkID) {
+            SingularityChannel.CHANNEL.sendTo(
+                new PacketNetworkActionResult(NetworkActionType.ASSIGN_DEVICE, result, networkID),
+                player);
         }
     }
 }

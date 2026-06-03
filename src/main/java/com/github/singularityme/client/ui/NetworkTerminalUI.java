@@ -41,6 +41,7 @@ import com.github.singularityme.network.packet.PacketCreateNetwork;
 import com.github.singularityme.network.packet.PacketDeleteNetwork;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkStatus.DeviceInfo;
+import com.github.singularityme.network.packet.PacketNetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkTabData;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 import com.github.singularityme.network.packet.PacketRenameNetwork;
@@ -103,6 +104,17 @@ public final class NetworkTerminalUI {
         return false;
     }
 
+    public static boolean receiveActionResult(final PacketNetworkActionResult packet) {
+        final TerminalState state = activeState == null ? null : activeState.get();
+        if (state == null) return false;
+        if (Minecraft.getMinecraft().currentScreen instanceof GuiScreenWrapper w
+            && w.getScreen().isPanelOpen("network_terminal")) {
+            state.receiveActionResult(packet);
+            return true;
+        }
+        return false;
+    }
+
     private enum Panel { HOME, CONNECTION, MEMBERS, SETTINGS, CREATE }
 
     /** 网络终端专用屏幕包装器，绘制稳定遮罩以避免背景 hover 时闪烁。 */
@@ -134,7 +146,7 @@ public final class NetworkTerminalUI {
         }
     }
 
-    private static final class TerminalState {
+    private static final class TerminalState implements NetworkSelectionSurface.Delegate {
         final int x, y, z, dim;
         final List<NetworkEntry> networks = new ArrayList<>();
         int selectedNetworkID = -1;
@@ -155,6 +167,7 @@ public final class NetworkTerminalUI {
         Flow navBar;
         Flow networkBar;
         Flow networkRail;
+        NetworkSelectionSurface selectionSurface;
         ListWidget railList;
         ButtonWidget<?> railDefaultButton;
         ListWidget contentViewport;
@@ -246,6 +259,7 @@ public final class NetworkTerminalUI {
             createPasswordInput = makeInput(createPwVal);
             settingsNameInput = makeInput(settingsNameVal);
             settingsPasswordInput = makeInput(settingsPwVal);
+            selectionSurface = new NetworkSelectionSurface(NetworkSelectionSurface.Mode.TERMINAL_DEFAULT, this);
 
             return panel;
         }
@@ -343,12 +357,11 @@ public final class NetworkTerminalUI {
 
         @SuppressWarnings({ "unchecked", "rawtypes" })
         void renderNetworkRail() {
-            if (railList == null || railDefaultButton == null) {
-                buildNetworkRailChrome();
+            if (selectionSurface == null) return;
+            if (networkRail.getChildren().isEmpty()) {
+                networkRail.child(selectionSurface.build(layout.railW, layout.railH, layout.railListH));
             }
-
-            rebuildRailList();
-            updateRailDefaultButton();
+            selectionSurface.rebuild();
         }
 
         @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -1210,7 +1223,8 @@ public final class NetworkTerminalUI {
                 .autoUpdateOnChange(true);
         }
 
-        private void selectNetwork(final int networkID) {
+        @Override
+        public void selectNetwork(final int networkID) {
             if (selectedNetworkID == networkID) return;
             selectedNetworkID = networkID;
             selectedMemberID = -1;
@@ -1227,7 +1241,8 @@ public final class NetworkTerminalUI {
 
         // ---- 数据刷新 ----
 
-        void requestNetworkData() {
+        @Override
+        public void requestNetworkData() {
             SingularityChannel.CHANNEL.sendToServer(new PacketRequestNetworkTabData(x, y, z, dim));
         }
 
@@ -1243,6 +1258,13 @@ public final class NetworkTerminalUI {
             if (packet.networkID != selectedNetworkID) return;
             networkStatus = packet;
             renderContent(false);
+        }
+
+        void receiveActionResult(final PacketNetworkActionResult packet) {
+            if (selectionSurface != null) {
+                selectionSurface.receiveResult(packet);
+            }
+            requestNetworkData();
         }
 
         void receive(final PacketNetworkTabData packet) {
@@ -1364,6 +1386,52 @@ public final class NetworkTerminalUI {
 
         private static String panelTitle(Panel p) {
             return NetworkUiKit.tr("gui.singularityme.network_terminal.panel." + p.name().toLowerCase());
+        }
+
+        @Override
+        public List<NetworkEntry> networks() {
+            return networks;
+        }
+
+        @Override
+        public int selectedNetworkID() {
+            return selectedNetworkID;
+        }
+
+        @Override
+        public int deviceNetworkID() {
+            return 0;
+        }
+
+        @Override
+        public int defaultNetworkID() {
+            return defaultNetworkID;
+        }
+
+        @Override
+        public int x() {
+            return x;
+        }
+
+        @Override
+        public int y() {
+            return y;
+        }
+
+        @Override
+        public int z() {
+            return z;
+        }
+
+        @Override
+        public int dim() {
+            return dim;
+        }
+
+        @Override
+        public void rebuildAfterSurfaceAction() {
+            requestNetworkData();
+            renderContent();
         }
     }
 }

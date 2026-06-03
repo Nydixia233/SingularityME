@@ -195,6 +195,18 @@ gui.singularityme.network_terminal.no=否
 gui.singularityme.network_terminal.security.public=公开
 gui.singularityme.network_terminal.security.encrypted=加密
 gui.singularityme.network_terminal.security.private=私有
+gui.singularityme.network_action.join=加入网络
+gui.singularityme.network_action.success=操作成功
+gui.singularityme.network_action.joined=已加入网络
+gui.singularityme.network_action.already_member=已经是成员
+gui.singularityme.network_action.device_assigned=设备已分配
+gui.singularityme.network_action.network_not_found=网络不存在
+gui.singularityme.network_action.private_network=私有网络不可加入
+gui.singularityme.network_action.password_required=需要密码
+gui.singularityme.network_action.bad_password=密码错误
+gui.singularityme.network_action.blocked=已被拉黑
+gui.singularityme.network_action.device_unavailable=设备不可用
+gui.singularityme.network_action.no_access=无权限
 
 # Network Terminal — Settings
 gui.singularityme.network_terminal.settings.name=名称
