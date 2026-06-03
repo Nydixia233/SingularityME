@@ -174,7 +174,7 @@ public class SingularityNetworkRegistry extends WorldSavedData {
         return playerDefaults.getOrDefault(playerID, 0);
     }
 
-    /** 默认网络仅要求可使用；发包侧可按具体操作追加 BUILD 校验。 */
+    /** Registry 层仅检查 canUseNetwork；PacketSetDefaultNetwork 在发包层追加 BUILD 校验。 */
     public synchronized boolean setDefaultNetworkID(final int playerID, final int networkID) {
         if (playerID < 0) return false;
         if (networkID == 0) {

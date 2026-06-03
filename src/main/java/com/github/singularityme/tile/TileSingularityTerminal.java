@@ -104,6 +104,7 @@ public class TileSingularityTerminal extends AENetworkTile
 
     @Override
     public void onReady() {
+        this.securedMonitorCache.clear();
         this.getProxy()
             .setFlags();
         this.getProxy()
@@ -134,12 +135,14 @@ public class TileSingularityTerminal extends AENetworkTile
     @Override
     public void onChunkUnload() {
         this.unregister(false);
+        this.securedMonitorCache.clear();
         super.onChunkUnload();
     }
 
     @Override
     public void invalidate() {
         this.unregister(true);
+        this.securedMonitorCache.clear();
         super.invalidate();
     }
 
@@ -518,6 +521,7 @@ public class TileSingularityTerminal extends AENetworkTile
                     playerSource.player,
                     permission);
             }
+            // 非玩家来源（合成 CPU、机器自动化）在网格层执行，不绑定某个正在操作的玩家。
             return !src.isPlayer();
         }
     }
