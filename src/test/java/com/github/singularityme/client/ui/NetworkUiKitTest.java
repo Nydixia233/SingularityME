@@ -120,18 +120,18 @@ public class NetworkUiKitTest {
         assertEquals(8, layout.navY);
         assertEquals(578, layout.navW);
         assertEquals(30, layout.navH);
-        assertEquals(20, layout.railX);
+        assertEquals(8, layout.railX);
         assertEquals(82, layout.railY);
-        assertEquals(136, layout.railW);
+        assertEquals(168, layout.railW);
         assertEquals(267, layout.railH);
         assertEquals(179, layout.railListH);
-        assertEquals(168, layout.contentX);
+        assertEquals(188, layout.contentX);
         assertEquals(82, layout.contentY);
-        assertEquals(406, layout.contentW);
+        assertEquals(386, layout.contentW);
         assertEquals(227, layout.contentH);
-        assertEquals(168, layout.bottomX);
+        assertEquals(188, layout.bottomX);
         assertEquals(317, layout.bottomY);
-        assertEquals(406, layout.bottomW);
+        assertEquals(386, layout.bottomW);
         assertEquals(32, layout.bottomH);
         assertTrue(layout.contentY + layout.contentH < layout.bottomY);
         assertTrue(layout.railY + layout.railH <= 349);
@@ -147,9 +147,9 @@ public class NetworkUiKitTest {
 
         assertEquals(8, layout.navX);
         assertEquals(30, layout.navH);
-        assertEquals(136, layout.railW);
-        assertEquals(168, layout.contentX);
-        assertEquals(406, layout.contentW);
+        assertEquals(168, layout.railW);
+        assertEquals(188, layout.contentX);
+        assertEquals(386, layout.contentW);
         assertEquals(227, layout.contentH);
         assertEquals(179, layout.railListH);
         assertTrue(layout.contentY + layout.contentH < layout.bottomY);
@@ -188,13 +188,13 @@ public class NetworkUiKitTest {
     /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
     @Test
     public void computesHomeInfoColumnWidth() {
-        assertEquals(202, NetworkUiKit.homeInfoColumnWidth(406));
+        assertEquals(192, NetworkUiKit.homeInfoColumnWidth(386));
         assertEquals(360, NetworkUiKit.homeInfoColumnWidth(360));
     }
 
     @Test
     public void detectsHomeInfoColumnMode() {
-        assertTrue(NetworkUiKit.homeInfoUsesTwoColumns(406));
+        assertTrue(NetworkUiKit.homeInfoUsesTwoColumns(378));
         assertFalse(NetworkUiKit.homeInfoUsesTwoColumns(360));
     }
 
@@ -202,8 +202,8 @@ public class NetworkUiKitTest {
     @Test
     public void computesContentInnerWidthForHomeRows() {
         assertEquals(4, Palette.CONTENT_VIEWPORT_PAD);
-        assertEquals(398, NetworkUiKit.terminalContentInnerWidth(406));
-        assertEquals(198, NetworkUiKit.homeInfoColumnWidth(NetworkUiKit.terminalContentInnerWidth(406)));
+        assertEquals(378, NetworkUiKit.terminalContentInnerWidth(386));
+        assertEquals(188, NetworkUiKit.homeInfoColumnWidth(NetworkUiKit.terminalContentInnerWidth(386)));
     }
 
     /** 切换网络时优先复用已收到的状态快照，避免内容区进入空白 loading 中间帧。 */
@@ -398,11 +398,11 @@ public class NetworkUiKitTest {
     /** 高 GUI 缩放下仍保留两栏布局的最小可用空间，并让左侧操作按钮留在 rail 内部。 */
     @Test
     public void exposesTerminalMinimumBounds() {
-        assertEquals(308, NetworkUiKit.terminalMinimumWidth());
+        assertEquals(296, NetworkUiKit.terminalMinimumWidth());
         assertEquals(236, NetworkUiKit.terminalMinimumHeight());
         assertEquals(88, NetworkUiKit.terminalRailChromeHeight());
         assertEquals(88, NetworkUiKit.railActionWidth(96));
-        assertEquals(128, NetworkUiKit.railActionWidth(136));
+        assertEquals(160, NetworkUiKit.railActionWidth(168));
     }
 
     /** 终端列表高度优先占满内容区，只为过滤、元信息和选中栏预留稳定空间。 */

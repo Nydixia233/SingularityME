@@ -113,7 +113,8 @@ public final class NetworkUiKit {
         public static final int TERMINAL_PANEL_MAX_H = 700;
         public static final float TERMINAL_PANEL_VIEWPORT_W = 0.58f;
         public static final float TERMINAL_PANEL_VIEWPORT_H = 0.66f;
-        public static final int TERMINAL_RAIL_W = 136;
+        public static final int TERMINAL_RAIL_X = 8;
+        public static final int TERMINAL_RAIL_W = 168;
         public static final int TERMINAL_GAP = 12;
         public static final int TERMINAL_OUTER_PAD_X = 20;
         public static final int TERMINAL_NAV_H = 30;
@@ -278,10 +279,11 @@ public final class NetworkUiKit {
 
     /** 终端两栏布局的最小宽度，防止高 guiScale 下内容列被压出面板。 */
     public static int terminalMinimumWidth() {
-        return Palette.TERMINAL_OUTER_PAD_X * 2
+        return Palette.TERMINAL_RAIL_X
             + Palette.TERMINAL_RAIL_MIN_W
             + Palette.TERMINAL_GAP
-            + Palette.TERMINAL_CONTENT_MIN_W;
+            + Palette.TERMINAL_CONTENT_MIN_W
+            + Palette.TERMINAL_OUTER_PAD_X;
     }
 
     /** 左侧网络栏除列表外的固定高度。 */
@@ -320,7 +322,7 @@ public final class NetworkUiKit {
 
     /** 判断主页信息是否应使用两列紧凑布局。 */
     public static boolean homeInfoUsesTwoColumns(final int contentWidth) {
-        return contentWidth >= 380;
+        return contentWidth >= 376;
     }
 
     /** 计算内容视口扣除内边距后的实际可用宽度，避免子项按外框宽度布局后被裁切。 */
@@ -462,11 +464,11 @@ public final class NetworkUiKit {
             this.networkY = 48;
             this.networkW = Math.max(0, panelW - Palette.TERMINAL_OUTER_PAD_X * 2);
             this.networkH = Palette.TERMINAL_CRUMB_H;
-            this.railX = Palette.TERMINAL_OUTER_PAD_X;
+            this.railX = Palette.TERMINAL_RAIL_X;
             this.railY = Palette.TERMINAL_CONTENT_TOP;
             this.railW = Math.max(
                 Palette.TERMINAL_RAIL_MIN_W,
-                Math.min(Palette.TERMINAL_RAIL_W, Math.round(panelW * 0.24f)));
+                Math.min(Palette.TERMINAL_RAIL_W, Math.round(panelW * 0.30f)));
             this.contentX = this.railX + this.railW + Palette.TERMINAL_GAP;
             this.contentY = this.railY;
             this.contentW = Math.max(

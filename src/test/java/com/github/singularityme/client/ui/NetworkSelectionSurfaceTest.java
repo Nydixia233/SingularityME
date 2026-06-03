@@ -29,7 +29,7 @@ public class NetworkSelectionSurfaceTest {
         final NetworkSelectionSurface surface = new NetworkSelectionSurface(
             NetworkSelectionSurface.Mode.DEVICE_ASSIGN,
             delegate);
-        final Flow root = surface.build(136, 267, 179);
+        final Flow root = surface.build(168, 267, 179);
 
         assertEquals(4, root.getChildren().size());
         final IWidget actionArea = root.getChildren().get(3);
