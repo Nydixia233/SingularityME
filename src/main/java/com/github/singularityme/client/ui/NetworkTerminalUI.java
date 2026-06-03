@@ -155,6 +155,8 @@ public final class NetworkTerminalUI {
         Flow navBar;
         Flow networkBar;
         Flow networkRail;
+        ListWidget railList;
+        ButtonWidget<?> railDefaultButton;
         ListWidget contentViewport;
         Flow contentArea;
         Flow bottomArea;
@@ -341,6 +343,16 @@ public final class NetworkTerminalUI {
 
         @SuppressWarnings({ "unchecked", "rawtypes" })
         void renderNetworkRail() {
+            if (railList == null || railDefaultButton == null) {
+                buildNetworkRailChrome();
+            }
+
+            rebuildRailList();
+            updateRailDefaultButton();
+        }
+
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        private void buildNetworkRailChrome() {
             networkRail.removeAll();
             networkRail.child(Flow.row()
                 .mainAxisAlignment(Alignment.MainAxis.SPACE_BETWEEN)
@@ -348,8 +360,8 @@ public final class NetworkTerminalUI {
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_terminal.rail.title")))
                     .color(Palette.TEXT_PRIMARY))
-                .child(new TextWidget(IKey.str(
-                    NetworkUiKit.trf("gui.singularityme.network_tab.total", visibleNetworkCount())))
+                .child(new TextWidget(IKey.dynamicKey(() -> IKey.str(
+                    NetworkUiKit.trf("gui.singularityme.network_tab.total", visibleNetworkCount()))))
                     .color(Palette.TEXT_MUTED)));
 
             networkRail.child(Flow.row()
@@ -357,33 +369,51 @@ public final class NetworkTerminalUI {
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(filterInput.widthRel(1f).expanded()));
 
-            final ListWidget list = new ListWidget();
-            list.background(IDrawable.NONE);
-            list.disableHoverBackground();
-            list.childSeparator(IIcon.EMPTY_2PX);
-            list.padding(Palette.LIST_CONTENT_INSET, 0);
-            list.widthRel(1f);
-            list.height(layout.railListH);
+            railList = new ListWidget();
+            railList.background(IDrawable.NONE);
+            railList.disableHoverBackground();
+            railList.childSeparator(IIcon.EMPTY_2PX);
+            railList.padding(Palette.LIST_CONTENT_INSET, 0);
+            railList.widthRel(1f);
+            railList.height(layout.railListH);
+            networkRail.child(railList);
+
+            railDefaultButton = new ButtonWidget<>()
+                .width(NetworkUiKit.railActionWidth(layout.railW)).height(Palette.RAIL_ACTION_H).padding(0, 6)
+                .disableHoverBackground()
+                .onMousePressed(mb -> {
+                    final NetworkEntry sel = selectedRealEntry();
+                    if (sel == null || !NetworkUiKit.canAccess(sel)) return false;
+                    final boolean isDefault = sel.networkID == defaultNetworkID;
+                    final int nextDefault = isDefault ? 0 : sel.networkID;
+                    SingularityChannel.CHANNEL.sendToServer(new PacketSetDefaultNetwork(nextDefault));
+                    defaultNetworkID = nextDefault;
+                    renderContent();
+                    return true;
+                });
+            networkRail.child(railDefaultButton);
+        }
+
+        private void rebuildRailList() {
+            railList.removeAll();
+            railList.height(layout.railListH);
             for (final NetworkEntry entry : networks) {
                 if (matchesFilter(entry)) {
-                    list.child(buildRailRow(entry));
+                    railList.child(buildRailRow(entry));
                 }
             }
-            networkRail.child(list);
+            railList.scheduleResize();
+        }
 
+        private void updateRailDefaultButton() {
             final NetworkEntry sel = selectedRealEntry();
             final boolean isDefault = sel != null && sel.networkID == defaultNetworkID;
             final String btnText = isDefault
                 ? NetworkUiKit.tr("gui.singularityme.network_terminal.selection.clear_default")
                 : NetworkUiKit.tr("gui.singularityme.network_terminal.selection.set_default");
             final boolean canSet = sel != null && NetworkUiKit.canAccess(sel);
-            networkRail.child(makeRailBtn(btnText, NetworkUiKit.railActionWidth(layout.railW), () -> {
-                if (sel == null) return;
-                final int nextDefault = isDefault ? 0 : sel.networkID;
-                SingularityChannel.CHANNEL.sendToServer(new PacketSetDefaultNetwork(nextDefault));
-                defaultNetworkID = nextDefault;
-                renderContent();
-            }, canSet));
+            railDefaultButton.overlay(IKey.str(btnText));
+            railDefaultButton.background(Styles.rowBg(canSet ? Palette.BTN_NORMAL : Palette.BTN_DISABLED));
         }
 
         private ButtonWidget<?> buildRailRow(final NetworkEntry entry) {

@@ -47,4 +47,5 @@
 | 2026-06-03 | MUI2 padding 参数顺序误判 | `ERROR-20260603-mui2-padding-argument-order.md` |
 | 2026-06-03 | Network Terminal 内容区滚动条泄漏 | `ERROR-20260603-network-terminal-scroll-leak.md` |
 | 2026-06-03 | MUI2 色块视觉子节点抢占点击目标 | `ERROR-20260603-mui2-color-swatch-click-target.md` |
+| 2026-06-03 | Network Terminal 默认按钮切换闪烁 | `ERROR-20260603-network-terminal-rail-default-button-flicker.md` |
 | 2026-06-03 | MUI2 文档误导项审计 | `ERROR-20260603-mui2-doc-audit.md` |
