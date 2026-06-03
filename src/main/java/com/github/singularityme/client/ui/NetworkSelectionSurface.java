@@ -68,6 +68,7 @@ public final class NetworkSelectionSurface {
     private final TextFieldWidget passwordInput;
 
     private Flow root;
+    private Flow actionArea;
     private ListWidget railList;
     private ButtonWidget<?> actionButton;
     private NetworkActionResult lastResult;
@@ -137,6 +138,10 @@ public final class NetworkSelectionSurface {
                 performPrimaryAction();
                 return true;
             });
+        actionArea = Flow.column()
+            .childPadding(4).widthRel(1f).height(Palette.RAIL_ACTION_H)
+            .disableHoverBackground();
+        root.child(actionArea);
         rebuild();
         return root;
     }
@@ -230,24 +235,24 @@ public final class NetworkSelectionSurface {
     }
 
     private void rebuildActions() {
-        if (root == null || actionButton == null) return;
-        while (root.getChildren().size() > 3) {
-            root.getChildren().remove(root.getChildren().size() - 1);
-        }
+        if (root == null || actionArea == null || actionButton == null) return;
+        actionArea.removeAll();
         final boolean hasResult = lastResult != null && lastMessageKey != null && !lastMessageKey.isEmpty();
+        final int reservedResultHeight = hasResult ? Palette.TEXT_ROW_H + 4 : 0;
         if (railList != null) {
-            final int reservedResultHeight = hasResult ? Palette.TEXT_ROW_H + 4 : 0;
             railList.height(Math.max(Palette.TERMINAL_RAIL_LIST_MIN_H, baseListHeight - reservedResultHeight));
         }
+        actionArea.height(Palette.RAIL_ACTION_H + reservedResultHeight);
         if (hasResult) {
-            root.child(resultRow());
+            actionArea.child(resultRow());
         }
         if (passwordMode) {
-            root.child(passwordRow());
+            actionArea.child(passwordRow());
         } else {
             updateActionButton();
-            root.child(actionButton);
+            actionArea.child(actionButton);
         }
+        actionArea.scheduleResize();
         root.scheduleResize();
     }
 
