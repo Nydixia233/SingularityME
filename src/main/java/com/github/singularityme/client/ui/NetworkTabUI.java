@@ -6,6 +6,7 @@ import java.util.List;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.tileentity.TileEntity;
 
 import com.cleanroommc.modularui.api.drawable.IKey;
@@ -18,6 +19,7 @@ import com.cleanroommc.modularui.utils.Alignment;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
+import com.github.singularityme.client.ui.NetworkUiKit.NetworkTabLayout;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
 import com.github.singularityme.client.ui.NetworkUiKit.Styles;
 import com.github.singularityme.network.SingularityChannel;
@@ -77,6 +79,22 @@ public final class NetworkTabUI {
         return false;
     }
 
+    /** 按网络终端参考缩放绘制设备网络选择面板，避免高 GUI 缩放下放大成近乎全屏。 */
+    private static final class ReferenceScaledPanel extends ModularPanel {
+
+        private final float visualScale;
+
+        ReferenceScaledPanel(final String name, final float visualScale) {
+            super(name);
+            this.visualScale = visualScale;
+        }
+
+        @Override
+        public float getScale() {
+            return this.visualScale * super.getScale();
+        }
+    }
+
     /** 设备网络分配 GUI 的本地状态与共享选择表面代理。 */
     private static final class TabState implements NetworkSelectionSurface.Delegate {
 
@@ -97,36 +115,43 @@ public final class NetworkTabUI {
         }
 
         ModularPanel buildPanel() {
-            final int guiScale = Math.max(1, Minecraft.getMinecraft().gameSettings.guiScale);
-            final int panelW = Math.min(480 * guiScale, 720);
-            final int panelH = Math.min(300 * guiScale, 500);
+            final Minecraft mc = Minecraft.getMinecraft();
+            final ScaledResolution scaled = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+            final int guiScale = Math.max(1, scaled.getScaleFactor());
+            final NetworkTabLayout layout = NetworkUiKit.networkTabLayout(mc.displayWidth, mc.displayHeight, guiScale);
 
-            final ModularPanel panel = new ModularPanel("network_tab")
-                .size(panelW, panelH)
+            final ModularPanel panel = new ReferenceScaledPanel("network_tab", layout.visualScale)
+                .size(layout.panelW, layout.panelH)
                 .background(new ShadowDrawable(Styles.panelBg(), 5, 0x80000000));
+            panel.disableHoverBackground();
 
-            final Flow root = Flow.column()
-                .childPadding(10)
-                .widthRel(1f).heightRel(1f)
-                .padding(0, 14).margin(14, 0);
-            root.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.title")))
+            final Flow header = Flow.row()
+                .mainAxisAlignment(Alignment.MainAxis.CENTER)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .pos(layout.headerX, layout.headerY)
+                .size(layout.headerW, layout.headerH)
+                .padding(3)
+                .background(Styles.headerGradient(Palette.BG_LIST))
+                .disableHoverBackground();
+            header.child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_tab.title")))
                 .color(Palette.TEXT_PRIMARY));
+            panel.child(header);
 
             selectionSurface = new NetworkSelectionSurface(NetworkSelectionSurface.Mode.DEVICE_ASSIGN, this);
-            final int bodyH = Math.max(190, panelH - 82);
-            final int railW = Math.min(236, Math.max(200, panelW / 3));
-            root.child(Flow.row()
-                .childPadding(10).widthRel(1f).height(bodyH)
-                .child(selectionSurface.build(railW, bodyH, Math.max(92, bodyH - 112)))
-                .child(buildSummaryPanel().expanded()));
+            final Flow selectionPanel = selectionSurface.build(layout.railW, layout.railH, layout.railListH);
+            selectionPanel.pos(layout.railX, layout.railY);
+            panel.child(selectionPanel);
 
-            panel.child(root);
+            final Flow summaryPanel = buildSummaryPanel();
+            summaryPanel.pos(layout.summaryX, layout.summaryY);
+            summaryPanel.size(layout.summaryW, layout.summaryH);
+            panel.child(summaryPanel);
             return panel;
         }
 
         private Flow buildSummaryPanel() {
             summaryArea = Flow.column()
-                .childPadding(6).heightRel(1f).padding(8)
+                .childPadding(6).padding(8)
                 .background(Styles.cardBg())
                 .disableHoverBackground();
             rebuildSummary();

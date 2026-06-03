@@ -156,6 +156,35 @@ public class NetworkUiKitTest {
         assertTrue(layout.railListH >= 72);
     }
 
+    /** 设备网络选择 GUI 必须与网络终端使用同一套外框尺寸，避免在高分辨率下被放大成近乎全屏。 */
+    @Test
+    public void alignsNetworkTabPanelSizeWithTerminal() {
+        NetworkUiKit.NetworkTabLayout tabLayout = NetworkUiKit.networkTabLayout(2048, 1088, 3);
+
+        assertEquals(NetworkUiKit.terminalPanelWidth(2048, 3), tabLayout.panelW);
+        assertEquals(NetworkUiKit.terminalPanelHeight(1088, 3), tabLayout.panelH);
+        assertEquals(NetworkUiKit.terminalVisualScale(3), tabLayout.visualScale, 0.001f);
+        assertEquals(594, tabLayout.panelW);
+        assertEquals(359, tabLayout.panelH);
+    }
+
+    /** 设备网络选择 GUI 的左侧列表和右侧摘要沿用终端固定坐标骨架，只替换右侧内容。 */
+    @Test
+    public void alignsNetworkTabBodyWithTerminalLayout() {
+        NetworkUiKit.NetworkTabLayout tabLayout = NetworkUiKit.networkTabLayout(2048, 1088, 3);
+        NetworkUiKit.TerminalLayout terminalLayout = NetworkUiKit.terminalLayout(tabLayout.panelW, tabLayout.panelH, 3);
+
+        assertEquals(terminalLayout.railX, tabLayout.railX);
+        assertEquals(terminalLayout.railY, tabLayout.railY);
+        assertEquals(terminalLayout.railW, tabLayout.railW);
+        assertEquals(terminalLayout.railH, tabLayout.railH);
+        assertEquals(terminalLayout.railListH, tabLayout.railListH);
+        assertEquals(terminalLayout.contentX, tabLayout.summaryX);
+        assertEquals(terminalLayout.contentY, tabLayout.summaryY);
+        assertEquals(terminalLayout.contentW, tabLayout.summaryW);
+        assertEquals(terminalLayout.railH, tabLayout.summaryH);
+    }
+
     /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
     @Test
     public void computesHomeInfoColumnWidth() {

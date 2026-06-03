@@ -507,6 +507,68 @@ public final class NetworkUiKit {
         return terminalLayout(panelW, panelH);
     }
 
+    /**
+     * 设备网络选择 GUI 的固定坐标布局，尺寸与网络终端共用同一套参考骨架。
+     *
+     * <p>
+     * 设备页只替换右侧内容，不重新定义外框、左侧网络栏和视觉缩放，避免高 GUI 缩放下
+     * 与网络终端产生不同尺寸。
+     * </p>
+     */
+    public static final class NetworkTabLayout {
+
+        public final int panelW;
+        public final int panelH;
+        public final float visualScale;
+        public final int headerX;
+        public final int headerY;
+        public final int headerW;
+        public final int headerH;
+        public final int railX;
+        public final int railY;
+        public final int railW;
+        public final int railH;
+        public final int railListH;
+        public final int summaryX;
+        public final int summaryY;
+        public final int summaryW;
+        public final int summaryH;
+
+        private NetworkTabLayout(final int displayWidth, final int displayHeight, final int guiScale) {
+            this.panelW = terminalPanelWidth(displayWidth, guiScale);
+            this.panelH = terminalPanelHeight(displayHeight, guiScale);
+            this.visualScale = terminalVisualScale(guiScale);
+
+            final TerminalLayout terminal = terminalLayout(this.panelW, this.panelH, guiScale);
+            this.headerX = terminal.navX;
+            this.headerY = terminal.navY;
+            this.headerW = terminal.navW;
+            this.headerH = terminal.navH;
+            this.railX = terminal.railX;
+            this.railY = terminal.railY;
+            this.railW = terminal.railW;
+            this.railH = terminal.railH;
+            this.railListH = terminal.railListH;
+            this.summaryX = terminal.contentX;
+            this.summaryY = terminal.contentY;
+            this.summaryW = terminal.contentW;
+            this.summaryH = terminal.railH;
+        }
+    }
+
+    /**
+     * 计算设备网络选择 GUI 布局；外框尺寸和缩放与网络终端保持一致。
+     *
+     * @param displayWidth  Minecraft 实际显示宽度
+     * @param displayHeight Minecraft 实际显示高度
+     * @param guiScale      Minecraft GUI 缩放值
+     * @return 设备网络选择 GUI 固定坐标布局
+     */
+    public static NetworkTabLayout networkTabLayout(final int displayWidth, final int displayHeight,
+        final int guiScale) {
+        return new NetworkTabLayout(displayWidth, displayHeight, guiScale);
+    }
+
     // ---- MUI2 样式工厂 ----
 
     /** 集中生成 MUI2 drawable；每次返回新实例，避免可变 drawable 状态串扰。 */
