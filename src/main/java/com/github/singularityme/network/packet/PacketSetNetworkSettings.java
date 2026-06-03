@@ -16,16 +16,13 @@ public class PacketSetNetworkSettings implements IMessage {
     public int networkID;
     public int color;
     public int securityOrdinal;
-    public String passwordHash = "";
 
     public PacketSetNetworkSettings() {}
 
-    public PacketSetNetworkSettings(final int networkID, final int color, final int securityOrdinal,
-        final String passwordHash) {
+    public PacketSetNetworkSettings(final int networkID, final int color, final int securityOrdinal) {
         this.networkID = networkID;
         this.color = color & 0xFFFFFF;
         this.securityOrdinal = securityOrdinal;
-        this.passwordHash = passwordHash == null ? "" : passwordHash;
     }
 
     @Override
@@ -33,7 +30,6 @@ public class PacketSetNetworkSettings implements IMessage {
         this.networkID = buf.readInt();
         this.color = buf.readInt();
         this.securityOrdinal = buf.readInt();
-        this.passwordHash = readString(buf);
     }
 
     @Override
@@ -41,7 +37,6 @@ public class PacketSetNetworkSettings implements IMessage {
         buf.writeInt(this.networkID);
         buf.writeInt(this.color & 0xFFFFFF);
         buf.writeInt(this.securityOrdinal);
-        writeString(buf, this.passwordHash);
     }
 
     static String readString(final ByteBuf buf) {
@@ -69,8 +64,7 @@ public class PacketSetNetworkSettings implements IMessage {
                 msg.networkID,
                 playerID,
                 msg.color,
-                SecurityLevel.fromOrdinal(msg.securityOrdinal),
-                msg.passwordHash);
+                SecurityLevel.fromOrdinal(msg.securityOrdinal));
             SingularityChannel.CHANNEL.sendTo(new PacketNetworkTabData(registry, playerID, 0), player);
             return null;
         }

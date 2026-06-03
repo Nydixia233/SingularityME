@@ -9,6 +9,7 @@ import net.minecraft.entity.player.EntityPlayer;
 
 import com.github.singularityme.client.ui.NetworkTabUI;
 import com.github.singularityme.client.ui.NetworkTerminalUI;
+import com.github.singularityme.core.PermissionBits;
 import com.github.singularityme.core.SingularityNetworkRegistry;
 import com.github.singularityme.core.SingularityNetworkRegistry.NetworkMeta;
 
@@ -20,23 +21,10 @@ import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import io.netty.buffer.ByteBuf;
 
-/**
- * Server → Client packet that delivers the network list for the Network Tab GUI.
- *
- * <p>
- * Payload:
- * <ul>
- * <li>int — current networkID of the device being configured</li>
- * <li>int — number of network entries (N)</li>
- * <li>N × { int networkID, int ownerPlayerID, boolean isOwner, String name }</li>
- * </ul>
- *
- * <p>
- * The unassigned sentinel (id=0) is always prepended as the first entry.
- */
+/** 服务端发给客户端的可见网络列表与调用者权限快照。 */
 public class PacketNetworkTabData implements IMessage {
 
-    /** Sentinel networkID for unassigned devices. */
+    /** 未分配设备的哨兵 networkID。 */
     public static final int DEFAULT_NETWORK_ID = 0;
 
     public int deviceNetworkID;
@@ -46,43 +34,36 @@ public class PacketNetworkTabData implements IMessage {
     public PacketNetworkTabData() {}
 
     /**
-     * Constructs a packet for the given player and device.
-     *
-     * @param registry        the server-side registry
-     * @param playerID        AE2 playerID of the requesting player
-     * @param deviceNetworkID the networkID currently assigned to the device
+     * 构造发给指定玩家的网络列表；授权表只在玩家可管理时下发，避免信息泄漏。
      */
     public PacketNetworkTabData(final SingularityNetworkRegistry registry, final int playerID,
         final int deviceNetworkID) {
         this.deviceNetworkID = deviceNetworkID;
         this.defaultNetworkID = registry.resolveAccessibleDefaultNetworkID(playerID);
 
-        // Always include the unassigned sentinel (id=0) first.
-        this.networks.add(new NetworkEntry(DEFAULT_NETWORK_ID, playerID, true, "Unassigned", 0x777777, 2, 4, false));
+        this.networks.add(NetworkEntry.unassigned(playerID));
 
-        // Add all explicitly created networks visible to the player.
-        for (final int nid : registry.getVisibleNetworksForPlayer(playerID)) {
-            final NetworkMeta meta = registry.getNetwork(nid);
+        for (final int networkID : registry.getVisibleNetworksForPlayer(playerID)) {
+            final NetworkMeta meta = registry.getNetwork(networkID);
             if (meta == null) continue;
-            final boolean isOwner = meta.ownerPlayerID == playerID;
+            final boolean canManage = meta.canManagePermissions(playerID);
+            final List<Integer> authorizedIDs = canManage ? meta.getAuthorizedPlayers() : Collections.emptyList();
             this.networks.add(
                 new NetworkEntry(
-                    nid,
+                    networkID,
                     meta.ownerPlayerID,
-                    isOwner,
+                    meta.ownerPlayerID == playerID,
                     meta.name,
                     meta.color,
                     meta.security.ordinal(),
-                    meta.getAccessLevel(playerID)
-                        .ordinal(),
-                    meta.passwordHash != null,
-                    meta.getAdmins(),
-                    meta.getMembers(),
-                    meta.getBlocked(),
+                    PermissionBits.toBits(meta.getPermissions(playerID)),
+                    canManage,
+                    canManage,
+                    meta.ownerPlayerID == playerID,
+                    authorizedIDs,
+                    resolvePlayerNames(authorizedIDs),
+                    resolvePermissionBits(registry, networkID, authorizedIDs),
                     resolvePlayerName(meta.ownerPlayerID),
-                    resolvePlayerNames(meta.getAdmins()),
-                    resolvePlayerNames(meta.getMembers()),
-                    resolvePlayerNames(meta.getBlocked()),
                     meta.createdAtMillis,
                     meta.lastModifiedMillis));
         }
@@ -97,7 +78,7 @@ public class PacketNetworkTabData implements IMessage {
                 .players()
                 .findPlayer(playerID);
             return player != null ? player.getCommandSenderName() : "#" + playerID;
-        } catch (final Exception e) {
+        } catch (final RuntimeException e) {
             return "#" + playerID;
         }
     }
@@ -111,6 +92,16 @@ public class PacketNetworkTabData implements IMessage {
         return names;
     }
 
+    private static List<Integer> resolvePermissionBits(final SingularityNetworkRegistry registry, final int networkID,
+        final List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return Collections.emptyList();
+        final List<Integer> bits = new ArrayList<>(ids.size());
+        for (final int id : ids) {
+            bits.add(PermissionBits.toBits(registry.getPlayerPermissions(networkID, id)));
+        }
+        return bits;
+    }
+
     @Override
     public void fromBytes(final ByteBuf buf) {
         this.deviceNetworkID = buf.readInt();
@@ -118,43 +109,38 @@ public class PacketNetworkTabData implements IMessage {
         final int count = buf.readInt();
         this.networks = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            final int nid = buf.readInt();
-            final int owner = buf.readInt();
+            final int networkID = buf.readInt();
+            final int ownerPlayerID = buf.readInt();
             final boolean isOwner = buf.readBoolean();
             final int color = buf.readInt();
-            final int security = buf.readInt();
-            final int access = buf.readInt();
-            final boolean passwordProtected = buf.readBoolean();
-            final int nameLen = safeLength(buf.readShort());
-            final byte[] nameBytes = new byte[nameLen];
-            buf.readBytes(nameBytes);
-            final String name = new String(nameBytes, java.nio.charset.StandardCharsets.UTF_8);
-            final List<Integer> admins = readIntList(buf);
-            final List<Integer> members = readIntList(buf);
-            final List<Integer> blocked = readIntList(buf);
+            final int securityOrdinal = buf.readInt();
+            final int myPermissionBits = buf.readInt();
+            final boolean canManagePermissions = buf.readBoolean();
+            final boolean canEditSettings = buf.readBoolean();
+            final boolean canDeleteNetwork = buf.readBoolean();
+            final String name = readString(buf);
+            final List<Integer> authorizedPlayerIDs = readIntList(buf);
+            final List<String> authorizedPlayerNames = readStringList(buf);
+            final List<Integer> authorizedPlayerPermBits = readIntList(buf);
             final String ownerName = readString(buf);
-            final List<String> adminNames = readStringList(buf);
-            final List<String> memberNames = readStringList(buf);
-            final List<String> blockedNames = readStringList(buf);
             final long createdAtMillis = buf.readLong();
             final long lastModifiedMillis = buf.readLong();
             this.networks.add(
                 new NetworkEntry(
-                    nid,
-                    owner,
+                    networkID,
+                    ownerPlayerID,
                     isOwner,
                     name,
                     color,
-                    security,
-                    access,
-                    passwordProtected,
-                    admins,
-                    members,
-                    blocked,
+                    securityOrdinal,
+                    myPermissionBits,
+                    canManagePermissions,
+                    canEditSettings,
+                    canDeleteNetwork,
+                    authorizedPlayerIDs,
+                    authorizedPlayerNames,
+                    authorizedPlayerPermBits,
                     ownerName,
-                    adminNames,
-                    memberNames,
-                    blockedNames,
                     createdAtMillis,
                     lastModifiedMillis));
         }
@@ -165,26 +151,23 @@ public class PacketNetworkTabData implements IMessage {
         buf.writeInt(this.deviceNetworkID);
         buf.writeInt(this.defaultNetworkID);
         buf.writeInt(this.networks.size());
-        for (final NetworkEntry e : this.networks) {
-            buf.writeInt(e.networkID);
-            buf.writeInt(e.ownerPlayerID);
-            buf.writeBoolean(e.isOwner);
-            buf.writeInt(e.color);
-            buf.writeInt(e.securityOrdinal);
-            buf.writeInt(e.accessLevelOrdinal);
-            buf.writeBoolean(e.isPasswordProtected);
-            final byte[] nameBytes = e.name.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-            buf.writeShort(nameBytes.length);
-            buf.writeBytes(nameBytes);
-            writeIntList(buf, e.adminPlayerIDs);
-            writeIntList(buf, e.memberPlayerIDs);
-            writeIntList(buf, e.blockedPlayerIDs);
-            writeString(buf, e.ownerName);
-            writeStringList(buf, e.adminNames);
-            writeStringList(buf, e.memberNames);
-            writeStringList(buf, e.blockedNames);
-            buf.writeLong(e.createdAtMillis);
-            buf.writeLong(e.lastModifiedMillis);
+        for (final NetworkEntry entry : this.networks) {
+            buf.writeInt(entry.networkID);
+            buf.writeInt(entry.ownerPlayerID);
+            buf.writeBoolean(entry.isOwner);
+            buf.writeInt(entry.color);
+            buf.writeInt(entry.securityOrdinal);
+            buf.writeInt(entry.myPermissionBits);
+            buf.writeBoolean(entry.canManagePermissions);
+            buf.writeBoolean(entry.canEditSettings);
+            buf.writeBoolean(entry.canDeleteNetwork);
+            writeString(buf, entry.name);
+            writeIntList(buf, entry.authorizedPlayerIDs);
+            writeStringList(buf, entry.authorizedPlayerNames);
+            writeIntList(buf, entry.authorizedPlayerPermBits);
+            writeString(buf, entry.ownerName);
+            buf.writeLong(entry.createdAtMillis);
+            buf.writeLong(entry.lastModifiedMillis);
         }
     }
 
@@ -237,9 +220,7 @@ public class PacketNetworkTabData implements IMessage {
         }
     }
 
-    // ---- Inner types ----
-
-    /** Immutable snapshot of one network entry for display in the GUI. */
+    /** 单个网络条目的不可变 GUI 展示快照。 */
     public static final class NetworkEntry {
 
         public final int networkID;
@@ -248,27 +229,44 @@ public class PacketNetworkTabData implements IMessage {
         public final String name;
         public final int color;
         public final int securityOrdinal;
-        public final int accessLevelOrdinal;
-        public final boolean isPasswordProtected;
-        public final List<Integer> adminPlayerIDs;
-        public final List<Integer> memberPlayerIDs;
-        public final List<Integer> blockedPlayerIDs;
+        public final int myPermissionBits;
+        public final boolean canManagePermissions;
+        public final boolean canEditSettings;
+        public final boolean canDeleteNetwork;
+        public final List<Integer> authorizedPlayerIDs;
+        public final List<String> authorizedPlayerNames;
+        public final List<Integer> authorizedPlayerPermBits;
         /** 网络 owner 的玩家名；离线时为 "#id"。 */
         public final String ownerName;
         /** 网络创建时间戳（毫秒）。0 表示旧数据或未分配网络无时间戳。 */
         public final long createdAtMillis;
         /** 网络最后修改时间戳（毫秒）。0 表示旧数据或未分配网络无时间戳。 */
         public final long lastModifiedMillis;
-        /** admins 对应的玩家名列表，顺序与 adminPlayerIDs 一致。 */
-        public final List<String> adminNames;
-        /** members 对应的玩家名列表，顺序与 memberPlayerIDs 一致。 */
-        public final List<String> memberNames;
-        /** blocked 对应的玩家名列表，顺序与 blockedPlayerIDs 一致。 */
-        public final List<String> blockedNames;
+
+        /** 构造未分配哨兵条目。 */
+        public static NetworkEntry unassigned(final int playerID) {
+            return new NetworkEntry(
+                DEFAULT_NETWORK_ID,
+                playerID,
+                true,
+                "Unassigned",
+                0x777777,
+                1,
+                0,
+                false,
+                false,
+                false,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                Collections.emptyList(),
+                "#" + playerID,
+                0L,
+                0L);
+        }
 
         public NetworkEntry(final int networkID, final int ownerPlayerID, final boolean isOwner, final String name,
-            final int color, final int securityOrdinal, final int accessLevelOrdinal,
-            final boolean isPasswordProtected) {
+            final int color, final int securityOrdinal, final int myPermissionBits, final boolean canManagePermissions,
+            final boolean canEditSettings, final boolean canDeleteNetwork) {
             this(
                 networkID,
                 ownerPlayerID,
@@ -276,96 +274,43 @@ public class PacketNetworkTabData implements IMessage {
                 name,
                 color,
                 securityOrdinal,
-                accessLevelOrdinal,
-                isPasswordProtected,
+                myPermissionBits,
+                canManagePermissions,
+                canEditSettings,
+                canDeleteNetwork,
                 Collections.emptyList(),
                 Collections.emptyList(),
                 Collections.emptyList(),
                 "#" + ownerPlayerID,
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList(),
                 0L,
                 0L);
         }
 
         public NetworkEntry(final int networkID, final int ownerPlayerID, final boolean isOwner, final String name,
-            final int color, final int securityOrdinal, final int accessLevelOrdinal, final boolean isPasswordProtected,
-            final List<Integer> adminPlayerIDs, final List<Integer> memberPlayerIDs,
-            final List<Integer> blockedPlayerIDs) {
-            this(
-                networkID,
-                ownerPlayerID,
-                isOwner,
-                name,
-                color,
-                securityOrdinal,
-                accessLevelOrdinal,
-                isPasswordProtected,
-                adminPlayerIDs,
-                memberPlayerIDs,
-                blockedPlayerIDs,
-                "#" + ownerPlayerID,
-                Collections.emptyList(),
-                Collections.emptyList(),
-                Collections.emptyList(),
-                0L,
-                0L);
-        }
-
-        public NetworkEntry(final int networkID, final int ownerPlayerID, final boolean isOwner, final String name,
-            final int color, final int securityOrdinal, final int accessLevelOrdinal, final boolean isPasswordProtected,
-            final List<Integer> adminPlayerIDs, final List<Integer> memberPlayerIDs,
-            final List<Integer> blockedPlayerIDs, final String ownerName, final List<String> adminNames,
-            final List<String> memberNames, final List<String> blockedNames) {
-            this(
-                networkID,
-                ownerPlayerID,
-                isOwner,
-                name,
-                color,
-                securityOrdinal,
-                accessLevelOrdinal,
-                isPasswordProtected,
-                adminPlayerIDs,
-                memberPlayerIDs,
-                blockedPlayerIDs,
-                ownerName,
-                adminNames,
-                memberNames,
-                blockedNames,
-                0L,
-                0L);
-        }
-
-        public NetworkEntry(final int networkID, final int ownerPlayerID, final boolean isOwner, final String name,
-            final int color, final int securityOrdinal, final int accessLevelOrdinal, final boolean isPasswordProtected,
-            final List<Integer> adminPlayerIDs, final List<Integer> memberPlayerIDs,
-            final List<Integer> blockedPlayerIDs, final String ownerName, final List<String> adminNames,
-            final List<String> memberNames, final List<String> blockedNames, final long createdAtMillis,
-            final long lastModifiedMillis) {
+            final int color, final int securityOrdinal, final int myPermissionBits, final boolean canManagePermissions,
+            final boolean canEditSettings, final boolean canDeleteNetwork, final List<Integer> authorizedPlayerIDs,
+            final List<String> authorizedPlayerNames, final List<Integer> authorizedPlayerPermBits,
+            final String ownerName, final long createdAtMillis, final long lastModifiedMillis) {
             this.networkID = networkID;
             this.ownerPlayerID = ownerPlayerID;
             this.isOwner = isOwner;
             this.name = name;
             this.color = color & 0xFFFFFF;
             this.securityOrdinal = securityOrdinal;
-            this.accessLevelOrdinal = accessLevelOrdinal;
-            this.isPasswordProtected = isPasswordProtected;
-            this.adminPlayerIDs = new ArrayList<>(adminPlayerIDs);
-            this.memberPlayerIDs = new ArrayList<>(memberPlayerIDs);
-            this.blockedPlayerIDs = new ArrayList<>(blockedPlayerIDs);
+            this.myPermissionBits = myPermissionBits;
+            this.canManagePermissions = canManagePermissions;
+            this.canEditSettings = canEditSettings;
+            this.canDeleteNetwork = canDeleteNetwork;
+            this.authorizedPlayerIDs = new ArrayList<>(authorizedPlayerIDs);
+            this.authorizedPlayerNames = new ArrayList<>(authorizedPlayerNames);
+            this.authorizedPlayerPermBits = new ArrayList<>(authorizedPlayerPermBits);
             this.ownerName = ownerName != null ? ownerName : "#" + ownerPlayerID;
             this.createdAtMillis = createdAtMillis;
             this.lastModifiedMillis = Math.max(createdAtMillis, lastModifiedMillis);
-            this.adminNames = new ArrayList<>(adminNames);
-            this.memberNames = new ArrayList<>(memberNames);
-            this.blockedNames = new ArrayList<>(blockedNames);
         }
     }
 
-    // ---- Handler (runs on CLIENT) ----
-
+    /** 客户端处理器：把数据路由到当前打开的网络 UI。 */
     public static final class Handler implements IMessageHandler<PacketNetworkTabData, IMessage> {
 
         @Override
@@ -376,9 +321,7 @@ public class PacketNetworkTabData implements IMessage {
                     if (NetworkTabUI.receiveNetworkData(message)) {
                         return;
                     }
-                    if (NetworkTerminalUI.receiveNetworkData(message)) {
-                        return;
-                    }
+                    NetworkTerminalUI.receiveNetworkData(message);
                 });
             return null;
         }

@@ -9,6 +9,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import com.github.singularityme.core.SingularityPermissionHelper;
 import com.github.singularityme.core.SingularityNetworkManager;
 import com.github.singularityme.grid.SingularityGrid;
 import com.github.singularityme.proxy.CommonProxy;
@@ -18,6 +19,7 @@ import appeng.api.config.Actionable;
 import appeng.api.config.FuzzyMode;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.config.RedstoneMode;
+import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
 import appeng.api.config.Upgrades;
 import appeng.api.implementations.IUpgradeableHost;
@@ -309,6 +311,13 @@ public class TileSingularityImportBus extends AENetworkInvTile
             this.itemToSend = 0;
             this.worked = false;
             return TickRateModulation.SLOWER;
+        }
+        if (!SingularityPermissionHelper.hasNodePermission(worldObj, this.networkID, node, SecurityPermissions.INJECT)) {
+            this.destination = null;
+            this.lastItemChecked = null;
+            this.itemToSend = 0;
+            this.worked = false;
+            return TickRateModulation.SLEEP;
         }
         if (isBlockedByRedstone()) return TickRateModulation.SLOWER;
         return doBusWork();

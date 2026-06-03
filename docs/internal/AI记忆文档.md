@@ -30,7 +30,7 @@
 - 方块注册在 `block/`（11 种设备 + 1 调试探针），TileEntity 在 `tile/`
 - GUI 分两类：AE2 原版 GUI（`gui/`，继承 `GuiUpgradeable`）和 MUI2 网络 UI（`client/ui/`，`NetworkTabUI` + 8 标签 `NetworkTerminalUI`）
 - 网络 UI 通过 `ModularScreen` + `GuiScreenWrapper` 创建，保留 `static GuiScreen create(TileEntity)` 和 `static boolean receiveNetworkData(PacketNetworkTabData)` 静态接口；网络终端状态页另有 `receiveNetworkStatus(PacketNetworkStatus)` 静态入口
-- 核心逻辑在 `core/`：SingularityNetworkManager、SingularityGrid、SecurityLevel、AccessLevel
+- 核心逻辑在 `core/`：SingularityNetworkManager、SingularityGrid、SecurityLevel，以及基于 AE2 `SecurityPermissions` 的权限表（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:20`）。
 - 能量模型：`SingularityAnchorNode` 作为结构性锚点，实际能量由 `TileSingularityPowerCore` 通过元件叠加提供（普通 200k AE/个、致密 1.6M AE/个、创造无限）
 
 ## 主动读取原则
@@ -74,7 +74,6 @@
 | `IPositioned` sizing 链式类型退化 | 源码签名返回泛型 `W`，但在部分 Widget、raw type 或 Java 静态类型推断下会退化为 `IPositioned`，导致 `.width()` / `.expanded()` 后不能继续 `.background()` / `.color()` 等 Widget 专属方法 | 已规避：分步调用或先设 background 再 sizing |
 | MUI2 两参数 `padding` / `margin` 顺序是水平、垂直 | 左右留白应写 `.padding(horizontal, 0)`；`.padding(0, horizontal)` 实际是上下留白 | 已记录：见 `docs/errors/ERROR-20260603-mui2-padding-argument-order.md` |
 | `Rectangle` 不支持圆角+边框并存 | 原 Qz UI 大量圆角+边框效果丢失 | 接受直角边框 |
-| MUI2 无内建密码掩码 | `TextFieldWidget` 无 password mode | 当前明文显示密码 |
 | SIZING TextWidget padding overflow | 见下方已知问题 | 待修复 |
 
 ### 已知的 MUI2 SIZING 问题

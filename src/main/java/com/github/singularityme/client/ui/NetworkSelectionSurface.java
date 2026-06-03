@@ -14,21 +14,20 @@ import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.cleanroommc.modularui.utils.Alignment;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
 import com.github.singularityme.client.ui.NetworkUiKit.Styles;
-import com.github.singularityme.core.SingularityNetworkRegistry;
 import com.github.singularityme.network.SingularityChannel;
 import com.github.singularityme.network.packet.NetworkActionResult;
-import com.github.singularityme.network.packet.NetworkActionType;
-import com.github.singularityme.network.packet.PacketJoinNetwork;
 import com.github.singularityme.network.packet.PacketNetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 import com.github.singularityme.network.packet.PacketSetDefaultNetwork;
 import com.github.singularityme.network.packet.PacketSetDeviceNetwork;
 
+import appeng.api.config.SecurityPermissions;
+
 /**
  * 网络选择共享表面，供网络终端左侧栏与设备分配 GUI 复用。
  *
  * <p>
- * 该类只负责列表渲染、过滤、密码输入、主动作按钮与最近操作反馈，不持有具体页面的右侧内容状态。
+ * 该类只负责列表渲染、过滤、主动作按钮与最近操作反馈，不持有具体页面的右侧内容状态。
  */
 public final class NetworkSelectionSurface {
 
@@ -63,9 +62,7 @@ public final class NetworkSelectionSurface {
     private final Mode mode;
     private final Delegate delegate;
     private final StringValue filterValue = new StringValue("");
-    private final StringValue passwordValue = new StringValue("");
     private final TextFieldWidget filterInput;
-    private final TextFieldWidget passwordInput;
 
     private Flow root;
     private Flow actionArea;
@@ -75,7 +72,6 @@ public final class NetworkSelectionSurface {
     private String lastMessageKey;
     private int lastResultNetworkID;
     private int baseListHeight;
-    private boolean passwordMode;
 
     /** 创建共享网络选择表面。 */
     public NetworkSelectionSurface(final Mode mode, final Delegate delegate) {
@@ -84,12 +80,6 @@ public final class NetworkSelectionSurface {
         this.filterInput = new TextFieldWidget()
             .value(this.filterValue)
             .height(Palette.RAIL_FILTER_H)
-            .expanded()
-            .background(Styles.inputBg())
-            .autoUpdateOnChange(true);
-        this.passwordInput = new TextFieldWidget()
-            .value(this.passwordValue)
-            .height(Palette.RAIL_ACTION_H)
             .expanded()
             .background(Styles.inputBg())
             .autoUpdateOnChange(true);
@@ -164,10 +154,6 @@ public final class NetworkSelectionSurface {
         this.lastResult = packet.result;
         this.lastMessageKey = packet.messageKey;
         this.lastResultNetworkID = packet.networkID;
-        if (packet.result.success) {
-            this.passwordMode = false;
-            this.passwordValue.setStringValue("");
-        }
         rebuildActions();
     }
 
@@ -227,7 +213,6 @@ public final class NetworkSelectionSurface {
             .disableHoverBackground()
             .onMousePressed(mb -> {
                 delegate.selectNetwork(entry.networkID);
-                passwordMode = false;
                 rebuild();
                 return true;
             });
@@ -245,12 +230,8 @@ public final class NetworkSelectionSurface {
         if (hasResult) {
             actionArea.child(resultRow());
         }
-        if (passwordMode) {
-            actionArea.child(passwordRow());
-        } else {
-            updateActionButton();
-            actionArea.child(actionButton);
-        }
+        updateActionButton();
+        actionArea.child(actionButton);
         actionArea.scheduleResize();
         root.scheduleResize();
     }
@@ -265,36 +246,6 @@ public final class NetworkSelectionSurface {
             .child(NetworkUiKit.statusDotWidget(color))
             .child(new TextWidget(IKey.str(lastResultNetworkID > 0 ? "#" + lastResultNetworkID + " " + text : text))
                 .color(color));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Flow passwordRow() {
-        return Flow.row()
-            .childPadding(4).widthRel(1f).height(Palette.RAIL_ACTION_H)
-            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-            .child(passwordInput.widthRel(1f).expanded())
-            .child(makeSmallButton(NetworkUiKit.tr("gui.singularityme.network_tab.join"), Palette.BTN_NORMAL,
-                this::submitPasswordJoin))
-            .child(makeSmallButton(NetworkUiKit.tr("gui.singularityme.network_tab.cancel"), Palette.BTN_DANGER_NORMAL,
-                () -> {
-                    passwordMode = false;
-                    passwordValue.setStringValue("");
-                    rebuildActions();
-                }));
-    }
-
-    private ButtonWidget<?> makeSmallButton(final String text, final int color, final Runnable action) {
-        return new ButtonWidget<>()
-            .overlay(IKey.str(text))
-            .width(48)
-            .height(Palette.RAIL_ACTION_H)
-            .padding(0, 4)
-            .background(Styles.rowBg(color))
-            .disableHoverBackground()
-            .onMousePressed(mb -> {
-                action.run();
-                return true;
-            });
     }
 
     private void updateActionButton() {
@@ -319,7 +270,7 @@ public final class NetworkSelectionSurface {
     private boolean isPrimaryActionEnabled(final NetworkEntry selected) {
         if (selected == null) return false;
         if (mode == Mode.TERMINAL_DEFAULT) {
-            return selected.networkID != 0 && NetworkUiKit.canAccess(selected);
+            return selected.networkID != 0 && NetworkUiKit.hasPermission(selected, SecurityPermissions.BUILD);
         }
         return NetworkUiKit.canAssignDeviceTo(selected, delegate.deviceNetworkID());
     }
@@ -334,44 +285,7 @@ public final class NetworkSelectionSurface {
             delegate.rebuildAfterSurfaceAction();
             return;
         }
-        if (NetworkUiKit.isPublicJoinAvailable(selected)) {
-            sendJoin(selected, "");
-            return;
-        }
-        if (NetworkUiKit.isEncryptedJoinRequired(selected)) {
-            passwordMode = true;
-            passwordValue.setStringValue("");
-            rebuildActions();
-            return;
-        }
         SingularityChannel.CHANNEL.sendToServer(
             new PacketSetDeviceNetwork(delegate.x(), delegate.y(), delegate.z(), delegate.dim(), selected.networkID));
-    }
-
-    private void submitPasswordJoin() {
-        final NetworkEntry selected = selectedEntry();
-        if (selected == null) return;
-        final String password = passwordValue.getStringValue();
-        if (password == null || password.isEmpty()) {
-            lastResult = NetworkActionResult.PASSWORD_REQUIRED;
-            lastMessageKey = lastResult.translationKey;
-            lastResultNetworkID = selected.networkID;
-            rebuildActions();
-            return;
-        }
-        sendJoin(selected, SingularityNetworkRegistry.sha256Hex(password));
-        passwordValue.setStringValue("");
-    }
-
-    private void sendJoin(final NetworkEntry selected, final String passwordHash) {
-        SingularityChannel.CHANNEL.sendToServer(
-            new PacketJoinNetwork(
-                delegate.x(),
-                delegate.y(),
-                delegate.z(),
-                delegate.dim(),
-                selected.networkID,
-                passwordHash,
-                mode == Mode.DEVICE_ASSIGN));
     }
 }

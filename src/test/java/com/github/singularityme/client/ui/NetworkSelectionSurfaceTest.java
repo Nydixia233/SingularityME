@@ -13,18 +13,20 @@ import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
-import com.github.singularityme.core.AccessLevel;
+import com.github.singularityme.core.PermissionBits;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
+
+import appeng.api.config.SecurityPermissions;
 
 /** 验证共享网络选择表面的局部重建行为。 */
 public class NetworkSelectionSurfaceTest {
 
-    /** 加密网络进入密码模式时必须保留稳定底部槽位，避免 MUI2 resize 树残留旧按钮。 */
+    /** 不可分配网络只显示权限不足状态，底部动作槽位保持稳定。 */
     @Test
-    public void keepsStableActionAreaWhenEnteringPasswordMode() {
+    public void keepsStableActionAreaWhenPrimaryActionUnavailable() {
         final FakeDelegate delegate = new FakeDelegate();
-        delegate.networks.add(entry(8, SecurityLevel.ENCRYPTED, AccessLevel.NONE));
+        delegate.networks.add(entry(8, SecurityLevel.PRIVATE, 0));
         delegate.selectedNetworkID = 8;
 
         final NetworkSelectionSurface surface = new NetworkSelectionSurface(
@@ -43,14 +45,14 @@ public class NetworkSelectionSurfaceTest {
         assertEquals(4, root.getChildren().size());
         assertSame(actionArea, root.getChildren().get(3));
         assertEquals(1, actionArea.getChildren().size());
-        assertTrue(actionArea.getChildren().get(0) instanceof Flow);
+        assertTrue(actionArea.getChildren().get(0) instanceof ButtonWidget);
     }
 
     /** 网络列表行只展示状态点、名称和状态徽章，不再在网络名称前重复展示 ID 胶囊。 */
     @Test
     public void omitsIdPillBeforeNetworkNameInSelectionRows() {
         final FakeDelegate delegate = new FakeDelegate();
-        delegate.networks.add(entry(3, SecurityLevel.PUBLIC, AccessLevel.OWNER));
+        delegate.networks.add(entry(3, SecurityLevel.PUBLIC, PermissionBits.DEFAULT_MEMBER_BITS));
         delegate.selectedNetworkID = 3;
 
         final NetworkSelectionSurface surface = new NetworkSelectionSurface(
@@ -64,15 +66,17 @@ public class NetworkSelectionSurfaceTest {
         assertEquals(2, rowContent.getChildren().size());
     }
 
-    private static NetworkEntry entry(final int networkID, final SecurityLevel security, final AccessLevel access) {
+    private static NetworkEntry entry(final int networkID, final SecurityLevel security, final int permissionBits) {
         return new NetworkEntry(
             networkID,
             1,
-            true,
+            false,
             "Encrypted",
             0x4A90E2,
             security.ordinal(),
-            access.ordinal(),
+            permissionBits,
+            (permissionBits & (1 << SecurityPermissions.SECURITY.ordinal())) != 0,
+            false,
             false);
     }
 

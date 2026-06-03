@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -19,18 +20,20 @@ import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
-import com.github.singularityme.core.AccessLevel;
+import com.github.singularityme.core.PermissionBits;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.NetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
+
+import appeng.api.config.SecurityPermissions;
 
 /** 验证网络 UI 设备类型展示辅助方法。 */
 public class NetworkUiKitTest {
 
     @Test
     public void assignsKnownDeviceColors() {
-        assertEquals(Palette.SECURITY_ENCRYPTED, NetworkUiKit.deviceTypeColor("TileSingularityPowerCore"));
+        assertEquals(Palette.ACCENT_AMBER, NetworkUiKit.deviceTypeColor("TileSingularityPowerCore"));
         assertEquals(Palette.ACCESS_MEMBER, NetworkUiKit.deviceTypeColor("TileSingularityDrive"));
         assertEquals(Palette.ACCESS_ADMIN, NetworkUiKit.deviceTypeColor("TileSingularityNetworkTerminal"));
         assertEquals(Palette.BTN_NORMAL, NetworkUiKit.deviceTypeColor("TileSingularityStorageBus"));
@@ -477,55 +480,47 @@ public class NetworkUiKitTest {
         assertTrue(button.getChildren().isEmpty());
     }
 
-    /** 公开访客网络应显示为可自助加入，并且仍可访问以保持旧 UI 兼容。 */
+    /** 公开网络由服务端下发全权限，客户端直接按可用网络处理。 */
     @Test
-    public void detectsPublicGuestSelfJoin() {
-        final NetworkEntry entry = entry(SecurityLevel.PUBLIC, AccessLevel.NONE);
+    public void treatsPublicGuestAsFullPermission() {
+        final NetworkEntry entry = entry(SecurityLevel.PUBLIC, allPermissionBits());
 
         assertTrue(NetworkUiKit.canAccess(entry));
-        assertTrue(NetworkUiKit.isPublicJoinAvailable(entry));
-        assertTrue(NetworkUiKit.canSelfJoin(entry));
-        assertFalse(NetworkUiKit.isEncryptedJoinRequired(entry));
-        assertFalse(NetworkUiKit.isMemberAccess(entry));
+        assertTrue(NetworkUiKit.isMemberAccess(entry));
+        assertTrue(NetworkUiKit.hasPermission(entry, SecurityPermissions.BUILD));
+        assertTrue(NetworkUiKit.hasPermission(entry, SecurityPermissions.SECURITY));
     }
 
-    /** 加密访客网络不应直接访问，应进入密码加入流程。 */
+    /** 私有访客没有任何权限时不可访问。 */
     @Test
-    public void detectsEncryptedGuestPasswordJoin() {
-        final NetworkEntry entry = entry(SecurityLevel.ENCRYPTED, AccessLevel.NONE);
+    public void deniesPrivateGuestWithoutGrant() {
+        final NetworkEntry entry = entry(SecurityLevel.PRIVATE, 0);
 
         assertFalse(NetworkUiKit.canAccess(entry));
-        assertFalse(NetworkUiKit.isPublicJoinAvailable(entry));
-        assertTrue(NetworkUiKit.isEncryptedJoinRequired(entry));
-        assertTrue(NetworkUiKit.canSelfJoin(entry));
         assertFalse(NetworkUiKit.isMemberAccess(entry));
+        assertFalse(NetworkUiKit.hasPermission(entry, SecurityPermissions.BUILD));
     }
 
-    /** 私有访客、拉黑玩家和已有成员在两种 GUI 中应得到一致权限判断。 */
+    /** 私有访客和已授权玩家在两种 GUI 中应得到一致权限判断。 */
     @Test
-    public void classifiesPrivateBlockedAndMemberAccess() {
-        final NetworkEntry privateGuest = entry(SecurityLevel.PRIVATE, AccessLevel.NONE);
-        final NetworkEntry blocked = entry(SecurityLevel.PUBLIC, AccessLevel.BLOCKED);
-        final NetworkEntry member = entry(SecurityLevel.PRIVATE, AccessLevel.MEMBER);
+    public void classifiesPrivateGuestAndGrantedAccess() {
+        final NetworkEntry privateGuest = entry(SecurityLevel.PRIVATE, 0);
+        final NetworkEntry member = entry(SecurityLevel.PRIVATE, PermissionBits.DEFAULT_MEMBER_BITS);
 
         assertFalse(NetworkUiKit.canAccess(privateGuest));
-        assertFalse(NetworkUiKit.canSelfJoin(privateGuest));
-
-        assertFalse(NetworkUiKit.canAccess(blocked));
-        assertTrue(NetworkUiKit.isBlocked(blocked));
-        assertFalse(NetworkUiKit.canSelfJoin(blocked));
+        assertFalse(NetworkUiKit.hasPermission(privateGuest, SecurityPermissions.BUILD));
 
         assertTrue(NetworkUiKit.canAccess(member));
         assertTrue(NetworkUiKit.isMemberAccess(member));
-        assertFalse(NetworkUiKit.canSelfJoin(member));
+        assertTrue(NetworkUiKit.hasPermission(member, SecurityPermissions.BUILD));
+        assertFalse(NetworkUiKit.hasPermission(member, SecurityPermissions.SECURITY));
     }
 
     /** 操作结果颜色只按成功/失败语义映射，保证终端和设备选择界面反馈一致。 */
     @Test
     public void mapsActionResultColorsBySuccessFlag() {
-        assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.actionResultColor(NetworkActionResult.JOINED));
+        assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.actionResultColor(NetworkActionResult.SUCCESS));
         assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.actionResultColor(NetworkActionResult.DEVICE_ASSIGNED));
-        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.actionResultColor(NetworkActionResult.BAD_PASSWORD));
         assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.actionResultColor(NetworkActionResult.NO_ACCESS));
         assertEquals(Palette.TEXT_MUTED, NetworkUiKit.actionResultColor(null));
     }
@@ -533,11 +528,16 @@ public class NetworkUiKitTest {
     /** 设备分配主动作应随目标网络状态变化，减少“点了会发生什么”的猜测。 */
     @Test
     public void describesDeviceAssignmentPrimaryActions() {
-        final NetworkEntry current = entry(7, SecurityLevel.PRIVATE, AccessLevel.MEMBER);
-        final NetworkEntry unassigned = entry(0, SecurityLevel.PUBLIC, AccessLevel.NONE);
-        final NetworkEntry publicGuest = entry(8, SecurityLevel.PUBLIC, AccessLevel.NONE);
-        final NetworkEntry encryptedGuest = entry(8, SecurityLevel.ENCRYPTED, AccessLevel.NONE);
-        final NetworkEntry privateGuest = entry(8, SecurityLevel.PRIVATE, AccessLevel.NONE);
+        final NetworkEntry current = entry(7, SecurityLevel.PRIVATE, PermissionBits.DEFAULT_MEMBER_BITS);
+        final NetworkEntry unassigned = entry(0, SecurityLevel.PUBLIC, 0);
+        final NetworkEntry buildTarget = entry(
+            8,
+            SecurityLevel.PRIVATE,
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.BUILD)));
+        final NetworkEntry extractOnlyTarget = entry(
+            9,
+            SecurityLevel.PRIVATE,
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.EXTRACT)));
 
         assertFalse(NetworkUiKit.canAssignDeviceTo(current, 7));
         assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.current"),
@@ -547,62 +547,65 @@ public class NetworkUiKitTest {
         assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.unassign"),
             NetworkUiKit.deviceAssignmentActionText(unassigned, 7));
 
-        assertTrue(NetworkUiKit.canAssignDeviceTo(publicGuest, 7));
-        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.join_assign"),
-            NetworkUiKit.deviceAssignmentActionText(publicGuest, 7));
+        assertTrue(NetworkUiKit.canAssignDeviceTo(buildTarget, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.assign"),
+            NetworkUiKit.deviceAssignmentActionText(buildTarget, 7));
 
-        assertTrue(NetworkUiKit.canAssignDeviceTo(encryptedGuest, 7));
-        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.password_assign"),
-            NetworkUiKit.deviceAssignmentActionText(encryptedGuest, 7));
-
-        assertFalse(NetworkUiKit.canAssignDeviceTo(privateGuest, 7));
+        assertFalse(NetworkUiKit.canAssignDeviceTo(extractOnlyTarget, 7));
         assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.unavailable"),
-            NetworkUiKit.deviceAssignmentActionText(privateGuest, 7));
+            NetworkUiKit.deviceAssignmentActionText(extractOnlyTarget, 7));
     }
 
     /** 设备分配提示文字必须解释可用/不可用原因，并用稳定颜色表达状态。 */
     @Test
     public void explainsDeviceAssignmentState() {
-        final NetworkEntry current = entry(7, SecurityLevel.PRIVATE, AccessLevel.MEMBER);
-        final NetworkEntry publicGuest = entry(8, SecurityLevel.PUBLIC, AccessLevel.NONE);
-        final NetworkEntry encryptedGuest = entry(8, SecurityLevel.ENCRYPTED, AccessLevel.NONE);
-        final NetworkEntry privateGuest = entry(8, SecurityLevel.PRIVATE, AccessLevel.NONE);
-        final NetworkEntry blocked = entry(8, SecurityLevel.PUBLIC, AccessLevel.BLOCKED);
+        final NetworkEntry current = entry(7, SecurityLevel.PRIVATE, PermissionBits.DEFAULT_MEMBER_BITS);
+        final NetworkEntry unassigned = entry(0, SecurityLevel.PUBLIC, 0);
+        final NetworkEntry buildTarget = entry(
+            8,
+            SecurityLevel.PRIVATE,
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.BUILD)));
+        final NetworkEntry extractOnlyTarget = entry(
+            9,
+            SecurityLevel.PRIVATE,
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.EXTRACT)));
 
         assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.current"),
             NetworkUiKit.deviceAssignmentHint(current, 7));
         assertEquals(Palette.TEXT_MUTED, NetworkUiKit.deviceAssignmentHintColor(current, 7));
 
-        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.public_join"),
-            NetworkUiKit.deviceAssignmentHint(publicGuest, 7));
-        assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.deviceAssignmentHintColor(publicGuest, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.unassign"),
+            NetworkUiKit.deviceAssignmentHint(unassigned, 7));
+        assertEquals(Palette.TEXT_MUTED, NetworkUiKit.deviceAssignmentHintColor(unassigned, 7));
 
-        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.password_join"),
-            NetworkUiKit.deviceAssignmentHint(encryptedGuest, 7));
-        assertEquals(Palette.SECURITY_ENCRYPTED, NetworkUiKit.deviceAssignmentHintColor(encryptedGuest, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.assign"),
+            NetworkUiKit.deviceAssignmentHint(buildTarget, 7));
+        assertEquals(Palette.BTN_NORMAL, NetworkUiKit.deviceAssignmentHintColor(buildTarget, 7));
 
-        assertEquals(NetworkUiKit.tr("gui.singularityme.network_action.private_network"),
-            NetworkUiKit.deviceAssignmentHint(privateGuest, 7));
-        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.deviceAssignmentHintColor(privateGuest, 7));
-
-        assertEquals(NetworkUiKit.tr("gui.singularityme.network_action.blocked"),
-            NetworkUiKit.deviceAssignmentHint(blocked, 7));
-        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.deviceAssignmentHintColor(blocked, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.permission.no_build"),
+            NetworkUiKit.deviceAssignmentHint(extractOnlyTarget, 7));
+        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.deviceAssignmentHintColor(extractOnlyTarget, 7));
     }
 
-    private static NetworkEntry entry(final SecurityLevel security, final AccessLevel access) {
-        return entry(7, security, access);
+    private static int allPermissionBits() {
+        return PermissionBits.toBits(EnumSet.allOf(SecurityPermissions.class));
     }
 
-    private static NetworkEntry entry(final int id, final SecurityLevel security, final AccessLevel access) {
+    private static NetworkEntry entry(final SecurityLevel security, final int permissionBits) {
+        return entry(7, security, permissionBits);
+    }
+
+    private static NetworkEntry entry(final int id, final SecurityLevel security, final int permissionBits) {
         return new NetworkEntry(
             id,
             1,
-            access == AccessLevel.OWNER,
+            false,
             "Alpha",
             0x4A90E2,
             security.ordinal(),
-            access.ordinal(),
-            security == SecurityLevel.ENCRYPTED);
+            permissionBits,
+            (permissionBits & (1 << SecurityPermissions.SECURITY.ordinal())) != 0,
+            false,
+            false);
     }
 }

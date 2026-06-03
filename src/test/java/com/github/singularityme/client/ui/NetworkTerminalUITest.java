@@ -13,7 +13,7 @@ import com.cleanroommc.modularui.value.StringValue;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
-import com.github.singularityme.core.AccessLevel;
+import com.github.singularityme.core.PermissionBits;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
@@ -64,8 +64,10 @@ public class NetworkTerminalUITest {
             name,
             0x4A90E2,
             SecurityLevel.PRIVATE.ordinal(),
-            AccessLevel.OWNER.ordinal(),
-            false);
+            PermissionBits.DEFAULT_MEMBER_BITS,
+            true,
+            true,
+            true);
     }
 
     private static void renderNetworkRail(final Object state) throws Exception {

@@ -12,6 +12,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.github.singularityme.SingularityME;
+import com.github.singularityme.core.SingularityPermissionHelper;
 import com.github.singularityme.tile.TileSingularityTerminal;
 
 import appeng.me.helpers.IGridProxyable;
@@ -75,10 +76,11 @@ public class BlockSingularityTerminal extends BlockSingularityPartLike {
     @Override
     public boolean onBlockActivated(final World world, final int x, final int y, final int z, final EntityPlayer player,
         final int side, final float hitX, final float hitY, final float hitZ) {
+        final TileEntity te = world.getTileEntity(x, y, z);
         if (!player.isSneaking()
             && BlockSingularityStorageBus.isAEWrench(player, player.getCurrentEquippedItem(), x, y, z)) {
             if (!world.isRemote) {
-                TileEntity te = world.getTileEntity(x, y, z);
+                if (!SingularityPermissionHelper.checkBuild(world, te, player)) return true;
                 if (te instanceof TileSingularityTerminal terminal) {
                     terminal.rotateSpin();
                 }
@@ -86,6 +88,7 @@ public class BlockSingularityTerminal extends BlockSingularityPartLike {
             return true;
         }
         if (!world.isRemote) {
+            if (!SingularityPermissionHelper.checkUse(world, te, player)) return true;
             player.openGui(SingularityME.instance, getGuiId(), world, x, y, z);
         }
         return true;

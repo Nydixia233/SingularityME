@@ -32,13 +32,12 @@ import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.github.singularityme.client.ui.NetworkUiKit.Palette;
 import com.github.singularityme.client.ui.NetworkUiKit.Styles;
 import com.github.singularityme.client.ui.NetworkUiKit.TerminalLayout;
-import com.github.singularityme.core.AccessLevel;
+import com.github.singularityme.core.PermissionBits;
 import com.github.singularityme.core.SecurityLevel;
-import com.github.singularityme.core.SingularityNetworkRegistry;
 import com.github.singularityme.network.SingularityChannel;
-import com.github.singularityme.network.packet.PacketAddMemberByName;
 import com.github.singularityme.network.packet.PacketCreateNetwork;
 import com.github.singularityme.network.packet.PacketDeleteNetwork;
+import com.github.singularityme.network.packet.PacketGrantPermissionByName;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkStatus.DeviceInfo;
 import com.github.singularityme.network.packet.PacketNetworkActionResult;
@@ -48,8 +47,10 @@ import com.github.singularityme.network.packet.PacketRenameNetwork;
 import com.github.singularityme.network.packet.PacketRequestNetworkStatus;
 import com.github.singularityme.network.packet.PacketRequestNetworkTabData;
 import com.github.singularityme.network.packet.PacketSetDefaultNetwork;
-import com.github.singularityme.network.packet.PacketSetMemberRole;
 import com.github.singularityme.network.packet.PacketSetNetworkSettings;
+import com.github.singularityme.network.packet.PacketSetPermissions;
+
+import appeng.api.config.SecurityPermissions;
 
 /**
  * 5 面板网络终端 — MUI2 重写版。
@@ -151,6 +152,7 @@ public final class NetworkTerminalUI {
         final List<NetworkEntry> networks = new ArrayList<>();
         int selectedNetworkID = -1;
         int selectedMemberID = -1;
+        int selectedPermissionBits;
         int defaultNetworkID;
         Panel currentPanel = Panel.HOME;
         int selectedColor = 0x4A90E2;
@@ -181,14 +183,10 @@ public final class NetworkTerminalUI {
         StringValue filterVal = new StringValue("");
 
         TextFieldWidget createNameInput;
-        TextFieldWidget createPasswordInput;
         StringValue createNameVal = new StringValue("");
-        StringValue createPwVal = new StringValue("");
 
         TextFieldWidget settingsNameInput;
-        TextFieldWidget settingsPasswordInput;
         StringValue settingsNameVal = new StringValue("");
-        StringValue settingsPwVal = new StringValue("");
 
         TerminalState(int x, int y, int z, int dim) {
             this.x = x; this.y = y; this.z = z; this.dim = dim;
@@ -256,9 +254,7 @@ public final class NetworkTerminalUI {
             memberNameInput = makeInput(memberNameVal);
             filterInput = makeRailInput(filterVal);
             createNameInput = makeInput(createNameVal);
-            createPasswordInput = makeInput(createPwVal);
             settingsNameInput = makeInput(settingsNameVal);
-            settingsPasswordInput = makeInput(settingsPwVal);
             selectionSurface = new NetworkSelectionSurface(NetworkSelectionSurface.Mode.TERMINAL_DEFAULT, this);
 
             return panel;
@@ -396,7 +392,7 @@ public final class NetworkTerminalUI {
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
                     final NetworkEntry sel = selectedRealEntry();
-                    if (sel == null || !NetworkUiKit.canAccess(sel)) return false;
+                    if (sel == null || !NetworkUiKit.hasPermission(sel, SecurityPermissions.BUILD)) return false;
                     final boolean isDefault = sel.networkID == defaultNetworkID;
                     final int nextDefault = isDefault ? 0 : sel.networkID;
                     SingularityChannel.CHANNEL.sendToServer(new PacketSetDefaultNetwork(nextDefault));
@@ -424,7 +420,7 @@ public final class NetworkTerminalUI {
             final String btnText = isDefault
                 ? NetworkUiKit.tr("gui.singularityme.network_terminal.selection.clear_default")
                 : NetworkUiKit.tr("gui.singularityme.network_terminal.selection.set_default");
-            final boolean canSet = sel != null && NetworkUiKit.canAccess(sel);
+            final boolean canSet = sel != null && NetworkUiKit.hasPermission(sel, SecurityPermissions.BUILD);
             railDefaultButton.overlay(IKey.str(btnText));
             railDefaultButton.background(Styles.rowBg(canSet ? Palette.BTN_NORMAL : Palette.BTN_DISABLED));
         }
@@ -521,7 +517,7 @@ public final class NetworkTerminalUI {
             rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.energy"),
                 NetworkUiKit.formatHomeEnergyOverview(networkStatus)));
             rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.members"),
-                String.valueOf(sel.adminPlayerIDs.size() + sel.memberPlayerIDs.size() + 1)));
+                sel.canManagePermissions ? String.valueOf(sel.authorizedPlayerIDs.size() + 1) : "-"));
             rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.created"),
                 formatTimestamp(sel.createdAtMillis)));
             rows.add(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.home.modified"),
@@ -572,7 +568,7 @@ public final class NetworkTerminalUI {
             } else if (offline > 0) {
                 warnings.child(homeNoticeRow(
                     NetworkUiKit.trf("gui.singularityme.network_terminal.health.warn.some_offline", offline),
-                    Palette.SECURITY_ENCRYPTED));
+                    Palette.ACCENT_AMBER));
                 hasWarning = true;
             }
             if (!hasWarning) {
@@ -695,7 +691,8 @@ public final class NetworkTerminalUI {
             final String btnText = isDefault
                 ? NetworkUiKit.tr("gui.singularityme.network_terminal.selection.clear_default")
                 : NetworkUiKit.tr("gui.singularityme.network_terminal.selection.set_default");
-            final boolean canSet = sel != null && sel.networkID != 0 && NetworkUiKit.canAccess(sel);
+            final boolean canSet = sel != null && sel.networkID != 0
+                && NetworkUiKit.hasPermission(sel, SecurityPermissions.BUILD);
 
             bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .child(makeBtn(btnText, 180, () -> {
@@ -800,6 +797,17 @@ public final class NetworkTerminalUI {
             bottomArea.removeAll();
             final NetworkEntry sel = selectedRealEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
+            if (SecurityLevel.fromOrdinal(sel.securityOrdinal) == SecurityLevel.PUBLIC) {
+                contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.permission.public_hint"),
+                    Palette.SECURITY_PUBLIC));
+                return;
+            }
+            if (!sel.canManagePermissions) {
+                contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.permission.no_use"),
+                    Palette.BTN_DANGER_NORMAL));
+                return;
+            }
+            normalizeSelectedPermission(sel);
 
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
@@ -809,20 +817,16 @@ public final class NetworkTerminalUI {
             list.widthRel(1f);
             list.height(NetworkUiKit.memberListHeight(layout.contentH));
 
-            list.child(buildMemberRow(sel.ownerPlayerID, sel.ownerName, AccessLevel.OWNER, false));
-            for (int i = 0; i < sel.adminPlayerIDs.size(); i++)
-                list.child(buildMemberRow(sel.adminPlayerIDs.get(i),
-                    i < sel.adminNames.size() ? sel.adminNames.get(i) : "#" + sel.adminPlayerIDs.get(i),
-                    AccessLevel.ADMIN, true));
-            for (int i = 0; i < sel.memberPlayerIDs.size(); i++)
-                list.child(buildMemberRow(sel.memberPlayerIDs.get(i),
-                    i < sel.memberNames.size() ? sel.memberNames.get(i) : "#" + sel.memberPlayerIDs.get(i),
-                    AccessLevel.MEMBER, true));
-            for (int i = 0; i < sel.blockedPlayerIDs.size(); i++)
-                list.child(buildMemberRow(sel.blockedPlayerIDs.get(i),
-                    i < sel.blockedNames.size() ? sel.blockedNames.get(i) : "#" + sel.blockedPlayerIDs.get(i),
-                    AccessLevel.BLOCKED, true));
-            if (sel.adminPlayerIDs.isEmpty() && sel.memberPlayerIDs.isEmpty() && sel.blockedPlayerIDs.isEmpty()) {
+            list.child(buildPermissionRow(sel.ownerPlayerID, sel.ownerName, -1, false));
+            for (int i = 0; i < sel.authorizedPlayerIDs.size(); i++) {
+                final int playerID = sel.authorizedPlayerIDs.get(i);
+                final String name = i < sel.authorizedPlayerNames.size()
+                    ? sel.authorizedPlayerNames.get(i)
+                    : "#" + playerID;
+                final int bits = i < sel.authorizedPlayerPermBits.size() ? sel.authorizedPlayerPermBits.get(i) : 0;
+                list.child(buildPermissionRow(playerID, name, bits, true));
+            }
+            if (sel.authorizedPlayerIDs.isEmpty()) {
                 list.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.members.empty")));
             }
             contentArea.child(list);
@@ -834,32 +838,31 @@ public final class NetworkTerminalUI {
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.add"),
                     120, this::addMember)));
 
-            if (sel.isOwner && selectedMemberID >= 0) {
-                bottomArea.child(Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
-                    .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.promote"),
-                        140, () -> setMemberRole(sel.networkID, selectedMemberID, AccessLevel.ADMIN)))
-                    .child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.demote"),
-                        140, () -> setMemberRole(sel.networkID, selectedMemberID, AccessLevel.MEMBER)))
-                    .child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.remove"),
-                        140, () -> setMemberRole(sel.networkID, selectedMemberID, AccessLevel.NONE))));
+            if (selectedMemberID >= 0) {
+                bottomArea.child(permissionEditor(sel));
             }
         }
 
-        private ButtonWidget<?> buildMemberRow(int pid, String pname, AccessLevel role, boolean clickable) {
-            final boolean sel = pid == selectedMemberID;
-            final int rc = NetworkUiKit.accessColor(role);
-            final int bg = sel ? NetworkUiKit.darken(rc, 0.25f) : Palette.BG_ROW;
+        private ButtonWidget<?> buildPermissionRow(final int playerID, final String playerName, final int permissionBits,
+            final boolean clickable) {
+            final boolean selected = playerID == selectedMemberID;
+            final int color = permissionBits < 0 ? Palette.ACCESS_OWNER : NetworkUiKit.permissionColor(permissionBits);
+            final int bg = selected ? NetworkUiKit.darken(color, 0.25f) : Palette.BG_ROW;
 
-            final TextWidget memberNameW = new TextWidget(IKey.str(pname))
+            final TextWidget memberNameW = new TextWidget(IKey.str(playerName))
                 .color(Palette.TEXT_PRIMARY);
             memberNameW.expanded();
 
             final Flow rowContent = Flow.row()
                 .childPadding(8).widthRel(1f).height(Palette.LIST_ROW_H)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(NetworkUiKit.badge(NetworkUiKit.roleName(role), rc))
+                .child(NetworkUiKit.badge(
+                    permissionBits < 0
+                        ? NetworkUiKit.tr("gui.singularityme.network_terminal.access.owner")
+                        : NetworkUiKit.permissionMarks(permissionBits),
+                    color))
                 .child(memberNameW)
-                .child(NetworkUiKit.idPill(pid));
+                .child(NetworkUiKit.idPill(playerID));
 
             final ButtonWidget<?> row = new ButtonWidget<>()
                 .child(rowContent)
@@ -868,7 +871,12 @@ public final class NetworkTerminalUI {
                 .background(Styles.rowBg(bg))
                 .disableHoverBackground();
             if (clickable) {
-                row.onMousePressed(mb -> { selectedMemberID = pid; renderContent(false); return true; });
+                row.onMousePressed(mb -> {
+                    selectedMemberID = playerID;
+                    selectedPermissionBits = permissionBits;
+                    renderContent(false);
+                    return true;
+                });
             }
             return row;
         }
@@ -878,12 +886,79 @@ public final class NetworkTerminalUI {
             if (name.isEmpty()) return;
             final NetworkEntry sel = selectedRealEntry();
             if (sel == null) return;
-            SingularityChannel.CHANNEL.sendToServer(new PacketAddMemberByName(sel.networkID, name));
+            SingularityChannel.CHANNEL.sendToServer(
+                new PacketGrantPermissionByName(sel.networkID, name, PermissionBits.DEFAULT_MEMBER_BITS));
             memberNameVal.setStringValue("");
         }
 
-        void setMemberRole(int nid, int pid, AccessLevel role) {
-            SingularityChannel.CHANNEL.sendToServer(new PacketSetMemberRole(nid, pid, role.ordinal()));
+        @SuppressWarnings("unchecked")
+        private Flow permissionEditor(final NetworkEntry sel) {
+            final Flow row = Flow.row()
+                .childPadding(6).widthRel(1f).height(Palette.ROW_H)
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER);
+            for (final SecurityPermissions permission : SecurityPermissions.values()) {
+                row.child(permissionToggle(permission));
+            }
+            row.child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.save"),
+                84, () -> savePermissions(sel.networkID)));
+            row.child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.remove"),
+                84, () -> {
+                    selectedPermissionBits = 0;
+                    savePermissions(sel.networkID);
+                }));
+            return row;
+        }
+
+        private ButtonWidget<?> permissionToggle(final SecurityPermissions permission) {
+            final int mask = 1 << permission.ordinal();
+            final boolean enabled = (selectedPermissionBits & mask) != 0;
+            return new ButtonWidget<>()
+                .overlay(IKey.str(permissionMark(permission)))
+                .width(32).height(Palette.ROW_H).padding(0, 8)
+                .background(Styles.rowBg(enabled ? Palette.BTN_NORMAL : Palette.BTN_DISABLED))
+                .disableHoverBackground()
+                .onMousePressed(mb -> {
+                    selectedPermissionBits = enabled ? selectedPermissionBits & ~mask : selectedPermissionBits | mask;
+                    renderContent(false);
+                    return true;
+                });
+        }
+
+        private static String permissionMark(final SecurityPermissions permission) {
+            return switch (permission) {
+                case BUILD -> "B";
+                case CRAFT -> "C";
+                case INJECT -> "I";
+                case EXTRACT -> "E";
+                case SECURITY -> "S";
+            };
+        }
+
+        private void savePermissions(final int networkID) {
+            if (selectedMemberID < 0) return;
+            SingularityChannel.CHANNEL
+                .sendToServer(new PacketSetPermissions(networkID, selectedMemberID, selectedPermissionBits));
+            requestNetworkData();
+        }
+
+        private void normalizeSelectedPermission(final NetworkEntry sel) {
+            if (selectedMemberID < 0) return;
+            final int bits = permissionBitsFor(sel, selectedMemberID);
+            if (bits < 0) {
+                selectedMemberID = -1;
+                selectedPermissionBits = 0;
+            } else {
+                selectedPermissionBits = bits;
+            }
+        }
+
+        private int permissionBitsFor(final NetworkEntry entry, final int playerID) {
+            for (int i = 0; i < entry.authorizedPlayerIDs.size(); i++) {
+                if (entry.authorizedPlayerIDs.get(i) == playerID) {
+                    return i < entry.authorizedPlayerPermBits.size() ? entry.authorizedPlayerPermBits.get(i) : 0;
+                }
+            }
+            return -1;
         }
 
         // ---- SETTINGS ----
@@ -893,6 +968,11 @@ public final class NetworkTerminalUI {
             bottomArea.removeAll();
             final NetworkEntry sel = selectedRealEntry();
             if (sel == null) { contentArea.child(emptyState()); return; }
+            if (!sel.canEditSettings) {
+                contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.permission.no_use"),
+                    Palette.BTN_DANGER_NORMAL));
+                return;
+            }
 
             // 首次进入 SETTINGS 面板时从已选网络读取真实值
             if (panelFirstRender) {
@@ -906,12 +986,6 @@ public final class NetworkTerminalUI {
             }
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.name"), settingsNameInput));
-
-            if (panelFirstRender) {
-                settingsPwVal.setStringValue("");
-            }
-            contentArea.child(formRow(
-                NetworkUiKit.tr("gui.singularityme.network_terminal.settings.password"), settingsPasswordInput));
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.security"),
@@ -928,7 +1002,7 @@ public final class NetworkTerminalUI {
             final Flow actionRow = Flow.row().childPadding(8).widthRel(1f).height(Palette.ROW_H)
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.apply"),
                     140, this::applySettings));
-            if (sel.isOwner) {
+            if (sel.canDeleteNetwork) {
                 actionRow.child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.settings.delete"),
                     140, () -> showDeleteConfirm(sel)));
             }
@@ -939,14 +1013,11 @@ public final class NetworkTerminalUI {
             final NetworkEntry sel = selectedRealEntry();
             if (sel == null) return;
             final String name = settingsNameVal.getStringValue();
-            final String pw = settingsPwVal.getStringValue();
             if (!name.isEmpty() && !name.equals(sel.name)) {
                 SingularityChannel.CHANNEL.sendToServer(new PacketRenameNetwork(sel.networkID, name));
             }
             SingularityChannel.CHANNEL.sendToServer(
-                new PacketSetNetworkSettings(sel.networkID, selectedColor,
-                    selectedSecurity.ordinal(),
-                    pw.isEmpty() ? "" : SingularityNetworkRegistry.sha256Hex(pw)));
+                new PacketSetNetworkSettings(sel.networkID, selectedColor, selectedSecurity.ordinal()));
         }
 
         // ---- STATISTICS ----
@@ -963,7 +1034,7 @@ public final class NetworkTerminalUI {
 
             contentArea.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.stat.energy"),
                 formatEnergy(networkStatus.currentPower, networkStatus.maxPower)));
-            contentArea.child(progressBar(energyFraction(), Palette.SECURITY_ENCRYPTED));
+            contentArea.child(progressBar(energyFraction(), Palette.ACCENT_AMBER));
 
             contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.stat.device_counts")));
             final Map<String, Integer> counts = deviceTypeCounts();
@@ -1024,7 +1095,7 @@ public final class NetworkTerminalUI {
             } else if (offline > 0) {
                 warnings.child(statusText(
                     NetworkUiKit.trf("gui.singularityme.network_terminal.health.warn.some_offline", offline),
-                    Palette.SECURITY_ENCRYPTED));
+                    Palette.ACCENT_AMBER));
                 hasWarning = true;
             }
             if (!hasWarning) {
@@ -1109,15 +1180,11 @@ public final class NetworkTerminalUI {
 
             if (panelFirstRender) {
                 createNameVal.setStringValue("");
-                createPwVal.setStringValue("");
                 selectedColor = 0x4A90E2;
                 selectedSecurity = SecurityLevel.PRIVATE;
             }
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.create.name"), createNameInput));
-
-            contentArea.child(formRow(
-                NetworkUiKit.tr("gui.singularityme.network_terminal.create.password"), createPasswordInput));
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.security"),
@@ -1139,13 +1206,9 @@ public final class NetworkTerminalUI {
         void confirmCreate() {
             final String name = createNameVal.getStringValue();
             if (name.isEmpty()) return;
-            final String pw = createPwVal.getStringValue();
             SingularityChannel.CHANNEL.sendToServer(
-                new PacketCreateNetwork(x, y, z, dim, name, selectedColor,
-                    selectedSecurity.ordinal(),
-                    pw.isEmpty() ? "" : SingularityNetworkRegistry.sha256Hex(pw)));
+                new PacketCreateNetwork(x, y, z, dim, name, selectedColor, selectedSecurity.ordinal()));
             createNameVal.setStringValue("");
-            createPwVal.setStringValue("");
         }
 
         // ---- 表单行 ----

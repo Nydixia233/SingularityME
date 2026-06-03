@@ -4,6 +4,7 @@ import net.minecraft.entity.player.EntityPlayerMP;
 
 import com.github.singularityme.core.SingularityNetworkRegistry;
 
+import appeng.api.config.SecurityPermissions;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
@@ -38,7 +39,7 @@ public class PacketSetDefaultNetwork implements IMessage {
             if (playerID < 0) return null;
 
             final SingularityNetworkRegistry registry = NetworkTabPacketHelper.getRegistry(player);
-            if (msg.networkID == 0 || registry.canAccess(msg.networkID, playerID)) {
+            if (msg.networkID == 0 || registry.hasPermission(msg.networkID, playerID, SecurityPermissions.BUILD)) {
                 registry.setDefaultNetworkID(playerID, msg.networkID);
             }
             NetworkTabPacketHelper.sendNetworkTabData(player, 0);

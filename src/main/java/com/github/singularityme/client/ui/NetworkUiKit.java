@@ -12,11 +12,12 @@ import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
 import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
-import com.github.singularityme.core.AccessLevel;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.NetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
+
+import appeng.api.config.SecurityPermissions;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -84,14 +85,13 @@ public final class NetworkUiKit {
 
         // 安全级别色
         public static final int SECURITY_PUBLIC = 0xFF2F8C52;
-        public static final int SECURITY_ENCRYPTED = 0xFFC48A32;
         public static final int SECURITY_PRIVATE = 0xFF7055A8;
+        public static final int ACCENT_AMBER = 0xFFC48A32;
 
-        // 访问级别色
+        // 权限级别色
         public static final int ACCESS_OWNER = 0xFF3D78C2;
         public static final int ACCESS_ADMIN = 0xFF5E7FC7;
         public static final int ACCESS_MEMBER = 0xFF4D8F8A;
-        public static final int ACCESS_BLOCKED = 0xFF9A3C3C;
         public static final int ACCESS_NONE = 0xFF5D6875;
 
         // 特殊标记色
@@ -689,7 +689,7 @@ public final class NetworkUiKit {
         final String suffix = deviceTypeSuffix(simpleName);
         if (suffix == null) return Palette.TEXT_MUTED;
         return switch (suffix) {
-            case "power_core" -> Palette.SECURITY_ENCRYPTED;
+            case "power_core" -> Palette.ACCENT_AMBER;
             case "drive" -> Palette.ACCESS_MEMBER;
             case "terminal", "crafting_terminal", "pattern_terminal", "network_terminal" -> Palette.ACCESS_ADMIN;
             case "storage_bus", "import_bus", "export_bus", "interface" -> Palette.BTN_NORMAL;
@@ -724,7 +724,6 @@ public final class NetworkUiKit {
     public static String securityName(final SecurityLevel security) {
         return switch (security) {
             case PUBLIC -> tr("gui.singularityme.network_tab.security.public");
-            case ENCRYPTED -> tr("gui.singularityme.network_tab.security.encrypted");
             case PRIVATE -> tr("gui.singularityme.network_tab.security.private");
         };
     }
@@ -738,7 +737,6 @@ public final class NetworkUiKit {
     public static String securityShort(final NetworkEntry entry) {
         return switch (SecurityLevel.fromOrdinal(entry.securityOrdinal)) {
             case PUBLIC -> tr("gui.singularityme.network_tab.security.public_short");
-            case ENCRYPTED -> tr("gui.singularityme.network_tab.security.encrypted_short");
             case PRIVATE -> tr("gui.singularityme.network_tab.security.private_short");
         };
     }
@@ -747,7 +745,6 @@ public final class NetworkUiKit {
     public static int securityColor(final SecurityLevel security) {
         return switch (security) {
             case PUBLIC -> Palette.SECURITY_PUBLIC;
-            case ENCRYPTED -> Palette.SECURITY_ENCRYPTED;
             case PRIVATE -> Palette.SECURITY_PRIVATE;
         };
     }
@@ -757,122 +754,85 @@ public final class NetworkUiKit {
         return securityColor(SecurityLevel.fromOrdinal(entry.securityOrdinal));
     }
 
-    // ---- 访问级别 ----
+    // ---- 权限展示 ----
 
-    /** 返回访问级别的完整显示名（用于 Info 面板）。 */
+    /** 返回当前玩家权限摘要（用于 Info 面板）。 */
     public static String accessName(final NetworkEntry entry) {
-        return roleName(AccessLevel.fromOrdinal(entry.accessLevelOrdinal));
+        if (entry.isOwner) return tr("gui.singularityme.network_terminal.access.owner");
+        if (entry.myPermissionBits == 0) return tr("gui.singularityme.network_terminal.access.none");
+        return permissionMarks(entry.myPermissionBits);
     }
 
-    /** 返回访问级别的完整显示名（从 AccessLevel 枚举读取，用于成员行 badge）。 */
-    public static String roleName(final AccessLevel role) {
-        return switch (role) {
-            case OWNER -> tr("gui.singularityme.network_terminal.access.owner");
-            case ADMIN -> tr("gui.singularityme.network_terminal.access.admin");
-            case MEMBER -> tr("gui.singularityme.network_terminal.access.member");
-            case BLOCKED -> tr("gui.singularityme.network_terminal.access.blocked");
-            case NONE -> tr("gui.singularityme.network_terminal.access.none");
-        };
+    /** 返回权限位的行内短标记，顺序固定为 B C I E S。 */
+    public static String permissionMarks(final int permissionBits) {
+        final StringBuilder out = new StringBuilder();
+        appendPermissionMark(out, permissionBits, SecurityPermissions.BUILD, "B");
+        appendPermissionMark(out, permissionBits, SecurityPermissions.CRAFT, "C");
+        appendPermissionMark(out, permissionBits, SecurityPermissions.INJECT, "I");
+        appendPermissionMark(out, permissionBits, SecurityPermissions.EXTRACT, "E");
+        appendPermissionMark(out, permissionBits, SecurityPermissions.SECURITY, "S");
+        return out.length() == 0 ? tr("gui.singularityme.network_tab.access.none_short") : out.toString();
     }
 
-    /** 返回访问级别的简短标记（用于行内 badge，如 "(O)"）。 */
+    private static void appendPermissionMark(final StringBuilder out, final int bits,
+        final SecurityPermissions permission, final String mark) {
+        if ((bits & (1 << permission.ordinal())) == 0) return;
+        if (out.length() > 0) out.append(' ');
+        out.append(mark);
+    }
+
+    /** 返回当前玩家权限的简短标记。 */
     public static String accessMark(final NetworkEntry entry) {
-        return switch (AccessLevel.fromOrdinal(entry.accessLevelOrdinal)) {
-            case OWNER -> tr("gui.singularityme.network_tab.access.owner_mark");
-            case ADMIN -> tr("gui.singularityme.network_tab.access.admin_mark");
-            case MEMBER -> tr("gui.singularityme.network_tab.access.member_mark");
-            case BLOCKED -> tr("gui.singularityme.network_tab.access.blocked_mark");
-            case NONE -> tr("gui.singularityme.network_tab.access.none_mark");
-        };
+        return entry.isOwner ? tr("gui.singularityme.network_tab.access.owner_mark")
+            : "(" + permissionMarks(entry.myPermissionBits) + ")";
     }
 
-    /** 返回访问级别的简短标签（用于行内 badge，如 "O"）。 */
+    /** 返回当前玩家权限的简短标签。 */
     public static String accessShort(final NetworkEntry entry) {
-        return switch (AccessLevel.fromOrdinal(entry.accessLevelOrdinal)) {
-            case OWNER -> tr("gui.singularityme.network_tab.access.owner_short");
-            case ADMIN -> tr("gui.singularityme.network_tab.access.admin_short");
-            case MEMBER -> tr("gui.singularityme.network_tab.access.member_short");
-            case BLOCKED -> tr("gui.singularityme.network_tab.access.blocked_short");
-            case NONE -> tr("gui.singularityme.network_tab.access.none_short");
-        };
+        return entry.isOwner ? tr("gui.singularityme.network_tab.access.owner_short")
+            : permissionMarks(entry.myPermissionBits);
     }
 
-    /** 返回访问级别对应的 badge 背景色（从 NetworkEntry 读取）。 */
+    /** 返回权限摘要对应的 badge 背景色（从 NetworkEntry 读取）。 */
     public static int accessColor(final NetworkEntry entry) {
-        return accessColor(AccessLevel.fromOrdinal(entry.accessLevelOrdinal));
+        if (entry.isOwner) return Palette.ACCESS_OWNER;
+        if (hasPermission(entry, SecurityPermissions.SECURITY)) return Palette.ACCESS_ADMIN;
+        if (entry.myPermissionBits != 0) return Palette.ACCESS_MEMBER;
+        return Palette.ACCESS_NONE;
     }
 
-    /** 返回访问级别对应的 badge 背景色（从 AccessLevel 枚举读取）。 */
-    public static int accessColor(final AccessLevel role) {
-        return switch (role) {
-            case OWNER -> Palette.ACCESS_OWNER;
-            case ADMIN -> Palette.ACCESS_ADMIN;
-            case MEMBER -> Palette.ACCESS_MEMBER;
-            case BLOCKED -> Palette.ACCESS_BLOCKED;
-            case NONE -> Palette.ACCESS_NONE;
-        };
+    /** 返回权限位对应的 badge 背景色。 */
+    public static int permissionColor(final int permissionBits) {
+        if ((permissionBits & (1 << SecurityPermissions.SECURITY.ordinal())) != 0) return Palette.ACCESS_ADMIN;
+        if (permissionBits != 0) return Palette.ACCESS_MEMBER;
+        return Palette.ACCESS_NONE;
     }
 
     // ---- 权限判断 ----
 
-    /**
-     * 判断玩家是否可访问该网络（非 BLOCKED 且 access != NONE，或 PUBLIC 网络）。
-     *
-     * @param entry 网络条目
-     * @return 是否可访问
-     */
+    /** 判断当前玩家是否可使用该网络。 */
     public static boolean canAccess(final NetworkEntry entry) {
-        final AccessLevel access = AccessLevel.fromOrdinal(entry.accessLevelOrdinal);
-        if (access == AccessLevel.BLOCKED) return false;
-        if (access != AccessLevel.NONE) return true;
-        return SecurityLevel.fromOrdinal(entry.securityOrdinal) == SecurityLevel.PUBLIC;
+        return entry != null && (entry.networkID == 0 || entry.myPermissionBits != 0 || entry.isOwner);
     }
 
-    /**
-     * 判断是否需要输入密码才能加入（ENCRYPTED 且 access==NONE）。
-     *
-     * @param entry 网络条目
-     * @return 是否需要密码加入
-     */
-    public static boolean isEncryptedJoinRequired(final NetworkEntry entry) {
-        return entry.networkID != 0 && SecurityLevel.fromOrdinal(entry.securityOrdinal) == SecurityLevel.ENCRYPTED
-            && AccessLevel.fromOrdinal(entry.accessLevelOrdinal) == AccessLevel.NONE;
-    }
-
-    /** 判断公开网络访客是否可以自助加入。 */
-    public static boolean isPublicJoinAvailable(final NetworkEntry entry) {
-        return entry.networkID != 0 && SecurityLevel.fromOrdinal(entry.securityOrdinal) == SecurityLevel.PUBLIC
-            && AccessLevel.fromOrdinal(entry.accessLevelOrdinal) == AccessLevel.NONE;
-    }
-
-    /** 判断当前玩家是否已经是拥有者、管理员或成员。 */
+    /** 判断当前玩家是否拥有任意权限。 */
     public static boolean isMemberAccess(final NetworkEntry entry) {
-        final AccessLevel access = AccessLevel.fromOrdinal(entry.accessLevelOrdinal);
-        return access == AccessLevel.OWNER || access == AccessLevel.ADMIN || access == AccessLevel.MEMBER;
+        return canAccess(entry);
     }
 
-    /** 判断访客是否可以通过共享选择表面发起自助加入流程。 */
-    public static boolean canSelfJoin(final NetworkEntry entry) {
-        return isPublicJoinAvailable(entry) || isEncryptedJoinRequired(entry);
-    }
-
-    /**
-     * 判断玩家是否被该网络封禁。
-     *
-     * @param entry 网络条目
-     * @return 是否被封禁
-     */
-    public static boolean isBlocked(final NetworkEntry entry) {
-        return AccessLevel.fromOrdinal(entry.accessLevelOrdinal) == AccessLevel.BLOCKED;
+    /** 判断当前玩家是否拥有指定权限。 */
+    public static boolean hasPermission(final NetworkEntry entry, final SecurityPermissions permission) {
+        if (entry == null || permission == null) return false;
+        if (entry.isOwner) return true;
+        return (entry.myPermissionBits & (1 << permission.ordinal())) != 0;
     }
 
     /** 判断设备选择页能否把当前设备分配到目标网络。 */
     public static boolean canAssignDeviceTo(final NetworkEntry entry, final int deviceNetworkID) {
         if (entry == null) return false;
         if (entry.networkID == deviceNetworkID) return false;
-        if (isBlocked(entry)) return false;
         if (entry.networkID == 0) return true;
-        return canAccess(entry) || canSelfJoin(entry);
+        return hasPermission(entry, SecurityPermissions.BUILD);
     }
 
     /** 返回设备选择页主动作按钮文案。 */
@@ -881,8 +841,6 @@ public final class NetworkUiKit {
         if (entry.networkID == deviceNetworkID) return tr("gui.singularityme.network_tab.action.current");
         if (entry.networkID == 0) return tr("gui.singularityme.network_tab.action.unassign");
         if (!canAssignDeviceTo(entry, deviceNetworkID)) return tr("gui.singularityme.network_tab.action.unavailable");
-        if (isEncryptedJoinRequired(entry)) return tr("gui.singularityme.network_tab.action.password_assign");
-        if (isPublicJoinAvailable(entry)) return tr("gui.singularityme.network_tab.action.join_assign");
         return tr("gui.singularityme.network_tab.action.assign");
     }
 
@@ -890,14 +848,9 @@ public final class NetworkUiKit {
     public static String deviceAssignmentHint(final NetworkEntry entry, final int deviceNetworkID) {
         if (entry == null) return tr("gui.singularityme.network_tab.no_selection");
         if (entry.networkID == deviceNetworkID) return tr("gui.singularityme.network_tab.hint.current");
-        if (isBlocked(entry)) return tr("gui.singularityme.network_action.blocked");
         if (entry.networkID == 0) return tr("gui.singularityme.network_tab.hint.unassign");
-        if (isEncryptedJoinRequired(entry)) return tr("gui.singularityme.network_tab.hint.password_join");
-        if (isPublicJoinAvailable(entry)) return tr("gui.singularityme.network_tab.hint.public_join");
         if (!canAssignDeviceTo(entry, deviceNetworkID)) {
-            return SecurityLevel.fromOrdinal(entry.securityOrdinal) == SecurityLevel.PRIVATE
-                ? tr("gui.singularityme.network_action.private_network")
-                : tr("gui.singularityme.network_action.no_access");
+            return tr("gui.singularityme.permission.no_build");
         }
         return tr("gui.singularityme.network_tab.hint.assign");
     }
@@ -905,9 +858,7 @@ public final class NetworkUiKit {
     /** 返回设备选择页操作说明的提示色。 */
     public static int deviceAssignmentHintColor(final NetworkEntry entry, final int deviceNetworkID) {
         if (entry == null || entry.networkID == deviceNetworkID) return Palette.TEXT_MUTED;
-        if (isBlocked(entry) || !canAssignDeviceTo(entry, deviceNetworkID)) return Palette.BTN_DANGER_NORMAL;
-        if (isEncryptedJoinRequired(entry)) return Palette.SECURITY_ENCRYPTED;
-        if (isPublicJoinAvailable(entry)) return Palette.SECURITY_PUBLIC;
+        if (!canAssignDeviceTo(entry, deviceNetworkID)) return Palette.BTN_DANGER_NORMAL;
         return entry.networkID == 0 ? Palette.TEXT_MUTED : Palette.BTN_NORMAL;
     }
 
@@ -927,25 +878,6 @@ public final class NetworkUiKit {
     /** 翻译带参数的 lang key。 */
     public static String trf(final String key, final Object... args) {
         return StatCollector.translateToLocalFormatted(key, args);
-    }
-
-    // ---- 密码掩码工具（无 GUI 框架依赖）----
-
-    /** 密码掩码字符 */
-    public static final char MASK_CHAR = '\u25CF';
-
-    /**
-     * 将真实密码转换为等长掩码字符串。
-     *
-     * @param realValue 真实密码
-     * @return 等长 ● 字符串
-     */
-    public static String maskPassword(final String realValue) {
-        if (realValue == null || realValue.isEmpty()) return "";
-        final int len = realValue.codePointCount(0, realValue.length());
-        final StringBuilder sb = new StringBuilder(len);
-        for (int i = 0; i < len; i++) sb.append(MASK_CHAR);
-        return sb.toString();
     }
 
     // ---- 徽章 / ID 胶囊组件 ----
@@ -1172,7 +1104,6 @@ public final class NetworkUiKit {
     public static String securityChoiceName(final SecurityLevel security) {
         return switch (security) {
             case PUBLIC -> tr("gui.singularityme.network_terminal.security.public");
-            case ENCRYPTED -> tr("gui.singularityme.network_terminal.security.encrypted");
             case PRIVATE -> tr("gui.singularityme.network_terminal.security.private");
         };
     }

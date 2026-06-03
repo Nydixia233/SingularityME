@@ -9,6 +9,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.common.util.ForgeDirection;
 
+import com.github.singularityme.core.SingularityPermissionHelper;
 import com.github.singularityme.core.SingularityNetworkManager;
 import com.github.singularityme.grid.SingularityGrid;
 import com.github.singularityme.proxy.CommonProxy;
@@ -20,6 +21,7 @@ import appeng.api.config.InsertionMode;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.config.RedstoneMode;
 import appeng.api.config.SchedulingMode;
+import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
 import appeng.api.config.Upgrades;
 import appeng.api.config.YesNo;
@@ -342,7 +344,16 @@ public class TileSingularityExportBus extends AENetworkInvTile
             return TickRateModulation.SLOWER;
         }
         if (isBlockedByRedstone()) return TickRateModulation.SLOWER;
-        return doBusWork();
+        final boolean canExtract =
+            SingularityPermissionHelper.hasNodePermission(worldObj, this.networkID, node, SecurityPermissions.EXTRACT);
+        final boolean canCraft =
+            SingularityPermissionHelper.hasNodePermission(worldObj, this.networkID, node, SecurityPermissions.CRAFT);
+        if (!canExtract && !canCraft) {
+            this.itemToSend = 0;
+            this.didSomething = false;
+            return TickRateModulation.SLEEP;
+        }
+        return doBusWork(canExtract, canCraft);
     }
 
     /**
@@ -380,7 +391,7 @@ public class TileSingularityExportBus extends AENetworkInvTile
      * {@link #exportOreFiltered} or {@link #exportWithScheduling} depending on whether
      * an ore filter is active.
      */
-    private TickRateModulation doBusWork() {
+    private TickRateModulation doBusWork(final boolean canExtract, final boolean canCraft) {
         this.itemToSend = calculateMaxItems();
         this.didSomething = false;
 
@@ -395,13 +406,14 @@ public class TileSingularityExportBus extends AENetworkInvTile
         final int availSlots = Math.min(1 + capacityCards * 4, 9);
         final int maxItems = (int) Math.min(Integer.MAX_VALUE, this.itemToSend);
         final boolean fuzzy = getInstalledUpgrades(Upgrades.FUZZY) > 0;
-        final boolean crafting = getInstalledUpgrades(Upgrades.CRAFTING) > 0;
+        final boolean crafting = canCraft && getInstalledUpgrades(Upgrades.CRAFTING) > 0;
         final boolean craftOnly = crafting && cm.getSetting(Settings.CRAFT_ONLY) == YesNo.YES;
         final FuzzyMode fuzzyMode = fuzzy ? (FuzzyMode) cm.getSetting(Settings.FUZZY_MODE) : FuzzyMode.IGNORE_ALL;
         final boolean oreFilter = getInstalledUpgrades(Upgrades.ORE_FILTER) > 0 && !oreFilterString.isEmpty();
 
         final SchedulingMode sched = (SchedulingMode) cm.getSetting(Settings.SCHEDULING_MODE);
         if (oreFilter) {
+            if (!canExtract) return TickRateModulation.SLOWER;
             return exportOreFiltered(gridInv, adaptor, maxItems);
         }
         final TickRateModulation modulation = exportWithScheduling(
@@ -413,7 +425,8 @@ public class TileSingularityExportBus extends AENetworkInvTile
             fuzzy,
             fuzzyMode,
             crafting,
-            craftOnly);
+            craftOnly,
+            canExtract);
         return this.didSomething ? TickRateModulation.FASTER : modulation;
     }
 
@@ -436,7 +449,8 @@ public class TileSingularityExportBus extends AENetworkInvTile
 
     private TickRateModulation exportWithScheduling(final IMEMonitor<IAEItemStack> gridInv,
         final InventoryAdaptor adaptor, final SchedulingMode sched, final int availSlots, final int maxItems,
-        final boolean fuzzy, final FuzzyMode fuzzyMode, final boolean crafting, final boolean craftOnly) {
+        final boolean fuzzy, final FuzzyMode fuzzyMode, final boolean crafting, final boolean craftOnly,
+        final boolean canExtract) {
 
         IItemList<IAEItemStack> available = gridInv.getStorageList();
 
@@ -454,7 +468,8 @@ public class TileSingularityExportBus extends AENetworkInvTile
                     fuzzy,
                     fuzzyMode,
                     crafting,
-                    craftOnly);
+                    craftOnly,
+                    canExtract);
                 if (n > 0) {
                     moved = true;
                     itemsMoved += n;
@@ -464,7 +479,17 @@ public class TileSingularityExportBus extends AENetworkInvTile
         } else if (sched == SchedulingMode.ROUNDROBIN) {
             for (int attempt = 0; attempt < availSlots; attempt++) {
                 int slot = (nextSlot + attempt) % availSlots;
-                int n = exportSlot(slot, gridInv, adaptor, available, maxItems, fuzzy, fuzzyMode, crafting, craftOnly);
+                int n = exportSlot(
+                    slot,
+                    gridInv,
+                    adaptor,
+                    available,
+                    maxItems,
+                    fuzzy,
+                    fuzzyMode,
+                    crafting,
+                    craftOnly,
+                    canExtract);
                 if (n > 0) {
                     nextSlot = (slot + 1) % availSlots;
                     return TickRateModulation.FASTER;
@@ -474,7 +499,17 @@ public class TileSingularityExportBus extends AENetworkInvTile
         } else {
             // RANDOM
             int slot = worldObj.rand.nextInt(availSlots);
-            int n = exportSlot(slot, gridInv, adaptor, available, maxItems, fuzzy, fuzzyMode, crafting, craftOnly);
+            int n = exportSlot(
+                slot,
+                gridInv,
+                adaptor,
+                available,
+                maxItems,
+                fuzzy,
+                fuzzyMode,
+                crafting,
+                craftOnly,
+                canExtract);
             return n > 0 ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
         }
     }
@@ -485,7 +520,7 @@ public class TileSingularityExportBus extends AENetworkInvTile
      */
     private int exportSlot(final int i, final IMEMonitor<IAEItemStack> gridInv, final InventoryAdaptor adaptor,
         final IItemList<IAEItemStack> available, final int maxItems, final boolean fuzzy, final FuzzyMode fuzzyMode,
-        final boolean crafting, final boolean craftOnly) {
+        final boolean crafting, final boolean craftOnly, final boolean canExtract) {
 
         IAEStack<?> filterStack = filterInv.getAEStackInSlot(i);
         if (!(filterStack instanceof IAEItemStack wanted)) return 0;
@@ -514,6 +549,7 @@ public class TileSingularityExportBus extends AENetworkInvTile
             }
             return 0;
         }
+        if (!canExtract) return 0;
 
         ItemStack probe = inGrid.getItemStack();
         int canMove = (int) Math.min(inGrid.getStackSize(), Math.min(probe.getMaxStackSize(), maxItems));

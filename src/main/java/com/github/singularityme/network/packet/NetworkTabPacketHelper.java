@@ -84,7 +84,7 @@ public final class NetworkTabPacketHelper {
         if (networkID == 0) {
             grid = SingularityNetworkManager.INSTANCE.getGridForPlayer(playerID);
         } else {
-            if (!registry.canAccess(networkID, playerID)) {
+            if (!registry.canUseNetwork(networkID, playerID)) {
                 sendEmptyNetworkStatus(player, networkID);
                 return;
             }

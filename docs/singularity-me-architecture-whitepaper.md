@@ -304,23 +304,13 @@ public final class PhantomSingularityNode {
 
 ---
 
-### 3. 权限模型：AccessLevel 与 NetworkMeta
+### 3. 权限模型：SecurityPermissions 与 NetworkMeta
 
 **为什么需要权限模型**
 
 奇点网络允许多人协作：一个玩家可以将自己的网络共享给其他玩家，让他们放置设备、访问库存。原版 AE2 的安全终端提供了一套基于 `IPlayerRegistry` 的权限体系，但它与物理网络绑定——权限作用于"这张 Grid"。奇点网络需要自己的权限模型，因为网络是玩家级别的抽象，而非物理级别的。
 
-**AccessLevel 枚举**
-
-```java
-public enum AccessLevel {
-    OWNER,   // 网络创建者，唯一可删除网络、转让所有权
-    ADMIN,   // 可管理成员（添加/移除/修改角色），不可转让所有权
-    MEMBER,  // 可在网络中放置设备、访问库存
-    BLOCKED, // 明确被禁止访问（即使网络是 PUBLIC）
-    NONE;    // 无任何权限（默认状态）
-}
-```
+当前实现不再维护 OWNER / ADMIN / MEMBER / BLOCKED 角色枚举，而是复用 AE2 原生 `appeng.api.config.SecurityPermissions` 五个权限维度：`INJECT`、`EXTRACT`、`CRAFT`、`BUILD`、`SECURITY`。权限集合与 NBT / packet 中的 bit 表示由 `PermissionBits` 统一转换（见 `src/main/java/com/github/singularityme/core/PermissionBits.java:12`）。
 
 **NetworkMeta — 每个网络的元数据**
 
@@ -331,34 +321,30 @@ public enum AccessLevel {
 | `ownerPlayerID` | `int` | 网络创建者，不可变更（当前版本） |
 | `name` | `String` | 网络显示名称 |
 | `color` | `int` | RGB 颜色（用于 UI 区分多网络） |
-| `security` | `SecurityLevel` | PRIVATE / PUBLIC / ENCRYPTED |
-| `passwordHash` | `String` | SHA-256 哈希（仅 ENCRYPTED 模式） |
-| `adminPlayerIDs` | `Set<Integer>` | 管理员列表 |
-| `memberPlayerIDs` | `Set<Integer>` | 成员列表 |
-| `blockedPlayerIDs` | `Set<Integer>` | 封禁列表 |
+| `security` | `SecurityLevel` | PUBLIC / PRIVATE |
+| `permissions` | `Map<Integer, EnumSet<SecurityPermissions>>` | 显式授权表，owner 不写入表中 |
 
 **SecurityLevel**
 
 | 级别 | 含义 |
 |------|------|
-| `PRIVATE` | 仅 OWNER + ADMIN + MEMBER 可访问 |
-| `PUBLIC` | 任何人均可访问（BLOCKED 除外） |
-| `ENCRYPTED` | 需要输入正确密码才能加入为 MEMBER |
+| `PUBLIC` | 所有玩家视为拥有全部 AE2 权限 |
+| `PRIVATE` | owner 内建全权限；其他玩家必须拥有至少一项显式授权才能使用 |
 
 **权限检查流程**
 
-当设备通过 `SingularityNetworkManager.registerNode()` 尝试加入网络时：
+权限检查分为三层，避免把"能看见"、"能使用"、"能执行某项操作"混在一起：
 
-1. 从 `GridNode` 获取 `playerID`（由 AE2 安全系统在放置方块时写入）。
-2. 检查 `networkID` 是否有效。
-3. 调用 `SingularityNetworkRegistry.canAccess(networkID, playerID)`：
-   - 遍历 `NetworkMeta` 的 OWNER → ADMIN → MEMBER → BLOCKED 列表。
-   - PUBLIC 网络默认允许，除非 playerID 在 BLOCKED 列表中。
-   - ENCRYPTED 网络需要先通过 `joinEncryptedNetwork()` 提供正确密码。
-4. 权限不足时，设备不注册到网络，并向玩家发送提示。
+1. `canViewNetwork(networkID, playerID)` 决定网络列表是否显示：PUBLIC 全员可见，PRIVATE 需要能使用。
+2. `canUseNetwork(networkID, playerID)` 决定普通设备 GUI 是否可打开：PUBLIC 或 owner 放行，PRIVATE 需要任意一项权限。
+3. `hasPermission(networkID, playerID, permission)` 决定具体操作是否可执行：BUILD 管放置/破坏/配置，INJECT/EXTRACT 管终端和自动设备的存取，CRAFT 管合成请求，SECURITY 管授权表和网络设置。
+
+这些入口由 `SingularityNetworkRegistry` 提供（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:139`），方块、Tile 和容器侧通过 `SingularityPermissionHelper` 复用服务端检查（见 `src/main/java/com/github/singularityme/core/SingularityPermissionHelper.java:16`）。
+
+旧存档迁移时，旧 `ENCRYPTED` 降级为 `PRIVATE`；旧 admin 迁移为全权限，旧 member 迁移为 BUILD / CRAFT / INJECT / EXTRACT，封禁和密码不再保留（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:272`）。
 
 **当前局限**
 
-- 所有权转让未实现（`setMemberRole` 中对 OWNER 直接返回 `false`）。
+- 所有权转让未实现；owner 权限内建且不可被授权表修改。
 - 权限变更不广播——其他在线玩家不会实时收到权限更新通知（需重新打开 Network Terminal）。
 

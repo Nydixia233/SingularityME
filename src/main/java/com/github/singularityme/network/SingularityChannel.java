@@ -1,10 +1,8 @@
 package com.github.singularityme.network;
 
-import com.github.singularityme.network.packet.PacketAddMemberByName;
 import com.github.singularityme.network.packet.PacketCreateNetwork;
 import com.github.singularityme.network.packet.PacketDeleteNetwork;
-import com.github.singularityme.network.packet.PacketJoinEncryptedNetwork;
-import com.github.singularityme.network.packet.PacketJoinNetwork;
+import com.github.singularityme.network.packet.PacketGrantPermissionByName;
 import com.github.singularityme.network.packet.PacketNetworkActionResult;
 import com.github.singularityme.network.packet.PacketNetworkStatus;
 import com.github.singularityme.network.packet.PacketNetworkTabData;
@@ -14,8 +12,8 @@ import com.github.singularityme.network.packet.PacketRequestNetworkStatus;
 import com.github.singularityme.network.packet.PacketRequestNetworkTabData;
 import com.github.singularityme.network.packet.PacketSetDefaultNetwork;
 import com.github.singularityme.network.packet.PacketSetDeviceNetwork;
-import com.github.singularityme.network.packet.PacketSetMemberRole;
 import com.github.singularityme.network.packet.PacketSetNetworkSettings;
+import com.github.singularityme.network.packet.PacketSetPermissions;
 
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
@@ -43,21 +41,19 @@ public final class SingularityChannel {
             Side.SERVER);
         CHANNEL
             .registerMessage(PacketSetDefaultNetwork.Handler.class, PacketSetDefaultNetwork.class, id++, Side.SERVER);
-        CHANNEL.registerMessage(
-            PacketJoinEncryptedNetwork.Handler.class,
-            PacketJoinEncryptedNetwork.class,
-            id++,
-            Side.SERVER);
         CHANNEL
             .registerMessage(PacketSetNetworkSettings.Handler.class, PacketSetNetworkSettings.class, id++, Side.SERVER);
         CHANNEL.registerMessage(PacketRenameNetwork.Handler.class, PacketRenameNetwork.class, id++, Side.SERVER);
         CHANNEL.registerMessage(PacketDeleteNetwork.Handler.class, PacketDeleteNetwork.class, id++, Side.SERVER);
-        CHANNEL.registerMessage(PacketSetMemberRole.Handler.class, PacketSetMemberRole.class, id++, Side.SERVER);
-        CHANNEL.registerMessage(PacketAddMemberByName.Handler.class, PacketAddMemberByName.class, id++, Side.SERVER);
         CHANNEL
             .registerMessage(PacketRequestNetworkStatus.Handler.class, PacketRequestNetworkStatus.class, id++, Side.SERVER);
         CHANNEL.registerMessage(PacketNetworkStatus.Handler.class, PacketNetworkStatus.class, id++, Side.CLIENT);
-        CHANNEL.registerMessage(PacketJoinNetwork.Handler.class, PacketJoinNetwork.class, id++, Side.SERVER);
         CHANNEL.registerMessage(PacketNetworkActionResult.Handler.class, PacketNetworkActionResult.class, id++, Side.CLIENT);
+        CHANNEL.registerMessage(PacketSetPermissions.Handler.class, PacketSetPermissions.class, id++, Side.SERVER);
+        CHANNEL.registerMessage(
+            PacketGrantPermissionByName.Handler.class,
+            PacketGrantPermissionByName.class,
+            id++,
+            Side.SERVER);
     }
 }

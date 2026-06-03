@@ -9,6 +9,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.github.singularityme.SingularityME;
+import com.github.singularityme.core.SingularityPermissionHelper;
 import com.github.singularityme.tile.TileSingularityStorageBus;
 
 import appeng.api.implementations.items.IAEWrench;
@@ -106,6 +107,8 @@ public class BlockSingularityStorageBus extends BlockSingularityPartLike {
         final ItemStack held = player.getCurrentEquippedItem();
         if (!isAEWrench(player, held, x, y, z)) return false;
         if (world.isRemote) return true;
+        final TileEntity te = world.getTileEntity(x, y, z);
+        if (!SingularityPermissionHelper.checkBuild(world, te, player)) return true;
         final int meta = world.getBlockMetadata(x, y, z);
         final int next = (meta + 1) % 6;
         world.setBlockMetadataWithNotify(x, y, z, next, 2);
@@ -125,6 +128,8 @@ public class BlockSingularityStorageBus extends BlockSingularityPartLike {
             return true;
         }
         if (!world.isRemote) {
+            final TileEntity te = world.getTileEntity(x, y, z);
+            if (!SingularityPermissionHelper.checkUse(world, te, player)) return true;
             player.openGui(SingularityME.instance, GUI_ID, world, x, y, z);
         }
         return true;

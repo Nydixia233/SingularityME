@@ -31,10 +31,7 @@ import com.github.singularityme.tile.TileSingularityStorageBus;
 import com.github.singularityme.tile.TileSingularityTerminal;
 
 import appeng.container.ContainerOpenContext;
-import appeng.container.implementations.ContainerCraftingTerm;
 import appeng.container.implementations.ContainerInterface;
-import appeng.container.implementations.ContainerMEMonitorable;
-import appeng.container.implementations.ContainerPatternTerm;
 import cpw.mods.fml.common.network.IGuiHandler;
 
 /**
@@ -66,17 +63,19 @@ public class SingularityGuiHandler implements IGuiHandler {
         if (te == null) return null;
 
         if (id == BlockSingularityTerminal.GUI_ID && te instanceof TileSingularityTerminal terminal) {
-            final ContainerMEMonitorable c = new ContainerMEMonitorable(player.inventory, terminal);
+            final ContainerSingularityTerminal c = new ContainerSingularityTerminal(player.inventory, terminal);
             setOpenContext(c, te, world, x, y, z, ForgeDirection.UNKNOWN);
             return c;
         }
         if (id == BlockSingularityCraftingTerminal.GUI_ID && te instanceof TileSingularityCraftingTerminal terminal) {
-            final ContainerCraftingTerm c = new ContainerCraftingTerm(player.inventory, terminal);
+            final ContainerSingularityCraftingTerminal c =
+                new ContainerSingularityCraftingTerminal(player.inventory, terminal);
             setOpenContext(c, te, world, x, y, z, ForgeDirection.UNKNOWN);
             return c;
         }
         if (id == BlockSingularityPatternTerminal.GUI_ID && te instanceof TileSingularityPatternTerminal terminal) {
-            final ContainerPatternTerm c = new ContainerPatternTerm(player.inventory, terminal);
+            final ContainerSingularityPatternTerminal c =
+                new ContainerSingularityPatternTerminal(player.inventory, terminal);
             setOpenContext(c, te, world, x, y, z, ForgeDirection.UNKNOWN);
             return c;
         }

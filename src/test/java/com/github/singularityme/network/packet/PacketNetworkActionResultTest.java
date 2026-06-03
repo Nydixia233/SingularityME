@@ -38,8 +38,8 @@ public class PacketNetworkActionResultTest {
     @Test
     public void roundTripsFailureResultPayload() {
         final PacketNetworkActionResult packet = new PacketNetworkActionResult(
-            NetworkActionType.JOIN,
-            NetworkActionResult.BAD_PASSWORD,
+            NetworkActionType.ASSIGN_DEVICE,
+            NetworkActionResult.NO_ACCESS,
             7);
 
         final ByteBuf buf = Unpooled.buffer();
@@ -48,9 +48,9 @@ public class PacketNetworkActionResultTest {
         final PacketNetworkActionResult decoded = new PacketNetworkActionResult();
         decoded.fromBytes(buf);
 
-        assertEquals(NetworkActionResult.BAD_PASSWORD, decoded.result);
+        assertEquals(NetworkActionResult.NO_ACCESS, decoded.result);
         assertFalse(decoded.result.success);
-        assertEquals(NetworkActionResult.BAD_PASSWORD.translationKey, decoded.messageKey);
+        assertEquals(NetworkActionResult.NO_ACCESS.translationKey, decoded.messageKey);
         assertEquals(0, buf.readableBytes());
     }
 }

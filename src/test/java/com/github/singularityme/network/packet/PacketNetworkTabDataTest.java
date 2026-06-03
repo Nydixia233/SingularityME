@@ -1,22 +1,25 @@
 package com.github.singularityme.network.packet;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
 
 import org.junit.Test;
 
+import com.github.singularityme.core.PermissionBits;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
+import appeng.api.config.SecurityPermissions;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 /** 验证网络标签页数据包的二进制读写契约。 */
 public class PacketNetworkTabDataTest {
 
-    /** 时间戳字段必须在 toBytes/fromBytes 中对称传输，避免客户端 ByteBuf 下溢或显示缺失。 */
+    /** 新 DTO 字段必须在 toBytes/fromBytes 中对称传输。 */
     @Test
-    public void roundTripsNetworkEntryTimestamps() {
+    public void roundTripsPermissionEntryPayload() {
         final PacketNetworkTabData packet = new PacketNetworkTabData();
         packet.deviceNetworkID = 9;
         packet.defaultNetworkID = 9;
@@ -27,15 +30,14 @@ public class PacketNetworkTabDataTest {
             "Alpha",
             0x123456,
             1,
-            0,
+            PermissionBits.DEFAULT_MEMBER_BITS,
+            true,
+            true,
             true,
             Collections.singletonList(43),
-            Collections.singletonList(44),
-            Collections.singletonList(45),
+            Collections.singletonList("Builder"),
+            Collections.singletonList(PermissionBits.toBits(java.util.EnumSet.of(SecurityPermissions.BUILD))),
             "Owner",
-            Collections.singletonList("Admin"),
-            Collections.singletonList("Member"),
-            Collections.singletonList("Blocked"),
             1_700_000_000_000L,
             1_700_000_123_456L));
 
@@ -46,6 +48,10 @@ public class PacketNetworkTabDataTest {
         decoded.fromBytes(buf);
 
         final NetworkEntry entry = decoded.networks.get(0);
+        assertEquals(PermissionBits.DEFAULT_MEMBER_BITS, entry.myPermissionBits);
+        assertTrue(entry.canManagePermissions);
+        assertEquals(Collections.singletonList(43), entry.authorizedPlayerIDs);
+        assertEquals(Collections.singletonList("Builder"), entry.authorizedPlayerNames);
         assertEquals(1_700_000_000_000L, entry.createdAtMillis);
         assertEquals(1_700_000_123_456L, entry.lastModifiedMillis);
         assertEquals(0, buf.readableBytes());
@@ -55,18 +61,10 @@ public class PacketNetworkTabDataTest {
     @Test
     public void clampsNegativeNameLengthToEmptyString() {
         final ByteBuf buf = Unpooled.buffer();
-        buf.writeInt(9);
-        buf.writeInt(9);
-        buf.writeInt(1);
-        buf.writeInt(9);
-        buf.writeInt(42);
-        buf.writeBoolean(true);
-        buf.writeInt(0x123456);
-        buf.writeInt(1);
-        buf.writeInt(0);
-        buf.writeBoolean(false);
+        writeEntryPrefix(buf);
         buf.writeShort(-1);
-        writeEmptyListsAndNames(buf);
+        writeEmptyAuthorizationLists(buf);
+        writeString(buf, "Owner");
         buf.writeLong(0L);
         buf.writeLong(0L);
 
@@ -80,6 +78,20 @@ public class PacketNetworkTabDataTest {
     @Test
     public void clampsNegativeNestedStringLengthToEmptyString() {
         final ByteBuf buf = Unpooled.buffer();
+        writeEntryPrefix(buf);
+        writeString(buf, "Alpha");
+        writeEmptyAuthorizationLists(buf);
+        buf.writeShort(-1);
+        buf.writeLong(0L);
+        buf.writeLong(0L);
+
+        final PacketNetworkTabData decoded = new PacketNetworkTabData();
+        decoded.fromBytes(buf);
+
+        assertEquals("", decoded.networks.get(0).ownerName);
+    }
+
+    private static void writeEntryPrefix(final ByteBuf buf) {
         buf.writeInt(9);
         buf.writeInt(9);
         buf.writeInt(1);
@@ -90,28 +102,11 @@ public class PacketNetworkTabDataTest {
         buf.writeInt(1);
         buf.writeInt(0);
         buf.writeBoolean(false);
-        writeString(buf, "Alpha");
-        buf.writeInt(0);
-        buf.writeInt(0);
-        buf.writeInt(0);
-        buf.writeShort(-1);
-        buf.writeInt(0);
-        buf.writeInt(0);
-        buf.writeInt(0);
-        buf.writeLong(0L);
-        buf.writeLong(0L);
-
-        final PacketNetworkTabData decoded = new PacketNetworkTabData();
-        decoded.fromBytes(buf);
-
-        assertEquals("", decoded.networks.get(0).ownerName);
+        buf.writeBoolean(false);
+        buf.writeBoolean(false);
     }
 
-    private static void writeEmptyListsAndNames(final ByteBuf buf) {
-        buf.writeInt(0);
-        buf.writeInt(0);
-        buf.writeInt(0);
-        writeString(buf, "Owner");
+    private static void writeEmptyAuthorizationLists(final ByteBuf buf) {
         buf.writeInt(0);
         buf.writeInt(0);
         buf.writeInt(0);
