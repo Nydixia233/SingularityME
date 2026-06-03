@@ -32,7 +32,7 @@
 
 现象：`.width()` / `.expanded()` / `ListWidget.widthRel()` 后不能继续 `.background()` 或 `.color()`。
 
-根因：sizing 方法来自 `IPositioned`，Java 泛型返回类型可能退化为接口。
+根因：sizing 方法来自 `IPositioned<W>`。源码签名返回 `W`，但在部分 Widget、raw type 或链式推断场景下，Java 静态类型可能退化为 `IPositioned`。2.3.63 字节码经 `javap` 看到的是擦除后的接口返回类型，不能据此反推源码 API 是“直接返回 `IPositioned`”。
 
 修法：
 
@@ -76,3 +76,10 @@ list.expanded();
 
 历史错误索引：`docs/errors/README.md`。
 MUI2 sizing 历史记录：`docs/errors/ERROR-20260601-mui2-sizing-padding-overflow.md`。
+
+## 文档核对经验
+
+- 先看源码签名，再用 2.3.63 dev jar 字节码复核；遇到泛型 API 时要区分源码签名和 `javap` 擦除签名。
+- 写 padding/margin 经验时必须回到 `IPositioned.padding(int, int)` 与 `Box.all(int, int)`，确认第一个参数进 left/right、第二个参数进 top/bottom。
+- 可点击控件的可见背景要挂在可交互 Widget 本体上；普通子 `Flow` 有可见背景时可能成为 hover/click 命中链的阻断层。
+- 文档中不要写本地绝对路径；源码镜像只能描述为相对路径或版本依据。

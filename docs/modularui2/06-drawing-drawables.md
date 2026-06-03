@@ -40,7 +40,7 @@ return new Circle()
     .segments(12);
 ```
 
-适合小状态标记。列表行中的彩色方块目前用 `TextWidget("■")`，原因是它随字体行高更容易对齐。
+适合小状态标记。网络终端左侧网络列和网络选择行使用 `statusDotWidget(color)` 包装 `Circle`；Network Tab 行、设备行和部分健康提示仍使用 `TextWidget("■")`，原因是它随字体行高更容易对齐。可点击色板不要把可见色块放进按钮内部普通 `Flow`，应把点击目标和主要视觉背景挂在同一个 `ButtonWidget` 上。
 
 ## UITexture 与 9-slice
 

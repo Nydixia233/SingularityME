@@ -1,11 +1,10 @@
 ﻿# ModularUI2 源码级开发指南
 
-> 面向在 Singularity ME 中维护网络界面的开发者。本指南以本地源码检出
-> `E:\Minecraft Mod\GTNH Source\ModularUI2-master\src\main\java\com\cleanroommc\modularui\`
-> 为规范引用源，当前检出含 507 个 `.java` 文件；项目运行依赖为
-> `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`。
+> 面向在 Singularity ME 中维护网络界面的开发者。本指南以 ModularUI2 源码镜像
+> `src/main/java/com/cleanroommc/modularui/` 作为可读上下文，并以项目运行依赖
+> `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev` 的字节码作为最终核对依据。
 
-所有 `file:line` 引用均以 `ModularUI2-master` 当前检出为准。阅读者复核时应回到该目录确认行号，因为源码检出是 point-in-time dump，不带 git tag 信息；早期用 2.3.55 sources jar 只做交叉验证，不作为本文档引用路径。
+所有 `file:line` 引用均以当前可用的 ModularUI2 源码镜像为准。阅读者复核时应回到同一版本源码或 2.3.63 dev jar 的 `javap` 输出确认，因为源码镜像是 point-in-time dump，不带 git tag 信息；早期 2.3.55 sources jar 只做交叉验证，不作为本文档最终依据。
 
 ## 一句话能力总览
 

@@ -155,7 +155,7 @@ PacketNetworkStatus.Handler.onMessage
 | `justify-content` | `.mainAxisAlignment(Alignment.MainAxis.*)` |
 | `align-items` | `.crossAxisAlignment(Alignment.CrossAxis.*)` |
 | `overflow-y:scroll` 滚动容器 | `ListWidget`（自带滚动） |
-| `ElementNode` 色块 / 徽章 | **推荐** `NetworkUiKit.badge(text, color)` / `securityBadge(entry)` / `accessBadge(entry)`；简单场景可直接 `TextWidget.color(argb)` |
+| `ElementNode` 色块 / 徽章 | **推荐** `NetworkUiKit.badge(text, color)` / `securityBadge(entry)` / `accessBadge(entry)`；静态状态点用 `statusDotWidget(color)` 或 `TextWidget.color(argb)`；可点击色板必须用 `ButtonWidget` 本体背景 + overlay |
 | `DocumentButtonControl` + `setClickHandler` | `ButtonWidget<>().overlay(...).onMousePressed(...)` |
 | `DocumentTextInputControl` | `TextFieldWidget().value(StringValue)` |
 | `QzNetworkUiKit.MaskedInput`（密码掩码） | **无内建等价**——当前明文显示（见陷阱表） |
@@ -173,7 +173,7 @@ PacketNetworkStatus.Handler.onMessage
 | **`coverChildrenHeight()` Column 的子元素高度依赖父（卡死）** | Flow 构造器默认 `sizeRel(1f, 1f)`，无显式 `.height()` 的 Row 停留在 `heightRel(1f)` → `heightDependsOnParent()=true`。Column 在主轴上 `canCoverByDefaultSize(Y)=false`（源码 `Flow` L250-252：`axis.getOther() == this.axis`），无法用子元素默认尺寸兜底 → `!hasIndependentChildY && !coverByDefaultSizeY` 分支 → 布局循环不收敛 → GUI 卡死。Row 的 `coverChildrenHeight()` 覆盖交叉轴不受此限（`canCoverByDefaultSize` 对交叉轴返回 true），故 `navBar`(Row) 不挂而 `bottomArea`(Column) 挂。 | **必须**：`coverChildrenHeight()` Column 的每个子 Row 加显式 `.height(Palette.ROW_H)`；或将 Column 本身从 `coverChildrenHeight()` 改为固定 `.height(n)`。优先使用 `NetworkUiKit.fixedRow(int)` 创建固定高度行。 |
 | **`coverChildrenHeight()` 空容器初始高度=8px** | `coverChildrenHeight()` 默认 minSize=8（`IPositioned` L41），空容器通过 `coverChildrenForEmpty()` 获得高度=8px。动态添加子元素后可能不触发父列重新布局。 | 初始就放入占位子元素；或已知子元素数量/高度恒定时改用固定 `.height(n)`。 |
 | **`ButtonWidget.setEnabled()` 不阻止已注册的回调** | `onMousePressed` 设置在 `setEnabled` 之前时，禁用的按钮仍会执行回调。 | 回调内显式检查 `isEnabled()`：`mb -> { if (!isEnabled()) return false; ... }`。 |
-| sizing 方法返回 `IPositioned` 而非 `W` | `.width(int)` / `.expanded()` / `ListWidget.widthRel()` 之后链断裂，不能再接 `.background()`/`.color()` 等 Widget 方法 | 先设 background 再设 sizing；或拆成多步、用局部变量赋值（见 `nameWidget.expanded()` 单独成行） |
+| `IPositioned` sizing 链式类型退化 | 源码签名返回泛型 `W`，但在部分 Widget、raw type 或链式推断场景下静态类型可能退化为 `IPositioned`，导致 `.width(int)` / `.expanded()` / `ListWidget.widthRel()` 之后不能再接 `.background()` / `.color()` 等 Widget 方法 | 先设 background 再设 sizing；或拆成多步、用局部变量赋值（见 `nameWidget.expanded()` 单独成行） |
 | `Rectangle` 不支持圆角 + 边框并存 | 原 Qz UI 的圆角+描边效果无法直接复刻 | 接受直角；或两层 `Rectangle` 叠加；或使用 `ShadowDrawable` 叠加投影 |
 | 无内建密码掩码 | `TextFieldWidget` 无 password 模式，密码当前**明文显示** | 已知限制；`NetworkUiKit.maskPassword()` 备有等长掩码工具，如需接入再 wire |
 | TextWidget padding 在固定高度行内垂直溢出 | 固定高度 Row 内 TextWidget 的 padding 与主题默认 padding 叠加，日志报 `[SIZING] Margin/padding ... exceeds parent size`（不阻断渲染） | 优先使用 `NetworkUiKit.fixedRow(int)` / `textRow()`；垂直留白放到父容器 margin；详见 `docs/errors/ERROR-20260601-mui2-sizing-padding-overflow.md` |
@@ -190,4 +190,3 @@ PacketNetworkStatus.Handler.onMessage
 - `docs/html-reference/` — 两个界面的视觉设计规格（`network-tab.html` / `network-terminal.html` / `shared-palette.css`）
 - `docs/errors/README.md` — MUI2 相关错误索引
 - 范例代码：`src/main/java/com/github/singularityme/client/ui/`（`NetworkTabUI` / `NetworkTerminalUI` / `NetworkUiKit` / `ShadowDrawable`）
-

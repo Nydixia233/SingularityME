@@ -4,7 +4,7 @@
 
 - 库包名：`com.cleanroommc.modularui`。
 - 运行依赖：`dependencies.gradle` 中的 `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`。
-- 规范源码：`E:\Minecraft Mod\GTNH Source\ModularUI2-master\src\main\java\com\cleanroommc\modularui\`。
+- 规范依据：当前可用的 ModularUI2 源码镜像 `src/main/java/com/cleanroommc/modularui/`，并用 2.3.63 dev jar 字节码复核关键 API。
 
 ## 本项目采用的 client-only 路线
 

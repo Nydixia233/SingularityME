@@ -83,7 +83,7 @@ list.expanded();
 | `justify-content` | `.mainAxisAlignment(...)` |
 | `align-items` | `.crossAxisAlignment(...)` |
 | 滚动容器 | `ListWidget` |
-| 色块 / 徽章 | `TextWidget("■")` 或 `Flow` + `Rectangle` |
+| 色块 / 徽章 | 静态状态点用 `statusDotWidget(color)` 或 `TextWidget("■")`；徽章用 `NetworkUiKit.badge(...)`；可点击色板用 `ButtonWidget` 本体背景 + `overlay(Styles.swatch(color))` |
 | button click | `ButtonWidget().onMousePressed(...)` |
 | text input | `TextFieldWidget().value(StringValue)` |
 | clear + append | `removeAll()` + `child(...)` + `scheduleResize()` |
@@ -118,3 +118,24 @@ private static ButtonWidget<?> makeBtn(String text, int w, Runnable action, bool
 ```
 
 注意：如果需要运行时启用/禁用，使用局部 `button` 变量并调用 `setEnabled(boolean)`，不要只捕获创建时的 `enabled` 值。
+
+## 可点击色板
+
+颜色选择这类小控件必须让点击目标和主要视觉落在同一个 `ButtonWidget` 上：
+
+```java
+new ButtonWidget<>()
+    .width(Palette.SWATCH_BUTTON_SIZE).height(Palette.SWATCH_BUTTON_SIZE)
+    .padding((Palette.SWATCH_BUTTON_SIZE - Palette.SWATCH_INNER_SIZE) / 2)
+    .background(selected
+        ? Styles.rowBg(NetworkUiKit.lighten(color, 0.18f))
+        : Styles.rowBg(Palette.BG_ROW))
+    .overlay(Styles.swatch(color))
+    .disableHoverBackground()
+    .onMousePressed(mb -> {
+        onSelect.accept(color & 0xFFFFFF);
+        return true;
+    });
+```
+
+不要用 `ButtonWidget.child(Flow.row().background(...))` 承载可见色块。MUI2 的 hover/click 命中链会先命中有可见背景的内部 `Flow`，普通 `Flow` 不是可交互控件且会阻断事件继续到外层按钮。

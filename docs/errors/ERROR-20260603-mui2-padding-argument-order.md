@@ -25,7 +25,7 @@ MUI2 两参数 padding 的真实顺序是 `padding(horizontal, vertical)`：
 - 列表行与表单/信息胶囊背景自身使用 `.padding(Palette.LIST_ROW_PADDING_H, 0)`，覆盖网络左栏、选择列表、连接列表、成员列表、旧网络选择页、颜色只读字段、安全级别分段字段、主页信息行、健康提醒行和选中摘要栏。
 - `badge()` 与 `idPill()` 使用 `.padding(Palette.BADGE_PADDING_H, 0)` 保证文字与自身胶囊左右边界的 4px 内距。
 - 删除 `BADGE_MARGIN_H`，避免把"行背景内部留白"误实现成"胶囊控件外部间距"。
-- 色板行使用 `.padding(12, 0)`，保证颜色按钮完整落在父行点击区域内。
+- 色板行最初改为 `.padding(12, 0)` 以保证颜色按钮完整落在父行点击区域内；后续 `8daf933` 又改为 `.paddingLeft(formInputOffset())`，让色板起点与表单输入框起点一致。
 - 在 `NetworkUiKitTest` 中增加 `treatsTwoArgumentPaddingAsHorizontalThenVertical`，并覆盖列表、表单胶囊、信息胶囊的水平内距，直接断言 MUI2 padding 的参数顺序和视觉约束。
 
 ## 预防措施
