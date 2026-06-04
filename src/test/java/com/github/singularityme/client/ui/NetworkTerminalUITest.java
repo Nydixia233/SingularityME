@@ -1,6 +1,7 @@
 package com.github.singularityme.client.ui;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -15,6 +16,7 @@ import com.cleanroommc.modularui.api.widget.IWidget;
 import com.cleanroommc.modularui.value.StringValue;
 import com.cleanroommc.modularui.widgets.ButtonWidget;
 import com.cleanroommc.modularui.widgets.ListWidget;
+import com.cleanroommc.modularui.widgets.TextWidget;
 import com.cleanroommc.modularui.widgets.layout.Flow;
 import com.cleanroommc.modularui.widgets.textfield.TextFieldWidget;
 import com.github.singularityme.core.PermissionBits;
@@ -82,6 +84,43 @@ public class NetworkTerminalUITest {
         assertTrue(NetworkUiKit.memberListHeight(contentHeight) + addRowBudget <= contentHeight);
     }
 
+    /** 权限应直接在成员列表行内修改，底部区域不再生成不可见/难点击的二段式编辑器。 */
+    @Test
+    public void renderMembersUsesInlinePermissionChipsWithoutBottomEditor() throws Exception {
+        final Object state = newTerminalState();
+        setField(state, "layout", NetworkUiKit.terminalLayout(594, 312));
+        setField(state, "contentArea",
+            Flow.column().childPadding(NetworkUiKit.Palette.TERMINAL_CONTENT_CHILD_GAP)
+                .widthRel(1f).coverChildrenHeight());
+        setField(state, "bottomArea", Flow.column());
+        setField(state, "memberNameInput", new TextFieldWidget().value(new StringValue("")));
+        addNetwork(state, newEntryWithMember());
+        setField(state, "selectedNetworkID", 1);
+
+        renderMembers(state);
+
+        final Flow bottomArea = (Flow) getField(state, "bottomArea");
+        assertTrue(bottomArea.getChildren().isEmpty());
+
+        final ListWidget<?, ?> list = renderedMemberList(state);
+        final Flow ownerContent = (Flow) list.getChildren().get(0);
+        assertTrue(ownerContent.getChildren().get(0) instanceof TextWidget);
+        assertFalse(containsText(ownerContent, "#1"));
+        assertEquals(2, ownerContent.getChildren().size());
+
+        final Flow memberContent = (Flow) list.getChildren().get(1);
+        assertTrue(memberContent.getChildren().get(0) instanceof TextWidget);
+        assertFalse(containsText(memberContent, "#2"));
+
+        final Flow chipRow = (Flow) memberContent.getChildren().get(memberContent.getChildren().size() - 1);
+        assertEquals(5, chipRow.getChildren().size());
+        for (final IWidget chip : chipRow.getChildren()) {
+            assertTrue(chip instanceof ButtonWidget);
+            assertTrue(chip.resizer().hasWidth());
+            assertTrue(chip.resizer().hasHeight());
+        }
+    }
+
     private static Object newTerminalState() throws Exception {
         final Class<?> cls = Class.forName(NetworkTerminalUI.class.getName() + "$TerminalState");
         final Constructor<?> ctor = cls.getDeclaredConstructor(int.class, int.class, int.class, int.class);
@@ -106,6 +145,40 @@ public class NetworkTerminalUITest {
             true,
             true,
             true);
+    }
+
+    private static NetworkEntry newEntryWithMember() {
+        return new NetworkEntry(
+            1,
+            1,
+            true,
+            "Alpha",
+            0x4A90E2,
+            SecurityLevel.PRIVATE.ordinal(),
+            PermissionBits.DEFAULT_MEMBER_BITS,
+            true,
+            true,
+            true,
+            java.util.Collections.singletonList(2),
+            java.util.Collections.singletonList("Builder"),
+            java.util.Collections.singletonList(PermissionBits.DEFAULT_MEMBER_BITS),
+            "Owner",
+            0L,
+            0L);
+    }
+
+    private static ListWidget<?, ?> renderedMemberList(final Object state) throws Exception {
+        final Flow contentArea = (Flow) getField(state, "contentArea");
+        assertTrue(contentArea.getChildren().get(0) instanceof ListWidget);
+        return (ListWidget<?, ?>) contentArea.getChildren().get(0);
+    }
+
+    private static boolean containsText(final IWidget widget, final String expected) {
+        if (widget instanceof TextWidget<?> text && text.getKey().get().equals(expected)) return true;
+        for (final IWidget child : widget.getChildren()) {
+            if (containsText(child, expected)) return true;
+        }
+        return false;
     }
 
     private static void renderNetworkRail(final Object state) throws Exception {

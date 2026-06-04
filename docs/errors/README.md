@@ -52,3 +52,4 @@
 | 2026-06-03 | Network Tab 密码行切换触发 MUI2 resize 失败 | `ERROR-20260603-network-tab-password-resize.md` |
 | 2026-06-03 | 部署旧 Mod Jar 被运行中的客户端或服务端锁定 | `ERROR-20260603-deploy-locked-mod-jar.md` |
 | 2026-06-04 | Network Terminal 权限页添加玩家输入框不可见 | `ERROR-20260604-network-terminal-member-input-hidden.md` |
+| 2026-06-04 | Network Terminal 权限行不可编辑与授权后目标玩家未刷新 | `ERROR-20260604-network-terminal-inline-permission-refresh.md` |

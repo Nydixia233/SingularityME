@@ -151,8 +151,6 @@ public final class NetworkTerminalUI {
         final int x, y, z, dim;
         final List<NetworkEntry> networks = new ArrayList<>();
         int selectedNetworkID = -1;
-        int selectedMemberID = -1;
-        int selectedPermissionBits;
         int defaultNetworkID;
         Panel currentPanel = Panel.HOME;
         int selectedColor = 0x4A90E2;
@@ -807,8 +805,6 @@ public final class NetworkTerminalUI {
                     Palette.BTN_DANGER_NORMAL));
                 return;
             }
-            normalizeSelectedPermission(sel);
-
             final ListWidget list = new ListWidget();
             list.background(Styles.listBg());
             list.disableHoverBackground();
@@ -840,45 +836,30 @@ public final class NetworkTerminalUI {
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.add"),
                     120, this::addMember)));
 
-            if (selectedMemberID >= 0) {
-                bottomArea.child(permissionEditor(sel));
-            }
         }
 
-        private ButtonWidget<?> buildPermissionRow(final int playerID, final String playerName, final int permissionBits,
-            final boolean clickable) {
-            final boolean selected = playerID == selectedMemberID;
+        private Flow buildPermissionRow(final int playerID, final String playerName, final int permissionBits,
+            final boolean editable) {
             final int color = permissionBits < 0 ? Palette.ACCESS_OWNER : NetworkUiKit.permissionColor(permissionBits);
-            final int bg = selected ? NetworkUiKit.darken(color, 0.25f) : Palette.BG_ROW;
 
             final TextWidget memberNameW = new TextWidget(IKey.str(playerName))
                 .color(Palette.TEXT_PRIMARY);
             memberNameW.expanded();
 
-            final Flow rowContent = Flow.row()
+            final Flow row = Flow.row()
                 .childPadding(8).widthRel(1f).height(Palette.LIST_ROW_H)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(NetworkUiKit.badge(
-                    permissionBits < 0
-                        ? NetworkUiKit.tr("gui.singularityme.network_terminal.access.owner")
-                        : NetworkUiKit.permissionMarks(permissionBits),
-                    color))
-                .child(memberNameW)
-                .child(NetworkUiKit.idPill(playerID));
-
-            final ButtonWidget<?> row = new ButtonWidget<>()
-                .child(rowContent)
-                .widthRel(1f).height(Palette.LIST_ROW_H)
                 .padding(Palette.LIST_ROW_PADDING_H, 0)
-                .background(Styles.rowBg(bg))
+                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+                .child(memberNameW)
+                .background(Styles.rowBg(Palette.BG_ROW))
                 .disableHoverBackground();
-            if (clickable) {
-                row.onMousePressed(mb -> {
-                    selectedMemberID = playerID;
-                    selectedPermissionBits = permissionBits;
-                    renderContent(false);
-                    return true;
-                });
+
+            if (permissionBits < 0) {
+                row.child(NetworkUiKit.badge(
+                    NetworkUiKit.tr("gui.singularityme.network_terminal.access.owner"),
+                    color));
+            } else {
+                row.child(permissionChipRow(playerID, permissionBits, editable));
             }
             return row;
         }
@@ -894,34 +875,30 @@ public final class NetworkTerminalUI {
         }
 
         @SuppressWarnings("unchecked")
-        private Flow permissionEditor(final NetworkEntry sel) {
-            final Flow row = Flow.row()
-                .childPadding(6).widthRel(1f).height(Palette.ROW_H)
+        private Flow permissionChipRow(final int playerID, final int permissionBits, final boolean editable) {
+            final Flow chips = Flow.row()
+                .childPadding(2).height(Palette.BADGE_H).coverChildrenWidth()
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER);
-            for (final SecurityPermissions permission : SecurityPermissions.values()) {
-                row.child(permissionToggle(permission));
-            }
-            row.child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.save"),
-                84, () -> savePermissions(sel.networkID)));
-            row.child(makeDangerBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.remove"),
-                84, () -> {
-                    selectedPermissionBits = 0;
-                    savePermissions(sel.networkID);
-                }));
-            return row;
+            chips.child(permissionChip(playerID, permissionBits, SecurityPermissions.BUILD, editable));
+            chips.child(permissionChip(playerID, permissionBits, SecurityPermissions.CRAFT, editable));
+            chips.child(permissionChip(playerID, permissionBits, SecurityPermissions.INJECT, editable));
+            chips.child(permissionChip(playerID, permissionBits, SecurityPermissions.EXTRACT, editable));
+            chips.child(permissionChip(playerID, permissionBits, SecurityPermissions.SECURITY, editable));
+            return chips;
         }
 
-        private ButtonWidget<?> permissionToggle(final SecurityPermissions permission) {
+        private ButtonWidget<?> permissionChip(final int playerID, final int permissionBits,
+            final SecurityPermissions permission, final boolean editable) {
             final int mask = 1 << permission.ordinal();
-            final boolean enabled = (selectedPermissionBits & mask) != 0;
+            final boolean enabled = (permissionBits & mask) != 0;
             return new ButtonWidget<>()
                 .overlay(IKey.str(permissionMark(permission)))
-                .width(32).height(Palette.ROW_H).padding(0, 8)
+                .width(Palette.PERMISSION_CHIP_W).height(Palette.BADGE_H).padding(0, 2)
                 .background(Styles.rowBg(enabled ? Palette.BTN_NORMAL : Palette.BTN_DISABLED))
                 .disableHoverBackground()
                 .onMousePressed(mb -> {
-                    selectedPermissionBits = enabled ? selectedPermissionBits & ~mask : selectedPermissionBits | mask;
-                    renderContent(false);
+                    if (!editable) return false;
+                    savePermissions(playerID, NetworkUiKit.togglePermissionBit(permissionBits, permission));
                     return true;
                 });
         }
@@ -936,31 +913,12 @@ public final class NetworkTerminalUI {
             };
         }
 
-        private void savePermissions(final int networkID) {
-            if (selectedMemberID < 0) return;
+        private void savePermissions(final int playerID, final int permissionBits) {
+            final NetworkEntry sel = selectedRealEntry();
+            if (sel == null || playerID < 0) return;
             SingularityChannel.CHANNEL
-                .sendToServer(new PacketSetPermissions(networkID, selectedMemberID, selectedPermissionBits));
+                .sendToServer(new PacketSetPermissions(sel.networkID, playerID, permissionBits));
             requestNetworkData();
-        }
-
-        private void normalizeSelectedPermission(final NetworkEntry sel) {
-            if (selectedMemberID < 0) return;
-            final int bits = permissionBitsFor(sel, selectedMemberID);
-            if (bits < 0) {
-                selectedMemberID = -1;
-                selectedPermissionBits = 0;
-            } else {
-                selectedPermissionBits = bits;
-            }
-        }
-
-        private int permissionBitsFor(final NetworkEntry entry, final int playerID) {
-            for (int i = 0; i < entry.authorizedPlayerIDs.size(); i++) {
-                if (entry.authorizedPlayerIDs.get(i) == playerID) {
-                    return i < entry.authorizedPlayerPermBits.size() ? entry.authorizedPlayerPermBits.get(i) : 0;
-                }
-            }
-            return -1;
         }
 
         // ---- SETTINGS ----
@@ -1162,7 +1120,6 @@ public final class NetworkTerminalUI {
                     140, () -> {
                         SingularityChannel.CHANNEL.sendToServer(new PacketDeleteNetwork(entry.networkID));
                         selectedNetworkID = 0;
-                        selectedMemberID = -1;
                         networkStatus = null;
                         currentPanel = Panel.HOME;
                         panelFirstRender = true;
@@ -1292,7 +1249,6 @@ public final class NetworkTerminalUI {
         public void selectNetwork(final int networkID) {
             if (selectedNetworkID == networkID) return;
             selectedNetworkID = networkID;
-            selectedMemberID = -1;
             networkStatus = NetworkUiKit.cachedStatusForNetwork(statusCache, selectedNetworkID);
             resetContentScrollNextRender = true;
             if (currentPanel == Panel.SETTINGS) {
@@ -1338,7 +1294,6 @@ public final class NetworkTerminalUI {
             defaultNetworkID = packet.defaultNetworkID;
             if (!containsNetwork(selectedNetworkID)) {
                 selectedNetworkID = initialNetworkID(packet.deviceNetworkID);
-                selectedMemberID = -1;
                 networkStatus = NetworkUiKit.cachedStatusForNetwork(statusCache, selectedNetworkID);
                 resetContentScrollNextRender = true;
             }

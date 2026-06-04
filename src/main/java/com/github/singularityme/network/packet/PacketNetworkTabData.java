@@ -26,6 +26,8 @@ public class PacketNetworkTabData implements IMessage {
 
     /** 未分配设备的哨兵 networkID。 */
     public static final int DEFAULT_NETWORK_ID = 0;
+    /** 仅刷新网络列表时保留客户端现有设备上下文。 */
+    public static final int PRESERVE_DEVICE_CONTEXT = -1;
 
     public int deviceNetworkID;
     public int defaultNetworkID;
@@ -78,7 +80,7 @@ public class PacketNetworkTabData implements IMessage {
                 .players()
                 .findPlayer(playerID);
             return player != null ? player.getCommandSenderName() : "#" + playerID;
-        } catch (final RuntimeException e) {
+        } catch (final RuntimeException | LinkageError e) {
             return "#" + playerID;
         }
     }

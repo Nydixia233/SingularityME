@@ -1,6 +1,8 @@
 package com.github.singularityme.network.packet;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -27,5 +29,14 @@ public class PacketSetPermissionsTest {
         assertEquals(42, decoded.targetPlayerID);
         assertEquals(PermissionBits.DEFAULT_MEMBER_BITS, decoded.permissionBits);
         assertEquals(0, buf.readableBytes());
+    }
+
+    /** 权限写入成功后应刷新被授权玩家；失败或目标就是操作者时不重复推送。 */
+    @Test
+    public void refreshesTargetOnlyAfterSuccessfulPermissionChange() {
+        assertTrue(NetworkTabPacketHelper.shouldSendPermissionRefresh(true, 1, 2));
+        assertFalse(NetworkTabPacketHelper.shouldSendPermissionRefresh(false, 1, 2));
+        assertFalse(NetworkTabPacketHelper.shouldSendPermissionRefresh(true, 1, 1));
+        assertFalse(NetworkTabPacketHelper.shouldSendPermissionRefresh(true, 1, -1));
     }
 }

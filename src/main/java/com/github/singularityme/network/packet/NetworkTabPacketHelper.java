@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
@@ -66,6 +67,33 @@ public final class NetworkTabPacketHelper {
         if (playerID < 0) return;
         SingularityChannel.CHANNEL
             .sendTo(new PacketNetworkTabData(getRegistry(player), playerID, deviceNetworkID), player);
+    }
+
+    public static boolean shouldSendPermissionRefresh(final boolean changed, final int requesterID,
+        final int targetID) {
+        return changed && targetID >= 0 && targetID != requesterID;
+    }
+
+    public static void sendPermissionRefresh(final SingularityNetworkRegistry registry, final int requesterID,
+        final int targetID) {
+        if (!shouldSendPermissionRefresh(true, requesterID, targetID)) return;
+        final EntityPlayerMP target = findOnlinePlayer(targetID);
+        if (target == null) return;
+        SingularityChannel.CHANNEL.sendTo(
+            new PacketNetworkTabData(registry, targetID, PacketNetworkTabData.PRESERVE_DEVICE_CONTEXT),
+            target);
+    }
+
+    private static EntityPlayerMP findOnlinePlayer(final int playerID) {
+        try {
+            final EntityPlayer player = AEApi.instance()
+                .registries()
+                .players()
+                .findPlayer(playerID);
+            return player instanceof EntityPlayerMP mp ? mp : null;
+        } catch (final RuntimeException | LinkageError ignored) {
+            return null;
+        }
     }
 
     public static void sendNetworkTabDataForLocation(final EntityPlayerMP player, final int dim, final int x,

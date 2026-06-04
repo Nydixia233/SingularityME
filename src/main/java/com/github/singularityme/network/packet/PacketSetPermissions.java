@@ -48,11 +48,14 @@ public class PacketSetPermissions implements IMessage {
             final int playerID = NetworkTabPacketHelper.getPlayerID(player);
             if (playerID < 0) return null;
             final SingularityNetworkRegistry registry = NetworkTabPacketHelper.getRegistry(player);
-            registry.setPlayerPermissions(
+            final boolean changed = registry.setPlayerPermissions(
                 msg.networkID,
                 playerID,
                 msg.targetPlayerID,
                 PermissionBits.fromBits(msg.permissionBits));
+            if (NetworkTabPacketHelper.shouldSendPermissionRefresh(changed, playerID, msg.targetPlayerID)) {
+                NetworkTabPacketHelper.sendPermissionRefresh(registry, playerID, msg.targetPlayerID);
+            }
             SingularityChannel.CHANNEL.sendTo(new PacketNetworkTabData(registry, playerID, 0), player);
             return null;
         }

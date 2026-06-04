@@ -141,6 +141,7 @@ public final class NetworkUiKit {
         public static final int BADGE_H = 16;
         public static final int BADGE_MIN_W = 24;
         public static final int BADGE_PADDING_H = 4;
+        public static final int PERMISSION_CHIP_W = 18;
         public static final int BORDER_RADIUS_PANEL = 6;
         public static final int BORDER_RADIUS_ROW = 4;
         public static final int BORDER_RADIUS_BADGE = 3;
@@ -814,6 +815,13 @@ public final class NetworkUiKit {
     }
 
     // ---- 权限判断 ----
+
+    /** 切换单个 AE2 权限位，供成员列表内联权限胶囊复用。 */
+    public static int togglePermissionBit(final int permissionBits, final SecurityPermissions permission) {
+        if (permission == null) return permissionBits;
+        final int mask = 1 << permission.ordinal();
+        return (permissionBits & mask) != 0 ? permissionBits & ~mask : permissionBits | mask;
+    }
 
     /** 判断当前玩家是否可使用该网络。 */
     public static boolean canAccess(final NetworkEntry entry) {

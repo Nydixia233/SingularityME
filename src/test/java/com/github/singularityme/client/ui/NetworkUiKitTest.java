@@ -333,8 +333,21 @@ public class NetworkUiKitTest {
         assertEquals(4, Palette.LIST_CONTENT_INSET);
         assertEquals(4, Palette.BADGE_PADDING_H);
         assertPaletteFieldMissing("BADGE_MARGIN_H");
+        assertEquals(18, Palette.PERMISSION_CHIP_W);
         assertEquals(32, Palette.ID_PILL_MIN_W);
         assertEquals(2, Palette.LIST_ROW_GAP);
+    }
+
+    /** 权限胶囊按单个权限位切换，避免 UI 复制 bit 运算时出现顺序或掩码错误。 */
+    @Test
+    public void togglesSinglePermissionBit() {
+        final int buildOnly = PermissionBits.toBits(EnumSet.of(SecurityPermissions.BUILD));
+
+        assertEquals(0, NetworkUiKit.togglePermissionBit(buildOnly, SecurityPermissions.BUILD));
+        assertEquals(
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.BUILD, SecurityPermissions.CRAFT)),
+            NetworkUiKit.togglePermissionBit(buildOnly, SecurityPermissions.CRAFT));
+        assertEquals(buildOnly, NetworkUiKit.togglePermissionBit(buildOnly, null));
     }
 
     /** 带自身背景的表单胶囊也必须让圆点、文字和分段按钮离左右边界 4px。 */

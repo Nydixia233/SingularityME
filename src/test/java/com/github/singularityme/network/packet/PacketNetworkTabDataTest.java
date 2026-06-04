@@ -1,6 +1,7 @@
 package com.github.singularityme.network.packet;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
@@ -8,6 +9,7 @@ import java.util.Collections;
 import org.junit.Test;
 
 import com.github.singularityme.core.PermissionBits;
+import com.github.singularityme.core.SingularityNetworkRegistry;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
 import appeng.api.config.SecurityPermissions;
@@ -55,6 +57,26 @@ public class PacketNetworkTabDataTest {
         assertEquals(1_700_000_000_000L, entry.createdAtMillis);
         assertEquals(1_700_000_123_456L, entry.lastModifiedMillis);
         assertEquals(0, buf.readableBytes());
+    }
+
+    /** 被授权玩家收到自己的网络快照时，私有网络必须可见且携带非零权限位。 */
+    @Test
+    public void grantedPlayerReceivesVisibleNetworkSnapshot() {
+        final SingularityNetworkRegistry registry = new SingularityNetworkRegistry("test_registry");
+        final int networkID = registry.createNetwork(1, "Private");
+        assertTrue(registry.setPlayerPermissions(networkID, 1, 2, PermissionBits.fromBits(PermissionBits.DEFAULT_MEMBER_BITS)));
+
+        final PacketNetworkTabData packet = new PacketNetworkTabData(
+            registry,
+            2,
+            PacketNetworkTabData.PRESERVE_DEVICE_CONTEXT);
+
+        assertEquals(PacketNetworkTabData.PRESERVE_DEVICE_CONTEXT, packet.deviceNetworkID);
+        final NetworkEntry entry = findEntry(packet, networkID);
+        assertEquals(PermissionBits.DEFAULT_MEMBER_BITS, entry.myPermissionBits);
+        assertFalse(entry.isOwner);
+        assertFalse(entry.canManagePermissions);
+        assertTrue(entry.authorizedPlayerIDs.isEmpty());
     }
 
     /** 恶意或损坏的负长度字符串不应触发 NegativeArraySizeException。 */
@@ -116,5 +138,12 @@ public class PacketNetworkTabDataTest {
         final byte[] bytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         buf.writeShort(bytes.length);
         buf.writeBytes(bytes);
+    }
+
+    private static NetworkEntry findEntry(final PacketNetworkTabData packet, final int networkID) {
+        for (final NetworkEntry entry : packet.networks) {
+            if (entry.networkID == networkID) return entry;
+        }
+        throw new AssertionError("Network entry not found: " + networkID);
     }
 }

@@ -230,11 +230,14 @@ public final class NetworkTabUI {
         void receive(final PacketNetworkTabData packet) {
             networks.clear();
             networks.addAll(packet.networks);
-            deviceNetworkID = packet.deviceNetworkID;
+            final boolean preserveDeviceContext = packet.deviceNetworkID == PacketNetworkTabData.PRESERVE_DEVICE_CONTEXT;
+            if (!preserveDeviceContext) {
+                deviceNetworkID = packet.deviceNetworkID;
+                selectedNetworkID = packet.deviceNetworkID;
+            }
             defaultNetworkID = packet.defaultNetworkID;
-            selectedNetworkID = packet.deviceNetworkID;
             if (selectedEntry() == null && !networks.isEmpty()) {
-                selectedNetworkID = networks.get(0).networkID;
+                selectedNetworkID = networkExists(deviceNetworkID) ? deviceNetworkID : networks.get(0).networkID;
             }
             if (selectionSurface != null) selectionSurface.rebuild();
             rebuildSummary();
@@ -250,6 +253,13 @@ public final class NetworkTabUI {
                 if (e.networkID == selectedNetworkID) return e;
             }
             return null;
+        }
+
+        private boolean networkExists(final int networkID) {
+            for (final NetworkEntry e : networks) {
+                if (e.networkID == networkID) return true;
+            }
+            return false;
         }
 
         private String displayDeviceName() {

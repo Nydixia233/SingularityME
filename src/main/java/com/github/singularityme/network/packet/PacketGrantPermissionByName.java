@@ -54,11 +54,14 @@ public class PacketGrantPermissionByName implements IMessage {
             if (target != null) {
                 final int targetID = NetworkTabPacketHelper.getPlayerID(target);
                 if (targetID >= 0) {
-                    registry.setPlayerPermissions(
+                    final boolean changed = registry.setPlayerPermissions(
                         msg.networkID,
                         playerID,
                         targetID,
                         PermissionBits.fromBits(msg.permissionBits));
+                    if (NetworkTabPacketHelper.shouldSendPermissionRefresh(changed, playerID, targetID)) {
+                        NetworkTabPacketHelper.sendPermissionRefresh(registry, playerID, targetID);
+                    }
                 }
             }
             SingularityChannel.CHANNEL.sendTo(new PacketNetworkTabData(registry, playerID, 0), player);
