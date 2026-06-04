@@ -36,6 +36,7 @@
 ## 主动读取原则
 
 - 涉及 AE2 兼容 → 先读 `docs/compat-profile.md`
+- 涉及 NEI/AE2 终端 GUI 兼容 → 注意 NEI overlay/bookmark 按精确 `GuiContainer` 类注册；奇点 GUI 继承 AE2 原 GUI 后仍需显式注册子类，当前入口见 `src/main/java/com/github/singularityme/client/integration/SingularityNeiCompat.java:49`
 - 涉及 UI 布局 → 参考 `client/ui/` 下 Java 文件 + `docs/html-reference/` 下 HTML 预览 + `docs/modularui2/README.md`
 - 涉及网络协议 → 先读 `network/packet/` 下的包定义
 - 需要具体类/入口/目录位置 → 用 Glob/Grep/Read 现查，不在本文件维护索引
