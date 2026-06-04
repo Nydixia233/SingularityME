@@ -904,13 +904,7 @@ public final class NetworkTerminalUI {
         }
 
         private static String permissionMark(final SecurityPermissions permission) {
-            return switch (permission) {
-                case BUILD -> "B";
-                case CRAFT -> "C";
-                case INJECT -> "I";
-                case EXTRACT -> "E";
-                case SECURITY -> "S";
-            };
+            return NetworkUiKit.permissionLabel(permission);
         }
 
         private void savePermissions(final int playerID, final int permissionBits) {

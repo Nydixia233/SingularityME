@@ -53,3 +53,4 @@
 | 2026-06-03 | 部署旧 Mod Jar 被运行中的客户端或服务端锁定 | `ERROR-20260603-deploy-locked-mod-jar.md` |
 | 2026-06-04 | Network Terminal 权限页添加玩家输入框不可见 | `ERROR-20260604-network-terminal-member-input-hidden.md` |
 | 2026-06-04 | Network Terminal 权限行不可编辑与授权后目标玩家未刷新 | `ERROR-20260604-network-terminal-inline-permission-refresh.md` |
+| 2026-06-04 | 无权限破坏被拒绝后客户端残留透明假方块 | `ERROR-20260604-denied-break-client-ghost-block.md` |

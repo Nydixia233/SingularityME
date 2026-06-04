@@ -100,7 +100,10 @@ public class BlockSingularityCraftingCore extends Block implements ITileEntityPr
     public boolean removedByPlayer(final World world, final EntityPlayer player, final int x, final int y, final int z,
         final boolean willHarvest) {
         final TileEntity te = world.getTileEntity(x, y, z);
-        if (!world.isRemote && !SingularityPermissionHelper.checkBuild(world, te, player)) return false;
+        if (!world.isRemote && !SingularityPermissionHelper.checkBuild(world, te, player)) {
+            SingularityBlockSyncHelper.resyncDeniedBreak(world, player, x, y, z);
+            return false;
+        }
         return super.removedByPlayer(world, player, x, y, z, willHarvest);
     }
 

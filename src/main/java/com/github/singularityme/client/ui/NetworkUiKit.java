@@ -141,7 +141,7 @@ public final class NetworkUiKit {
         public static final int BADGE_H = 16;
         public static final int BADGE_MIN_W = 24;
         public static final int BADGE_PADDING_H = 4;
-        public static final int PERMISSION_CHIP_W = 18;
+        public static final int PERMISSION_CHIP_W = 28;
         public static final int BORDER_RADIUS_PANEL = 6;
         public static final int BORDER_RADIUS_ROW = 4;
         public static final int BORDER_RADIUS_BADGE = 3;
@@ -769,22 +769,34 @@ public final class NetworkUiKit {
         return permissionMarks(entry.myPermissionBits);
     }
 
-    /** 返回权限位的行内短标记，顺序固定为 B C I E S。 */
+    /** 返回权限位的行内短标记，顺序固定为 BUILD/CRAFT/INJECT/EXTRACT/SECURITY。 */
     public static String permissionMarks(final int permissionBits) {
         final StringBuilder out = new StringBuilder();
-        appendPermissionMark(out, permissionBits, SecurityPermissions.BUILD, "B");
-        appendPermissionMark(out, permissionBits, SecurityPermissions.CRAFT, "C");
-        appendPermissionMark(out, permissionBits, SecurityPermissions.INJECT, "I");
-        appendPermissionMark(out, permissionBits, SecurityPermissions.EXTRACT, "E");
-        appendPermissionMark(out, permissionBits, SecurityPermissions.SECURITY, "S");
+        appendPermissionMark(out, permissionBits, SecurityPermissions.BUILD);
+        appendPermissionMark(out, permissionBits, SecurityPermissions.CRAFT);
+        appendPermissionMark(out, permissionBits, SecurityPermissions.INJECT);
+        appendPermissionMark(out, permissionBits, SecurityPermissions.EXTRACT);
+        appendPermissionMark(out, permissionBits, SecurityPermissions.SECURITY);
         return out.length() == 0 ? tr("gui.singularityme.network_tab.access.none_short") : out.toString();
     }
 
     private static void appendPermissionMark(final StringBuilder out, final int bits,
-        final SecurityPermissions permission, final String mark) {
+        final SecurityPermissions permission) {
         if ((bits & (1 << permission.ordinal())) == 0) return;
         if (out.length() > 0) out.append(' ');
-        out.append(mark);
+        out.append(permissionLabel(permission));
+    }
+
+    /** 返回 AE2 权限的玩家可读短标签。 */
+    public static String permissionLabel(final SecurityPermissions permission) {
+        if (permission == null) return "";
+        return switch (permission) {
+            case BUILD -> "建造";
+            case CRAFT -> "合成";
+            case INJECT -> "存入";
+            case EXTRACT -> "取出";
+            case SECURITY -> "管理";
+        };
     }
 
     /** 返回当前玩家权限的简短标记。 */

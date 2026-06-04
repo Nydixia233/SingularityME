@@ -23,6 +23,8 @@ import com.github.singularityme.core.PermissionBits;
 import com.github.singularityme.core.SecurityLevel;
 import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
 
+import appeng.api.config.SecurityPermissions;
+
 /** 验证网络终端 UI 的局部重绘行为。 */
 public class NetworkTerminalUITest {
 
@@ -119,6 +121,20 @@ public class NetworkTerminalUITest {
             assertTrue(chip.resizer().hasWidth());
             assertTrue(chip.resizer().hasHeight());
         }
+    }
+
+    /** 权限胶囊使用可读中文短词，避免 B/C/I/E/S 对玩家含义不明确。 */
+    @Test
+    public void permissionChipsUseReadableChineseLabels() throws Exception {
+        final Class<?> cls = Class.forName(NetworkTerminalUI.class.getName() + "$TerminalState");
+        final Method method = cls.getDeclaredMethod("permissionMark", SecurityPermissions.class);
+        method.setAccessible(true);
+
+        assertEquals("建造", method.invoke(null, SecurityPermissions.BUILD));
+        assertEquals("合成", method.invoke(null, SecurityPermissions.CRAFT));
+        assertEquals("存入", method.invoke(null, SecurityPermissions.INJECT));
+        assertEquals("取出", method.invoke(null, SecurityPermissions.EXTRACT));
+        assertEquals("管理", method.invoke(null, SecurityPermissions.SECURITY));
     }
 
     private static Object newTerminalState() throws Exception {
