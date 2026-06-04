@@ -554,13 +554,13 @@ public class TileSingularityExportBus extends AENetworkInvTile
             }
             return 0;
         }
+        if (!canExtract) return 0;
 
         boolean hasStoredCandidate = false;
         int itemsMoved = 0;
         for (final IAEItemStack inGrid : findExportCandidates(available, wanted, fuzzy, fuzzyMode)) {
             if (itemsMoved >= maxItems || inGrid == null || inGrid.getStackSize() <= 0) continue;
             hasStoredCandidate = true;
-            if (!canExtract) return 0;
 
             final int movedNow = exportCandidate(gridInv, adaptor, inGrid, maxItems - itemsMoved);
             if (movedNow > 0) {

@@ -154,6 +154,7 @@ public class TileSingularityExportBusParityTest {
     }
 
     private static <T> T allocate(final Class<T> cls) throws Exception {
+        // 仅用于跳过 AE2 Tile 构造器，测试纯字段状态；不要用于依赖 world/proxy/tick 的行为。
         final Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
         unsafeField.setAccessible(true);
         final sun.misc.Unsafe unsafe = (sun.misc.Unsafe) unsafeField.get(null);
