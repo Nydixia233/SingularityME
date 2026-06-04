@@ -333,19 +333,20 @@ public class NetworkUiKitTest {
         assertEquals(4, Palette.LIST_CONTENT_INSET);
         assertEquals(4, Palette.BADGE_PADDING_H);
         assertPaletteFieldMissing("BADGE_MARGIN_H");
-        assertEquals(28, Palette.PERMISSION_CHIP_W);
+        assertEquals(18, Palette.PERMISSION_CHIP_W);
         assertEquals(32, Palette.ID_PILL_MIN_W);
         assertEquals(2, Palette.LIST_ROW_GAP);
     }
 
-    /** 权限摘要使用可读中文短词，并保持 BUILD/CRAFT/INJECT/EXTRACT/SECURITY 顺序。 */
+    /** 权限摘要保持 BUILD/CRAFT/INJECT/EXTRACT/SECURITY 的紧凑字母顺序。 */
     @Test
-    public void permissionMarksUseReadableChineseLabels() {
+    public void permissionMarksUseCompactLetters() {
         assertEquals(
-            "建造 合成 存入 取出 管理",
+            "B C I E S",
             NetworkUiKit.permissionMarks(PermissionBits.toBits(EnumSet.allOf(SecurityPermissions.class))));
-        assertEquals("存入 取出", NetworkUiKit.permissionMarks(
+        assertEquals("I E", NetworkUiKit.permissionMarks(
             PermissionBits.toBits(EnumSet.of(SecurityPermissions.INJECT, SecurityPermissions.EXTRACT))));
+        assertEquals("gui.singularityme.permission.security", NetworkUiKit.permissionLabelKey(SecurityPermissions.SECURITY));
     }
 
     /** 权限胶囊按单个权限位切换，避免 UI 复制 bit 运算时出现顺序或掩码错误。 */

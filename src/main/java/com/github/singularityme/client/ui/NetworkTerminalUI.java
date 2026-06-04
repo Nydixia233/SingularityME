@@ -896,6 +896,7 @@ public final class NetworkTerminalUI {
                 .width(Palette.PERMISSION_CHIP_W).height(Palette.BADGE_H).padding(0, 2)
                 .background(Styles.rowBg(enabled ? Palette.BTN_NORMAL : Palette.BTN_DISABLED))
                 .disableHoverBackground()
+                .addTooltipLine(NetworkUiKit.permissionLabel(permission))
                 .onMousePressed(mb -> {
                     if (!editable) return false;
                     savePermissions(playerID, NetworkUiKit.togglePermissionBit(permissionBits, permission));
@@ -904,7 +905,13 @@ public final class NetworkTerminalUI {
         }
 
         private static String permissionMark(final SecurityPermissions permission) {
-            return NetworkUiKit.permissionLabel(permission);
+            return switch (permission) {
+                case BUILD -> "B";
+                case CRAFT -> "C";
+                case INJECT -> "I";
+                case EXTRACT -> "E";
+                case SECURITY -> "S";
+            };
         }
 
         private void savePermissions(final int playerID, final int permissionBits) {

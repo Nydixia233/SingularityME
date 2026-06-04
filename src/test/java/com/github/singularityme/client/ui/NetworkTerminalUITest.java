@@ -2,6 +2,7 @@ package com.github.singularityme.client.ui;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -123,18 +124,47 @@ public class NetworkTerminalUITest {
         }
     }
 
-    /** 权限胶囊使用可读中文短词，避免 B/C/I/E/S 对玩家含义不明确。 */
+    /** 权限胶囊保持紧凑字母标记，并通过 tooltip 提供本地化全称。 */
     @Test
-    public void permissionChipsUseReadableChineseLabels() throws Exception {
+    public void permissionChipsUseLettersWithLocalizedTooltips() throws Exception {
         final Class<?> cls = Class.forName(NetworkTerminalUI.class.getName() + "$TerminalState");
         final Method method = cls.getDeclaredMethod("permissionMark", SecurityPermissions.class);
         method.setAccessible(true);
 
-        assertEquals("建造", method.invoke(null, SecurityPermissions.BUILD));
-        assertEquals("合成", method.invoke(null, SecurityPermissions.CRAFT));
-        assertEquals("存入", method.invoke(null, SecurityPermissions.INJECT));
-        assertEquals("取出", method.invoke(null, SecurityPermissions.EXTRACT));
-        assertEquals("管理", method.invoke(null, SecurityPermissions.SECURITY));
+        assertEquals("B", method.invoke(null, SecurityPermissions.BUILD));
+        assertEquals("C", method.invoke(null, SecurityPermissions.CRAFT));
+        assertEquals("I", method.invoke(null, SecurityPermissions.INJECT));
+        assertEquals("E", method.invoke(null, SecurityPermissions.EXTRACT));
+        assertEquals("S", method.invoke(null, SecurityPermissions.SECURITY));
+        assertEquals(
+            "gui.singularityme.permission.security",
+            NetworkUiKit.permissionLabelKey(SecurityPermissions.SECURITY));
+    }
+
+    /** 成员行的每个权限字母按钮都应带 tooltip，避免仅靠 B/C/I/E/S 猜含义。 */
+    @Test
+    public void renderedPermissionChipsHaveTooltips() throws Exception {
+        final Object state = newTerminalState();
+        setField(state, "layout", NetworkUiKit.terminalLayout(594, 312));
+        setField(state, "contentArea",
+            Flow.column().childPadding(NetworkUiKit.Palette.TERMINAL_CONTENT_CHILD_GAP)
+                .widthRel(1f).coverChildrenHeight());
+        setField(state, "bottomArea", Flow.column());
+        setField(state, "memberNameInput", new TextFieldWidget().value(new StringValue("")));
+        addNetwork(state, newEntryWithMember());
+        setField(state, "selectedNetworkID", 1);
+
+        renderMembers(state);
+
+        final ListWidget<?, ?> list = renderedMemberList(state);
+        final Flow memberContent = (Flow) list.getChildren().get(1);
+        final Flow chipRow = (Flow) memberContent.getChildren().get(memberContent.getChildren().size() - 1);
+        for (final IWidget chip : chipRow.getChildren()) {
+            final ButtonWidget<?> button = (ButtonWidget<?>) chip;
+            assertTrue(button.hasTooltip());
+            assertNotNull(button.getTooltip());
+            assertFalse(button.getTooltip().isEmpty());
+        }
     }
 
     private static Object newTerminalState() throws Exception {
