@@ -1,6 +1,10 @@
 package com.github.singularityme.tile;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Random;
 import java.util.function.Predicate;
 
 import net.minecraft.inventory.IInventory;
@@ -452,65 +456,84 @@ public class TileSingularityExportBus extends AENetworkInvTile
         final boolean fuzzy, final FuzzyMode fuzzyMode, final boolean crafting, final boolean craftOnly,
         final boolean canExtract) {
 
-        IItemList<IAEItemStack> available = gridInv.getStorageList();
-
-        if (sched == SchedulingMode.DEFAULT) {
-            boolean moved = false;
-            int itemsMoved = 0;
-            for (int i = 0; i < availSlots; i++) {
-                if (itemsMoved >= maxItems) break;
-                int n = exportSlot(
-                    i,
-                    gridInv,
-                    adaptor,
-                    available,
-                    maxItems - itemsMoved,
-                    fuzzy,
-                    fuzzyMode,
-                    crafting,
-                    craftOnly,
-                    canExtract);
-                if (n > 0) {
-                    moved = true;
-                    itemsMoved += n;
-                }
-            }
-            return moved ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
-        } else if (sched == SchedulingMode.ROUNDROBIN) {
-            for (int attempt = 0; attempt < availSlots; attempt++) {
-                int slot = (nextSlot + attempt) % availSlots;
-                int n = exportSlot(
-                    slot,
-                    gridInv,
-                    adaptor,
-                    available,
-                    maxItems,
-                    fuzzy,
-                    fuzzyMode,
-                    crafting,
-                    craftOnly,
-                    canExtract);
-                if (n > 0) {
-                    nextSlot = (slot + 1) % availSlots;
-                    return TickRateModulation.FASTER;
-                }
-            }
-            return TickRateModulation.SLOWER;
-        } else {
-            // RANDOM
-            int slot = worldObj.rand.nextInt(availSlots);
-            int n = exportSlot(
+        final IItemList<IAEItemStack> available = gridInv.getStorageList();
+        final ScheduledExportResult result = runScheduledExports(
+            sched,
+            nextSlot,
+            availSlots,
+            maxItems,
+            Platform.getRandom(),
+            (slot, remainingItems) -> exportSlot(
                 slot,
                 gridInv,
                 adaptor,
                 available,
-                maxItems,
+                remainingItems,
                 fuzzy,
                 fuzzyMode,
                 crafting,
                 craftOnly,
-                canExtract);
-            return n > 0 ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
+                canExtract));
+
+        nextSlot = result.nextSlot;
+        return result.moved() ? TickRateModulation.FASTER : TickRateModulation.SLOWER;
+    }
+
+    /** 按 AE2 PartBaseExportBus 的槽位调度语义执行一轮导出尝试。 */
+    static ScheduledExportResult runScheduledExports(final SchedulingMode sched, final int currentNextSlot,
+        final int availSlots, final int maxItems, final Random random, final SlotExportAttempt attempt) {
+
+        if (availSlots <= 0 || maxItems <= 0) {
+            return new ScheduledExportResult(0, currentNextSlot);
+        }
+
+        int itemsMoved = 0;
+        int attemptsMade = 0;
+        for (int attemptIndex = 0; attemptIndex < availSlots && itemsMoved < maxItems; attemptIndex++) {
+            final int slot = getStartingSlot(sched, currentNextSlot, attemptIndex, availSlots, random);
+            final int remainingItems = maxItems - itemsMoved;
+            final int movedNow = attempt.exportSlot(slot, remainingItems);
+            attemptsMade++;
+            if (movedNow > 0) {
+                itemsMoved += Math.min(movedNow, remainingItems);
+            }
+        }
+
+        final int updatedNextSlot = sched == SchedulingMode.ROUNDROBIN
+            ? (currentNextSlot + attemptsMade) % availSlots
+            : currentNextSlot;
+        return new ScheduledExportResult(itemsMoved, updatedNextSlot);
+    }
+
+    private static int getStartingSlot(final SchedulingMode sched, final int currentNextSlot, final int attemptIndex,
+        final int availSlots, final Random random) {
+        if (sched == SchedulingMode.RANDOM) {
+            return random.nextInt(availSlots);
+        }
+        if (sched == SchedulingMode.ROUNDROBIN) {
+            return (currentNextSlot + attemptIndex) % availSlots;
+        }
+        return attemptIndex;
+    }
+
+    @FunctionalInterface
+    interface SlotExportAttempt {
+
+        int exportSlot(int slot, int remainingItems);
+    }
+
+    static final class ScheduledExportResult {
+
+        final int itemsMoved;
+        final int nextSlot;
+
+        private ScheduledExportResult(final int itemsMoved, final int nextSlot) {
+            this.itemsMoved = itemsMoved;
+            this.nextSlot = nextSlot;
+        }
+
+        private boolean moved() {
+            return itemsMoved > 0;
         }
     }
 
@@ -532,25 +555,43 @@ public class TileSingularityExportBus extends AENetworkInvTile
             return 0;
         }
 
-        IAEItemStack inGrid;
-        if (fuzzy) {
-            java.util.Collection<IAEItemStack> matches = available.findFuzzy(wanted, fuzzyMode);
-            inGrid = matches.isEmpty() ? null
-                : matches.iterator()
-                    .next();
-        } else {
-            inGrid = available.findPrecise(wanted);
-        }
+        boolean hasStoredCandidate = false;
+        int itemsMoved = 0;
+        for (final IAEItemStack inGrid : findExportCandidates(available, wanted, fuzzy, fuzzyMode)) {
+            if (itemsMoved >= maxItems || inGrid == null || inGrid.getStackSize() <= 0) continue;
+            hasStoredCandidate = true;
+            if (!canExtract) return 0;
 
-        if (inGrid == null || inGrid.getStackSize() <= 0) {
-            // Try crafting if card installed
-            if (crafting && canInjectStackToTarget(adaptor, wanted)) {
-                submitCraftingRequest(i, wanted, maxItems);
+            final int movedNow = exportCandidate(gridInv, adaptor, inGrid, maxItems - itemsMoved);
+            if (movedNow > 0) {
+                itemsMoved += movedNow;
             }
-            return 0;
         }
-        if (!canExtract) return 0;
 
+        if (itemsMoved > 0) return itemsMoved;
+
+        // Try crafting once for the configured stack if no stored candidate moved.
+        if (crafting && (!hasStoredCandidate || canInjectStackToTarget(adaptor, wanted))) {
+            submitCraftingRequest(i, wanted, maxItems);
+        }
+        return 0;
+    }
+
+    /** 返回 AE2 导出总线会尝试的库存候选；fuzzy 模式必须保留全部匹配项。 */
+    static Iterable<IAEItemStack> findExportCandidates(final IItemList<IAEItemStack> available,
+        final IAEItemStack wanted, final boolean fuzzy, final FuzzyMode fuzzyMode) {
+        if (available == null || wanted == null) return Collections.emptyList();
+        if (fuzzy) {
+            final Collection<IAEItemStack> matches = available.findFuzzy(wanted, fuzzyMode);
+            return matches == null || matches.isEmpty() ? Collections.emptyList() : new ArrayList<>(matches);
+        }
+
+        final IAEItemStack precise = available.findPrecise(wanted);
+        return precise == null ? Collections.emptyList() : Collections.singletonList(precise);
+    }
+
+    private int exportCandidate(final IMEMonitor<IAEItemStack> gridInv, final InventoryAdaptor adaptor,
+        final IAEItemStack inGrid, final int maxItems) {
         ItemStack probe = inGrid.getItemStack();
         int canMove = (int) Math.min(inGrid.getStackSize(), Math.min(probe.getMaxStackSize(), maxItems));
         probe = probe.copy();

@@ -814,8 +814,9 @@ public class TileSingularityStorageBus extends AENetworkInvTile implements IStor
 
     @Override
     public void setFilter(final String filter) {
-        previousOreFilterString = oreFilterString;
-        oreFilterString = filter == null ? "" : filter;
+        final String normalizedFilter = filter == null ? "" : filter;
+        oreFilterString = normalizedFilter;
+        previousOreFilterString = normalizedFilter;
         invalidateStorageHandler();
     }
 
