@@ -1,9 +1,12 @@
 package com.github.singularityme.tile;
 
 import java.util.EnumSet;
+import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
@@ -22,6 +25,7 @@ import com.github.singularityme.grid.SingularityGrid;
 import appeng.api.AEApi;
 import appeng.api.config.AccessRestriction;
 import appeng.api.config.Actionable;
+import appeng.api.config.FuzzyMode;
 import appeng.api.config.PinsRows;
 import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
@@ -38,6 +42,8 @@ import appeng.api.networking.security.BaseActionSource;
 import appeng.api.networking.security.PlayerSource;
 import appeng.api.networking.storage.IStorageGrid;
 import appeng.api.storage.IMEMonitorHandlerReceiver;
+import appeng.api.storage.IMEInventory;
+import appeng.api.storage.IMENetworkInventory;
 import appeng.api.storage.IMEMonitor;
 import appeng.api.storage.ITerminalHost;
 import appeng.api.storage.ITerminalPins;
@@ -63,6 +69,7 @@ import appeng.tile.inventory.InvOperation;
 import appeng.util.ConfigManager;
 import appeng.util.IConfigManagerHost;
 import appeng.util.MonitorableTypeFilter;
+import appeng.util.item.PrioritizedNetworkItemList;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.Reference2BooleanMap;
 
@@ -469,6 +476,38 @@ public class TileSingularityTerminal extends AENetworkTile
         }
 
         @Override
+        public IItemList<T> getAvailableItems(final IItemList out) {
+            return this.delegate.getAvailableItems(out);
+        }
+
+        @Override
+        public IItemList<T> getAvailableItems(final IItemList<T> out, final int iteration) {
+            return this.delegate.getAvailableItems(out, iteration);
+        }
+
+        @Override
+        public IItemList<T> getAvailableItems(final IItemList<T> out, final int iteration,
+            final Optional<Predicate<T>> filter) {
+            return this.delegate.getAvailableItems(out, iteration, filter);
+        }
+
+        @Override
+        public T getAvailableItem(final T request) {
+            return this.delegate.getAvailableItem(request);
+        }
+
+        @Override
+        public T getAvailableItem(final T request, final int iteration) {
+            return this.delegate.getAvailableItem(request, iteration);
+        }
+
+        @Override
+        public Collection<T> getSortedFuzzyItems(final Collection<T> output, final T request, final FuzzyMode fuzzyMode,
+            final int iteration) {
+            return this.delegate.getSortedFuzzyItems(output, request, fuzzyMode, iteration);
+        }
+
+        @Override
         public void addListener(final IMEMonitorHandlerReceiver receiver, final Object verificationToken) {
             this.delegate.addListener(receiver, verificationToken);
         }
@@ -511,6 +550,36 @@ public class TileSingularityTerminal extends AENetworkTile
         @Override
         public appeng.api.storage.StorageChannel getChannel() {
             return this.delegate.getChannel();
+        }
+
+        @Override
+        public IAEStackType<?> getStackType() {
+            return this.delegate.getStackType();
+        }
+
+        @Override
+        public boolean getSticky() {
+            return this.delegate.getSticky();
+        }
+
+        @Override
+        public boolean isAutoCraftingInventory() {
+            return this.delegate.isAutoCraftingInventory();
+        }
+
+        @Override
+        public IMEInventory<T> getInternal() {
+            return this.delegate.getInternal();
+        }
+
+        @Override
+        public IMENetworkInventory<T> getExternalNetworkInventory() {
+            return this.delegate.getExternalNetworkInventory();
+        }
+
+        @Override
+        public PrioritizedNetworkItemList<T> getAvailableItemsWithPriority(final int iteration) {
+            return this.delegate.getAvailableItemsWithPriority(iteration);
         }
 
         private boolean hasSourcePermission(final BaseActionSource src, final SecurityPermissions permission) {
