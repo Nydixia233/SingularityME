@@ -497,6 +497,11 @@ public class TileSingularityDrive extends AENetworkInvTile implements IChestOrDr
         }
 
         @Override
+        public IMEInventory<T> getInternal() {
+            return this.canUseStorage() ? super.getInternal() : null;
+        }
+
+        @Override
         public IMENetworkInventory<T> getExternalNetworkInventory() {
             return this.canUseStorage() ? super.getExternalNetworkInventory() : null;
         }

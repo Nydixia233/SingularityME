@@ -994,6 +994,11 @@ public class TileSingularityStorageBus extends AENetworkInvTile implements IStor
         }
 
         @Override
+        public IMEInventory<T> getInternal() {
+            return canUseStorage() ? super.getInternal() : null;
+        }
+
+        @Override
         public IMENetworkInventory<T> getExternalNetworkInventory() {
             return canUseStorage() ? super.getExternalNetworkInventory() : null;
         }

@@ -55,3 +55,4 @@
 | 2026-06-04 | Network Terminal 权限行不可编辑与授权后目标玩家未刷新 | `ERROR-20260604-network-terminal-inline-permission-refresh.md` |
 | 2026-06-04 | 无权限破坏被拒绝后客户端残留透明假方块 | `ERROR-20260604-denied-break-client-ghost-block.md` |
 | 2026-06-04 | 终端 Monitor 包装遗漏默认方法委托导致断线 | `ERROR-20260604-terminal-monitor-default-recursion.md` |
+| 2026-06-04 | 存储 Handler 继承入口绕过 Guard | `ERROR-20260604-storage-handler-internal-guard.md` |

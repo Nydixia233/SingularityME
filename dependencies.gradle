@@ -8,6 +8,7 @@ dependencies {
 
     compileOnly("org.jetbrains:annotations:26.1.0")
     testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("com.github.GTNewHorizons:BuildCraft:7.1.57:dev")
 
     if ((findProperty('singularityme.compat.ae2fc') ?: 'false').toString().toBoolean()) {
         runtimeOnly("com.github.GTNewHorizons:AE2FluidCraft-Rework:${findProperty('singularityme.compat.ae2fcVersion') ?: '1.5.85-gtnh'}:dev")
