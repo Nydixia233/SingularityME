@@ -57,3 +57,4 @@
 | 2026-06-04 | 终端 Monitor 包装遗漏默认方法委托导致断线 | `ERROR-20260604-terminal-monitor-default-recursion.md` |
 | 2026-06-04 | 存储 Handler 继承入口绕过 Guard | `ERROR-20260604-storage-handler-internal-guard.md` |
 | 2026-06-04 | NEI 精确 GUI 类匹配导致奇点终端集成失效 | `ERROR-20260604-nei-exact-gui-class.md` |
+| 2026-06-05 | AE2 子 GUI 返回路径缺少奇点 PrimaryGui | `ERROR-20260605-ae2-primary-gui-return.md` |

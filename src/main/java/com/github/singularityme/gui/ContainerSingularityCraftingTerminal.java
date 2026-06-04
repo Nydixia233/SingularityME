@@ -3,8 +3,10 @@ package com.github.singularityme.gui;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.player.InventoryPlayer;
 
+import com.github.singularityme.block.BlockSingularityCraftingTerminal;
 import com.github.singularityme.tile.TileSingularityCraftingTerminal;
 
+import appeng.container.PrimaryGui;
 import appeng.container.implementations.ContainerCraftingTerm;
 import appeng.helpers.InventoryAction;
 import appeng.helpers.MonitorableAction;
@@ -15,6 +17,11 @@ public class ContainerSingularityCraftingTerminal extends ContainerCraftingTerm 
     public ContainerSingularityCraftingTerminal(final InventoryPlayer ip,
         final TileSingularityCraftingTerminal terminal) {
         super(ip, terminal);
+    }
+
+    @Override
+    public PrimaryGui createPrimaryGui() {
+        return SingularityPrimaryGui.create(BlockSingularityCraftingTerminal.GUI_ID, this);
     }
 
     @Override

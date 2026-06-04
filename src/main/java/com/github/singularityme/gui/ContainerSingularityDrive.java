@@ -2,9 +2,11 @@ package com.github.singularityme.gui;
 
 import net.minecraft.entity.player.InventoryPlayer;
 
+import com.github.singularityme.block.BlockSingularityDrive;
 import com.github.singularityme.tile.TileSingularityDrive;
 
 import appeng.container.AEBaseContainer;
+import appeng.container.PrimaryGui;
 import appeng.container.guisync.GuiSync;
 import appeng.container.slot.SlotRestrictedInput;
 import appeng.container.slot.SlotRestrictedInput.PlacableItemType;
@@ -42,6 +44,11 @@ public class ContainerSingularityDrive extends AEBaseContainer {
         }
 
         bindPlayerInventory(ip, 0, 199 - 82);
+    }
+
+    @Override
+    public PrimaryGui createPrimaryGui() {
+        return SingularityPrimaryGui.create(BlockSingularityDrive.GUI_ID, this);
     }
 
     @Override

@@ -31,7 +31,6 @@ import com.github.singularityme.tile.TileSingularityStorageBus;
 import com.github.singularityme.tile.TileSingularityTerminal;
 
 import appeng.container.ContainerOpenContext;
-import appeng.container.implementations.ContainerInterface;
 import cpw.mods.fml.common.network.IGuiHandler;
 
 /**
@@ -97,7 +96,7 @@ public class SingularityGuiHandler implements IGuiHandler {
             return c;
         }
         if (id == BlockSingularityInterface.GUI_ID && te instanceof TileSingularityInterface iface) {
-            final ContainerInterface c = new ContainerInterface(player.inventory, iface);
+            final ContainerSingularityInterface c = new ContainerSingularityInterface(player.inventory, iface);
             setOpenContext(c, te, world, x, y, z, ForgeDirection.UNKNOWN);
             return c;
         }
