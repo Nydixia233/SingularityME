@@ -981,92 +981,6 @@ public final class NetworkTerminalUI {
                 new PacketSetNetworkSettings(sel.networkID, selectedColor, selectedSecurity.ordinal()));
         }
 
-        // ---- STATISTICS ----
-
-        @SuppressWarnings("unchecked")
-        void renderStatistics() {
-            bottomArea.removeAll();
-            if (selectedEntry() == null) { contentArea.child(emptyState()); return; }
-            if (networkStatus == null) {
-                contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading")));
-                return;
-            }
-            if (networkStatus.devices.isEmpty()) { contentArea.child(emptyState()); return; }
-
-            contentArea.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.stat.energy"),
-                formatEnergy(networkStatus.currentPower, networkStatus.maxPower)));
-            contentArea.child(progressBar(energyFraction(), Palette.ACCENT_AMBER));
-
-            contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.stat.device_counts")));
-            final Map<String, Integer> counts = deviceTypeCounts();
-            final Flow rows = Flow.column().childPadding(4).widthRel(1f).padding(0, 12);
-            for (final Map.Entry<String, Integer> entry : counts.entrySet()) {
-                rows.child(infoRow(
-                    NetworkUiKit.deviceTypeLabel(entry.getKey()),
-                    NetworkUiKit.formatCountBadge(entry.getValue())));
-            }
-            contentArea.child(rows);
-        }
-
-        // ---- HEALTH ----
-
-        @SuppressWarnings("unchecked")
-        void renderHealth() {
-            bottomArea.removeAll();
-            if (selectedEntry() == null) { contentArea.child(emptyState()); return; }
-            if (networkStatus == null) {
-                contentArea.child(statusText(NetworkUiKit.tr("gui.singularityme.network_terminal.home.loading")));
-                return;
-            }
-
-            final int total = networkStatus.devices.size();
-            final int loaded = countLoadedDevices();
-            final int offline = total - loaded;
-            final float onlineRate = total <= 0 ? 0f : (float) loaded / (float) total;
-            contentArea.child(infoRow(NetworkUiKit.tr("gui.singularityme.network_terminal.health.online_rate"),
-                loaded + "/" + total));
-            contentArea.child(progressBar(onlineRate, Palette.SECURITY_PUBLIC));
-
-            final boolean powered = networkStatus.maxPower > 0.0 && networkStatus.currentPower > 0.0;
-            final int powerColor = powered ? Palette.SECURITY_PUBLIC : Palette.BTN_DANGER_NORMAL;
-            contentArea.child(Flow.row()
-                .childPadding(8).widthRel(1f).height(Palette.ROW_H).padding(0, 12)
-                .crossAxisAlignment(Alignment.CrossAxis.CENTER)
-                .child(new TextWidget(IKey.str("\u25A0")).color(powerColor))
-                .child(new TextWidget(IKey.str(NetworkUiKit.tr("gui.singularityme.network_terminal.health.power")))
-                    .color(Palette.TEXT_LABEL))
-                .child(new TextWidget(IKey.str(NetworkUiKit.tr(powered
-                    ? "gui.singularityme.network_terminal.health.powered"
-                    : "gui.singularityme.network_terminal.health.unpowered")))
-                    .color(powerColor)));
-
-            final Flow warnings = Flow.column().childPadding(4).widthRel(1f).padding(0, 12);
-            boolean hasWarning = false;
-            if (!hasDeviceType("TileSingularityPowerCore")) {
-                warnings.child(statusText(
-                    NetworkUiKit.tr("gui.singularityme.network_terminal.health.warn.no_power_core"),
-                    Palette.BTN_DANGER_NORMAL));
-                hasWarning = true;
-            }
-            if (total > 0 && loaded == 0) {
-                warnings.child(statusText(
-                    NetworkUiKit.tr("gui.singularityme.network_terminal.health.warn.all_offline"),
-                    Palette.BTN_DANGER_NORMAL));
-                hasWarning = true;
-            } else if (offline > 0) {
-                warnings.child(statusText(
-                    NetworkUiKit.trf("gui.singularityme.network_terminal.health.warn.some_offline", offline),
-                    Palette.ACCENT_AMBER));
-                hasWarning = true;
-            }
-            if (!hasWarning) {
-                warnings.child(statusText(
-                    NetworkUiKit.tr("gui.singularityme.network_terminal.health.healthy"),
-                    Palette.SECURITY_PUBLIC));
-            }
-            contentArea.child(warnings);
-        }
-
         private Flow infoRow(String label, String value) {
             return NetworkUiKit.infoRowCompact(label, value);
         }
@@ -1079,20 +993,6 @@ public final class NetworkTerminalUI {
             return Flow.row().widthRel(1f).height(Palette.TEXT_ROW_H).padding(0, 12)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(new TextWidget(IKey.str(text)).color(color));
-        }
-
-        private Flow progressBar(final float fraction, final int color) {
-            final float clamped = Math.max(0f, Math.min(1f, fraction));
-            final Flow track = Flow.row()
-                .widthRel(1f).height(14).margin(4, 12)
-                .background(Styles.listBg())
-                .disableHoverBackground();
-            final Flow fill = Flow.row()
-                .widthRel(clamped).heightRel(1f)
-                .background(Styles.rowBg(color))
-                .disableHoverBackground();
-            track.child(fill);
-            return track;
         }
 
         private static final int[] COLOR_PRESETS = {
@@ -1372,11 +1272,6 @@ public final class NetworkTerminalUI {
             return false;
         }
 
-        private float energyFraction() {
-            if (networkStatus == null || networkStatus.maxPower <= 0.0) return 0f;
-            return (float) Math.max(0.0, Math.min(1.0, networkStatus.currentPower / networkStatus.maxPower));
-        }
-
         private Map<String, Integer> deviceTypeCounts() {
             return NetworkUiKit.countDeviceTypes(networkStatus);
         }
@@ -1388,16 +1283,6 @@ public final class NetworkTerminalUI {
                 device.x,
                 device.y,
                 device.z);
-        }
-
-        private static String formatEnergy(final double current, final double max) {
-            if (max <= 0.0) return NetworkUiKit.formatCompactEnergy(current);
-            return compactEnergyValue(current) + " / " + NetworkUiKit.formatCompactEnergy(max);
-        }
-
-        private static String compactEnergyValue(final double value) {
-            final String text = NetworkUiKit.formatCompactEnergy(value);
-            return text.endsWith(" AE") ? text.substring(0, text.length() - 3) : text;
         }
 
         private static String formatTimestamp(final long millis) {
