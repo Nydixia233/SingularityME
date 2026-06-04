@@ -241,7 +241,7 @@ public final class NetworkTerminalUI {
             contentViewport.padding(Palette.CONTENT_VIEWPORT_PAD);
             contentViewport.showScrollShadows(false);
             contentArea = Flow.column()
-                .childPadding(4).widthRel(1f).coverChildrenHeight();
+                .childPadding(Palette.TERMINAL_CONTENT_CHILD_GAP).widthRel(1f).coverChildrenHeight();
             contentViewport.child(contentArea);
             panel.child(contentViewport);
 
@@ -832,7 +832,9 @@ public final class NetworkTerminalUI {
             contentArea.child(list);
 
             contentArea.child(Flow.row()
-                .childPadding(8).widthRel(1f).padding(0, 12).margin(6, 0)
+                .childPadding(8).widthRel(1f).height(Palette.ROW_H)
+                .padding(Palette.LIST_ROW_PADDING_H, 0)
+                .margin(0, Palette.MEMBER_ADD_ROW_MARGIN_V)
                 .crossAxisAlignment(Alignment.CrossAxis.CENTER)
                 .child(memberNameInput.widthRel(1f).expanded())
                 .child(makeBtn(NetworkUiKit.tr("gui.singularityme.network_terminal.members.add"),

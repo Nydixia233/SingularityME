@@ -412,9 +412,21 @@ public class NetworkUiKitTest {
     @Test
     public void computesTerminalListHeights() {
         assertEquals(240, NetworkUiKit.selectionListHeight(356));
-        assertEquals(308, NetworkUiKit.memberListHeight(356));
+        assertEquals(306, NetworkUiKit.memberListHeight(356));
         assertEquals(120, NetworkUiKit.selectionListHeight(180));
-        assertEquals(132, NetworkUiKit.memberListHeight(180));
+        assertEquals(130, NetworkUiKit.memberListHeight(180));
+    }
+
+    /** 成员页列表必须为添加玩家输入行预留空间，避免输入框被顶出可见区域。 */
+    @Test
+    public void memberListLeavesRoomForAddMemberRow() {
+        final int contentHeight = 180;
+        final int addRowBudget = Palette.ROW_H
+            + Palette.MEMBER_ADD_ROW_MARGIN_V * 2
+            + Palette.TERMINAL_CONTENT_CHILD_GAP
+            + Palette.CONTENT_VIEWPORT_PAD * 2;
+
+        assertTrue(NetworkUiKit.memberListHeight(contentHeight) + addRowBudget <= contentHeight);
     }
 
     /** 嵌套列表必须使用内容视口扣除 padding 后的高度，避免外层内容区出现 8px 假滚动。 */

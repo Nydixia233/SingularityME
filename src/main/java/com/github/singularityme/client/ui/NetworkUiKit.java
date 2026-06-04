@@ -122,6 +122,8 @@ public final class NetworkUiKit {
         public static final int TERMINAL_BOTTOM_H = 32;
         public static final int TERMINAL_CONTENT_TOP = 82;
         public static final int CONTENT_VIEWPORT_PAD = 4;
+        public static final int TERMINAL_CONTENT_CHILD_GAP = 4;
+        public static final int MEMBER_ADD_ROW_MARGIN_V = 6;
         /** 文本行固定高度。无固定高度的 Row 内含 TextWidget + 垂直 padding 会导致 MUI2 循环求解失败，统一用此高度兜底。 */
         public static final int TEXT_ROW_H = 16;
         public static final int RAIL_HEADER_H = TEXT_ROW_H;
@@ -415,7 +417,10 @@ public final class NetworkUiKit {
 
     /** 计算成员页列表高度，为添加成员输入行预留稳定空间。 */
     public static int memberListHeight(final int contentHeight) {
-        return Math.max(120, contentHeight - 48);
+        final int addRowBudget = Palette.ROW_H
+            + Palette.MEMBER_ADD_ROW_MARGIN_V * 2
+            + Palette.TERMINAL_CONTENT_CHILD_GAP;
+        return Math.max(0, terminalContentInnerHeight(contentHeight) - addRowBudget);
     }
 
     /** 计算连接页列表高度；连接页只有一个内部列表，必须适配外层内容视口的内高。 */
