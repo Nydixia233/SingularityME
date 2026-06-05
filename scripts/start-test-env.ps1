@@ -3,7 +3,7 @@ param(
     [string] $PrismExe,
     [string] $PrismDir,
     [string] $PrismInstance = 'GTNH290test',
-    [string] $ServerRoot = 'E:\GTNH Test Server\GTNH-daily-2026-06-02+549-server-java17-25',
+    [string] $ServerRoot = $env:SINGULARITYME_SERVER_ROOT,
     [string] $ServerScript = 'startserver-java9.bat',
     [string] $ServerAddress,
     [string] $GradleTask = 'build',
@@ -176,6 +176,9 @@ function Invoke-DeployOnce {
 }
 
 function Start-GtnhServer {
+    if ([string]::IsNullOrWhiteSpace($ServerRoot)) {
+        throw 'Server root is not set. Pass -ServerRoot or set SINGULARITYME_SERVER_ROOT, or use -ClientOnly to skip the server.'
+    }
     $resolvedServerRoot = Resolve-ExistingDirectory -Path $ServerRoot -Description 'Server root'
     $serverScriptPath = Join-Path $resolvedServerRoot $ServerScript
     if (-not (Test-Path -LiteralPath $serverScriptPath -PathType Leaf)) {

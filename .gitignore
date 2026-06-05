@@ -36,3 +36,6 @@ build_out.txt
 
 # Gradle daemon local JVM config
 gradle/gradle-daemon-jvm.properties
+
+# 本地部署/运行配置（含因机器而异的绝对路径，不应提交）
+*.local.json

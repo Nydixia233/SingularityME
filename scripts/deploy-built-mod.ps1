@@ -150,7 +150,9 @@ function Get-DefaultDeployTargetSpecs {
         [pscustomobject]@{
             name = 'GTNH daily test server'
             kind = 'server-root'
-            path = 'E:\GTNH Test Server\GTNH-daily-2026-06-02+549-server-java17-25'
+            # 服务端根目录因机器而异，通过 SINGULARITYME_SERVER_ROOT 环境变量提供；未设置时自动跳过该目标
+            path = $env:SINGULARITYME_SERVER_ROOT
+            enabled = -not [string]::IsNullOrWhiteSpace($env:SINGULARITYME_SERVER_ROOT)
         }
     )
 }
