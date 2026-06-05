@@ -85,7 +85,7 @@ private static TextFieldWidget makeInput(StringValue val) {
 }
 ```
 
-限制：未发现内建 password mode；当前密码输入仍明文显示。`NetworkUiKit.maskPassword()` 只是纯工具函数，尚未接入输入控件渲染。
+当前用途：成员名、网络名、过滤文本等普通输入。旧密码加入流已从当前网络模型移除，不要再为 Network Tab/Terminal 引入 password mode。
 
 ## ListWidget
 

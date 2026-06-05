@@ -22,8 +22,8 @@ MUI2 有两类常见数据机制：
 输入框只保存本地临时值，提交时由 packet 发给服务端：
 
 ```java
-TextFieldWidget passwordField = new TextFieldWidget()
-    .value(passwordValue)
+TextFieldWidget memberField = new TextFieldWidget()
+    .value(memberNameVal)
     .widthRel(1f).height(36)
     .background(Styles.inputBg())
     .autoUpdateOnChange(true);
@@ -31,10 +31,10 @@ TextFieldWidget passwordField = new TextFieldWidget()
 
 典型字段：
 
-- `NetworkTabUI.TabState.passwordValue`
 - `NetworkTerminalUI.TerminalState.filterVal`
-- `createNameVal / createPwVal`
-- `settingsNameVal / settingsPwVal`
+- `NetworkTerminalUI.TerminalState.memberNameVal`
+- `createNameVal`
+- `settingsNameVal`
 
 ## 自有 packet 刷新链路
 

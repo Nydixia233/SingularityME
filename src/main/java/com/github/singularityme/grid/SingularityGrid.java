@@ -73,7 +73,7 @@ public class SingularityGrid implements IGrid {
         this.networkID = networkID;
     }
 
-    /** Backward-compatible constructor for the default network (networkID=0). */
+    /** Legacy constructor for the unassigned sentinel (networkID=0). */
     public SingularityGrid(final int playerID) {
         this(playerID, 0);
     }

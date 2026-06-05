@@ -4,10 +4,9 @@ package com.github.singularityme.core;
  * Composite key that identifies a specific Singularity network.
  *
  * <p>
- * A network is uniquely identified by the combination of the AE2 player ID (the
- * owner who placed the devices) and a per-player network index. {@code networkID = 0}
- * is the implicit default network and is fully backward-compatible with the
- * pre-P2 single-network-per-player behaviour.
+ * A network is uniquely identified by the combination of the registry owner
+ * player ID and a registry-assigned network index. {@code networkID = 0} is the
+ * unassigned sentinel and is not adopted into a runtime grid.
  *
  * <p>
  * Instances are immutable and safe to use as {@link java.util.HashMap} keys.
@@ -18,8 +17,8 @@ public final class NetworkKey {
     public final int playerID;
 
     /**
-     * Per-player network index. {@code 0} = default network (backward-compatible).
-     * Positive values are assigned by {@link SingularityNetworkRegistry}.
+     * Registry network index. {@code 0} = unassigned sentinel; positive values are
+     * assigned by {@link SingularityNetworkRegistry}.
      */
     public final int networkID;
 
@@ -28,7 +27,7 @@ public final class NetworkKey {
         this.networkID = networkID;
     }
 
-    /** Convenience factory for the default (networkID=0) network of a player. */
+    /** Convenience factory for the unassigned sentinel key of a player. */
     public static NetworkKey defaultFor(final int playerID) {
         return new NetworkKey(playerID, 0);
     }

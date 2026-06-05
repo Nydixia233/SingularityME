@@ -50,13 +50,13 @@ list.widthRel(1f);
 list.expanded();
 ```
 
-## 密码明文显示
+## 旧密码流误回迁
 
-现象：网络加入、创建、设置密码时输入框显示原文。
+现象：参考旧 HTML 原型或历史错误记录时，误以为 Network Tab/Terminal 仍有密码加入、创建、设置流程。
 
-根因：当前使用的 `TextFieldWidget` 未接入 password mode。`NetworkUiKit.maskPassword()` 只是等长掩码工具，没有改变输入控件渲染。
+根因：当前网络模型已改为 PUBLIC/PRIVATE + B/C/I/E/S 权限；密码、ENCRYPTED、BLOCKED、AccessLevel 都是旧模型或迁移历史，不属于当前 UI。
 
-修法：如要真正掩码，需要定制输入 Widget 或确认 MUI2 对应版本是否有 password API，再改 `TextFieldWidget` 渲染/显示值路径。
+修法：不要在当前 UI 中恢复 password mode。成员名、网络名、过滤文本继续使用普通 `TextFieldWidget`，权限通过成员列表中的 B/C/I/E/S 胶囊修改。
 
 ## ProgressWidget 不绘制或交互过重
 
@@ -66,7 +66,7 @@ list.expanded();
 
 ## 输入框被刷新清空
 
-现象：用户正在编辑名称/密码，服务端回包后输入被重置。
+现象：用户正在编辑网络名称或成员名，服务端回包后输入被重置。
 
 根因：`renderContent()` 每次都无条件把 `StringValue` 写回服务端旧值。
 

@@ -41,14 +41,12 @@
 
   /* ── 安全级别色 ── */
   --security-public:   #2F8C52;  /* 0xFF2F8C52 */
-  --security-encrypted:#C48A32;  /* 0xFFC48A32 */
   --security-private:  #7055A8;  /* 0xFF7055A8 */
 
   /* ── 访问级别色 ── */
   --access-owner:     #3D78C2;  /* 0xFF3D78C2 */
   --access-admin:     #5E7FC7;  /* 0xFF5E7FC7 */
   --access-member:    #4D8F8A;  /* 0xFF4D8F8A */
-  --access-blocked:   #9A3C3C;  /* 0xFF9A3C3C */
   --access-none:      #5D6875;  /* 0xFF5D6875 */
 
   /* ── 标记色 ── */
@@ -173,7 +171,7 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #3D4E60; }
 
 /* 输入框 */
-input[type="text"], input[type="password"] {
+input[type="text"] {
   background: var(--bg-input);
   border: 1px solid var(--border-input);
   border-radius: var(--radius-row);

@@ -22,8 +22,9 @@ src/
 │       │   ├── SingularityNetworkData.java          ← WorldSavedData 持久化
 │       │   ├── SingularityNetworkDefaults.java      ← 默认网络分配
 │       │   ├── AEReflection.java                    ← AE2 内部反射工具
-│       │   ├── AccessLevel.java                     ← 权限枚举
-│       │   └── SecurityLevel.java                   ← 网络安全级别枚举
+│       │   ├── PermissionBits.java                  ← AE2 权限 bit 编码
+│       │   ├── SingularityPermissionHelper.java     ← 服务端权限检查工具
+│       │   └── SecurityLevel.java                   ← PUBLIC/PRIVATE 安全级别枚举
 │       ├── grid/                       ← 网格模型
 │       │   ├── SingularityGrid.java                 ← Grid 包装器
 │       │   ├── SingularityAnchorNode.java           ← 虚拟锚点
@@ -47,7 +48,9 @@ src/
 │       ├── capability/                ← Forge Capability 注册
 │       └── mixin/                     ← Mixin（子源集 src/mixin/）
 │           └── mixins/late/ae2/
-│               └── MixinPathGridCache.java          ← 绕过频道限制
+│               ├── MixinPathGridCache.java          ← 绕过频道限制
+│               ├── MixinPacketCraftRequest.java     ← 合成请求权限校验
+│               └── MixinContainerCraftConfirm.java  ← 合成确认页返回路径修正
 └── resources/
     ├── assets/singularityme/
     │   ├── lang/                     ← 语言文件
@@ -87,7 +90,7 @@ public interface ISingularityContributionHost {
 | 接口 | 位置 | 用途 |
 |------|------|------|
 | `IEnergyConnected` | GT API | PowerCore 接收 GT EU |
-| `IAEPowerStorage` | AE2 API | PowerCore 作为电网能量源 |
+| `IAEPowerStorage` | AE2 API | `SingularityAnchorNode` 暴露虚拟储能，按需代理到有效 PowerCore |
 | `IChestOrDrive` | AE2 API | Drive 的元件状态机 |
 | `ICraftingTerminal` | AE2 API | CraftingTerminal 的合成格 |
 | `IGridTickable` | AE2 API | 需要 per-tick 逻辑的设备（PowerCore、Drive、Interface、CraftingCore） |
@@ -211,7 +214,7 @@ Probe 是最直接的调试工具。放置后右键，显示：
 ### 常见调试场景
 
 1. **设备不工作** → 检查 Probe 确认网络是否存在、是否有 PowerCore 供电
-2. **跨维度失效** → 检查两个维度的设备是否在同一 `playerID` 下
+2. **跨维度失效** → 检查两个维度的设备是否解析到同一 `NetworkKey(ownerPlayerID, networkID)`
 3. **物品不显示在终端** → 检查 Drive 是否有存储元件、StorageBus 是否正确匹配容器
 4. **合成不执行** → 检查 CraftingCore 是否在线、Interface 是否有样板
 
@@ -252,7 +255,7 @@ Probe 是最直接的调试工具。放置后右键，显示：
 ### ❌ 不要在客户端线程访问 `SingularityNetworkManager`
 
 Manager 是服务端单例。在客户端代码中访问它会导致：
-- `playerGrids` 为空（客户端没有网格数据）
+- `grids` 为空或状态不可信（客户端没有服务端网格数据）
 - NPE 或异常状态
 
 ---
@@ -285,10 +288,8 @@ $env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
 ```
 GT EnergyNet (EU/t)
     ↓ IEnergyConnected.injectEnergyUnits()
-TileSingularityPowerCore.buffer (double, EU)
-    ↓ getTickingRequest() → tickingRequest()
-GT EU → AE 转换 (硬编码比率)
-    ↓ IAEPowerStorage.injectAEPower()
+TileSingularityPowerCore.buffer (double, AE)
+    ↓ SingularityAnchorNode.extractAEPower()
 SingularityGrid.extractVirtualAEPower()
     ↓ EnergyGridCache 自动分配
 各设备 idlePowerUsage 消耗
@@ -296,29 +297,26 @@ SingularityGrid.extractVirtualAEPower()
 
 ### EU 输入（IEnergyConnected）
 
-`TileSingularityPowerCore` 实现 `IEnergyConnected`，这是 GregTech 的标准能量接收接口。GT 的 EnergyNet 每 tick 调用 `injectEnergyUnits()`，将最多 1 Amp 的 EU 注入 `buffer` 字段（`double` 类型）。
+`TileSingularityPowerCore` 实现 `IEnergyConnected`，这是 GregTech 的标准能量接收接口。GT 的 EnergyNet 调用 `injectEnergyUnits()` 时，源码通过 `PowerUnits.EU.convertTo(PowerUnits.AE, voltage)` 将 EU 转为 AE，并把结果写入 `buffer` 字段（`double` 类型）。因此 `buffer` 存的是 AE，不是 EU。
 
 ### Tick 处理（IGridTickable）
 
-PowerCore 注册 `TickingRequest` 以最快频率执行：
+PowerCore 注册较低频率的 `TickingRequest`，主要用于维护创造成员与缓冲状态：
 
 ```java
 public TickingRequest getTickingRequest(IGridNode node) {
-    return new TickingRequest(1, 20, false);
+    return new TickingRequest(20, 20, this.buffer <= 0.001, false);
 }
 ```
 
-每 tick 的 `tickingRequest()` 中：
-1. **检查贡献可用性**：如果 chunk 不可达（如区块未加载）→ 跳过，`buffer` 保持。
-2. **EU → AE 转换**：以固定的硬编码比率将 `buffer` 中的 EU 转换为 AE 能量，通过 `IAEPowerStorage.injectAEPower()` 注入 internalGrid。
-3. **钳位 buffer**：`clampBufferToCapacity()` 确保 buffer ≤ 理论最大容量。
+`tickingRequest()` 中不会把 EU 二次注入 internalGrid；EU → AE 已在 `injectEnergyUnits()` 完成。tick 逻辑只维护缓冲容量、创造能量元件锁定、贡献刷新等状态。
 
 ### AE 能量分配（EnergyGridCache）
 
-PowerCore 作为 `IAEPowerStorage`（`isAEPublicPowerStorage() = true`，`AccessRestriction.READ`）在 Grid 中注册。AE2 的 `EnergyGridCache` 每 tick：
+`SingularityAnchorNode` 作为 `IAEPowerStorage`（`isAEPublicPowerStorage() = true`，`AccessRestriction.READ`）在 Grid 中注册。AE2 的 `EnergyGridCache` 每 tick：
 1. 累加所有节点的 `idlePowerUsage`。
 2. 从已注册的 `IAEPowerStorage` 中按需提取。
-3. PowerCore 的 `extractAEPower()` 被调用，从其内部缓冲中扣除。
+3. Anchor 的 `extractAEPower()` 转发到 `SingularityGrid.extractVirtualAEPower()`，再由当前有效 PowerCore 从其 AE 缓冲中扣除。
 
 ### 虚拟能量存储
 
@@ -326,18 +324,18 @@ PowerCore 作为 `IAEPowerStorage`（`isAEPublicPowerStorage() = true`，`Access
 
 ### 能量元件的角色
 
-PowerCore 的静态容量由 3 个能量元件槽位决定：
+PowerCore 的静态容量由 3 个能量元件槽位决定，普通/致密元件容量会乘以 AE2 `PowerMultiplier.CONFIG.multiplier`：
 - 未放置任何元件 → 最大缓冲 = 0 AE → 电网无法从中提取能量。
 - 放置 1 个普通能量元件 → 最大缓冲 = 200,000 AE。
 - 创造能量元件 → 缓冲永久保持在 `Long.MAX_VALUE / 10000` ≈ 9.22×10¹⁴ AE，等同于无限。
 
-### 多 PowerCore 叠加
+### 多 PowerCore 选择
 
-PowerCore 本身**不消耗** AE 能量（`setIdlePowerUsage(0.0)`）——它只是一个能量**转换器 + 缓冲器**。如果有多个 PowerCore 在同一网格中（同一玩家的多台 PowerCore），每个都独立接收 EU、独立注入 AE——网格的总能量输入是多 PowerCore 累加。
+PowerCore 本身**不消耗** AE 能量（`setIdlePowerUsage(0.0)`）——它只是一个能量**转换器 + 缓冲器**。如果同一网格存在多个 PowerCore，`SingularityGrid` 会按容量、维度、坐标选择一个当前有效 PowerCore 作为虚拟储能来源；它不是简单把多个 PowerCore 的容量直接相加。
 
 ### 已知问题
 
-- EU → AE 转换比率硬编码，不可配置。调整需修改源码。
+- EU → AE 转换使用 AE2 `PowerUnits`，不是项目内硬编码倍率。
 - `buffer` 字段通过 NBT 持久化。如果 PowerCore 在卸载时被 GT EnergyNet 断开，重新加载后需等待 GT 重新检测连接。
 
 ---

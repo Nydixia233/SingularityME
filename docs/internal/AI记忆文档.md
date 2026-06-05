@@ -28,7 +28,7 @@
 
 - `SingularityME.java` — `@Mod` 主类，preInit/init/postInit 生命周期入口
 - 方块注册在 `block/`（11 种设备 + 1 调试探针），TileEntity 在 `tile/`
-- GUI 分两类：AE2 原版 GUI（`gui/`，继承 `GuiUpgradeable`）和 MUI2 网络 UI（`client/ui/`，`NetworkTabUI` + 8 标签 `NetworkTerminalUI`）
+- GUI 分两类：AE2 原版 GUI（`gui/`，继承 `GuiUpgradeable`）和 MUI2 网络 UI（`client/ui/`，`NetworkTabUI` + 5 面板 `NetworkTerminalUI`）
 - 网络 UI 通过 `ModularScreen` + `GuiScreenWrapper` 创建，保留 `static GuiScreen create(TileEntity)` 和 `static boolean receiveNetworkData(PacketNetworkTabData)` 静态接口；网络终端状态页另有 `receiveNetworkStatus(PacketNetworkStatus)` 静态入口
 - 核心逻辑在 `core/`：SingularityNetworkManager、SingularityGrid、SecurityLevel，以及基于 AE2 `SecurityPermissions` 的权限表（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:20`）。
 - 能量模型：`SingularityAnchorNode` 作为结构性锚点，实际能量由 `TileSingularityPowerCore` 通过元件叠加提供（普通 200k AE/个、致密 1.6M AE/个、创造无限）
@@ -66,7 +66,7 @@
   return new GuiScreenWrapper(screen);
   ```
 - `GuiScreenWrapper` 构造时 `screen.construct(this)` 跳过 `ModularContainer` 初始化，纯客户端面板无需 sync
-- 数据刷新沿用 packet → client 线程 `func_152344_a` → 静态接收入口 → 重建 widget 子树。网络列表走 `PacketNetworkTabData`，网络终端 HOME/CONNECTION/STATISTICS/HEALTH 状态页走 `PacketNetworkStatus`，请求以选中的 `networkID` 为键，不以终端方块坐标为键。
+- 数据刷新沿用 packet → client 线程 `func_152344_a` → 静态接收入口 → 重建 widget 子树。网络列表走 `PacketNetworkTabData`，网络终端 HOME/CONNECTION 状态摘要走 `PacketNetworkStatus`，请求以选中的 `networkID` 为键，不以终端方块坐标为键。
 
 ### 已知的 MUI2 API 陷阱
 

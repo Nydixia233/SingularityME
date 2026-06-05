@@ -70,8 +70,8 @@ public static GuiScreen create(final TileEntity te) {
 | `.onMousePressed(mb -> {...; return true;})` | 点击回调。禁用时应在回调内 `if (!isEnabled()) return false;` 阻止事件消费 | 选中网络行、发包 |
 | `.disableHoverBackground()` | 关闭默认 hover 高亮（自管背景时） | 所有自绘行/导航按钮 |
 | `.setEnabled(boolean)` | 启用/禁用按钮 | `selectBtn.setEnabled(canAssign)` |
-| `TextFieldWidget().value(StringValue)` | 文本输入，绑定到 `StringValue` | 密码、成员名、网络名 |
-| `.autoUpdateOnChange(true)` | 输入即时回写 `StringValue` | 密码框 |
+| `TextFieldWidget().value(StringValue)` | 文本输入，绑定到 `StringValue` | 成员名、网络名、过滤文本 |
+| `.autoUpdateOnChange(true)` | 输入即时回写 `StringValue` | 成员名/网络名输入 |
 
 ### Drawable / 样式
 
@@ -158,7 +158,7 @@ PacketNetworkStatus.Handler.onMessage
 | `ElementNode` 色块 / 徽章 | **推荐** `NetworkUiKit.badge(text, color)` / `securityBadge(entry)` / `accessBadge(entry)`；静态状态点用 `statusDotWidget(color)` 或 `TextWidget.color(argb)`；可点击色板必须用 `ButtonWidget` 本体背景 + overlay |
 | `DocumentButtonControl` + `setClickHandler` | `ButtonWidget<>().overlay(...).onMousePressed(...)` |
 | `DocumentTextInputControl` | `TextFieldWidget().value(StringValue)` |
-| `QzNetworkUiKit.MaskedInput`（密码掩码） | **无内建等价**——当前明文显示（见陷阱表） |
+| `QzNetworkUiKit.MaskedInput`（旧密码掩码） | 当前 PUBLIC/PRIVATE 模型不再使用密码输入；普通文本仍用 `TextFieldWidget().value(StringValue)` |
 | `clearChildren()` + 重新 append | `removeAll()` + `child(...)` + `scheduleResize()` |
 | `setBackgroundColor(argb)` | `.background(new Rectangle().color(argb))` |
 
@@ -175,7 +175,7 @@ PacketNetworkStatus.Handler.onMessage
 | **`ButtonWidget.setEnabled()` 不阻止已注册的回调** | `onMousePressed` 设置在 `setEnabled` 之前时，禁用的按钮仍会执行回调。 | 回调内显式检查 `isEnabled()`：`mb -> { if (!isEnabled()) return false; ... }`。 |
 | `IPositioned` sizing 链式类型退化 | 源码签名返回泛型 `W`，但在部分 Widget、raw type 或链式推断场景下静态类型可能退化为 `IPositioned`，导致 `.width(int)` / `.expanded()` / `ListWidget.widthRel()` 之后不能再接 `.background()` / `.color()` 等 Widget 方法 | 先设 background 再设 sizing；或拆成多步、用局部变量赋值（见 `nameWidget.expanded()` 单独成行） |
 | `Rectangle` 不支持圆角 + 边框并存 | 原 Qz UI 的圆角+描边效果无法直接复刻 | 接受直角；或两层 `Rectangle` 叠加；或使用 `ShadowDrawable` 叠加投影 |
-| 无内建密码掩码 | `TextFieldWidget` 无 password 模式，密码当前**明文显示** | 已知限制；`NetworkUiKit.maskPassword()` 备有等长掩码工具，如需接入再 wire |
+| 不要复用旧密码流 | 当前网络模型没有密码加入/设置路径，过时原型中的 password mode 不应再迁回主 UI | 使用 PUBLIC/PRIVATE + 权限位；输入框仅承载成员名、网络名、过滤文本 |
 | TextWidget padding 在固定高度行内垂直溢出 | 固定高度 Row 内 TextWidget 的 padding 与主题默认 padding 叠加，日志报 `[SIZING] Margin/padding ... exceeds parent size`（不阻断渲染） | 优先使用 `NetworkUiKit.fixedRow(int)` / `textRow()`；垂直留白放到父容器 margin；详见 `docs/errors/ERROR-20260601-mui2-sizing-padding-overflow.md` |
 | 输入框被 render 重置 | 每次 `renderContent()` 若无条件 `setStringValue` 会清空用户输入 | 用 `panelFirstRender` 标志位，仅首次进入面板时重置（见 `renderSettings`） |
 

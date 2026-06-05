@@ -25,7 +25,6 @@
   --btn-active: #255878;
   --btn-danger: #8C3D3D;
   --security-public: #2F8C52;
-  --security-encrypted: #C48A32;
   --security-private: #7055A8;
   --access-owner: #3D78C2;
   --access-admin: #5E7FC7;
@@ -391,16 +390,16 @@ input,
         <div class="meta"><span>排序: 名称 ↑</span><span>总计: 5</span></div>
         <div class="list">
           <div class="row selected"><span class="dot"></span><span class="pill">#1</span><span class="name">主基地网络</span><span class="badge" style="background: var(--security-private)">私有</span><span class="badge" style="background: var(--access-owner)">拥有</span></div>
-          <div class="row"><span class="dot" style="background:#E28E4A"></span><span class="pill">#2</span><span class="name">采矿前哨</span><span class="badge" style="background: var(--security-encrypted)">加密</span><span class="badge" style="background:#5D6875">访客</span></div>
-          <div class="row"><span class="dot" style="background:#4AE24A"></span><span class="pill">#3</span><span class="name">公共交易站</span><span class="badge" style="background: var(--security-public)">公开</span><span class="badge" style="background: var(--access-member)">成员</span></div>
+          <div class="row"><span class="dot" style="background:#E28E4A"></span><span class="pill">#2</span><span class="name">采矿前哨</span><span class="badge" style="background: var(--security-private)">私有</span><span class="badge" style="background: var(--access-member)">B C I E</span></div>
+          <div class="row"><span class="dot" style="background:#4AE24A"></span><span class="pill">#3</span><span class="name">公共交易站</span><span class="badge" style="background: var(--security-public)">公开</span><span class="badge" style="background: var(--access-admin)">B C I E S</span></div>
         </div>
       </section>
 
       <section class="panel">
-        <h2>成员页：编号回到行内，空状态明确</h2>
+        <h2>成员页：拥有者与权限在行尾，权限用 B/C/I/E/S 胶囊</h2>
         <div class="list">
-          <div class="row"><span class="badge" style="background: var(--access-owner)">拥有者</span><span class="name">PlayerX</span><span class="pill">#100</span></div>
-          <div class="row"><span class="badge" style="background: var(--access-admin)">管理员</span><span class="name">Helper1</span><span class="pill">#101</span></div>
+          <div class="row"><span class="name">PlayerX</span><span class="badge" style="background: var(--access-owner)">拥有者</span></div>
+          <div class="row"><span class="name">Helper1</span><span class="badge" style="background: var(--access-member)">B</span><span class="badge" style="background: var(--access-member)">C</span><span class="badge" style="background: var(--access-member)">I</span><span class="badge" style="background: var(--access-member)">E</span><span class="badge" style="background: var(--access-admin)">S</span></div>
         </div>
         <div class="empty">暂无其他成员</div>
       </section>
@@ -408,8 +407,7 @@ input,
       <section class="panel">
         <h2>设置/创建：单行输入、直选安全级别、色板即操作</h2>
         <div class="field"><label>名称</label><input value="主基地网络"></div>
-        <div class="field"><label>密码</label><input type="password" value="abcdef"></div>
-        <div class="field"><label>安全</label><div class="segments"><span class="seg">公开</span><span class="seg">加密</span><span class="seg active">私有</span></div></div>
+        <div class="field"><label>安全</label><div class="segments"><span class="seg">公开</span><span class="seg active">私有</span></div></div>
         <div class="field"><label>颜色</label><div class="readonly"><span class="dot"></span>&nbsp; #4A90E2</div></div>
         <div class="swatches">
           <span class="swatch active"><span class="swatch-core" style="background:#4A90E2"></span></span>
@@ -430,8 +428,8 @@ input,
       <section class="panel wide">
         <h2>本轮实装边界</h2>
         <div class="home-grid">
-          <div class="info-row"><label>会改:</label><span>视觉密度、对齐、列表状态、表单控件、色板、安全级别控件、删除确认文案</span></div>
-          <div class="info-row"><label>暂不改:</label><span>顶层 8 标签信息架构、外部 HUD 绿色能量条、真正的密码掩码能力</span></div>
+          <div class="info-row"><label>会改:</label><span>视觉密度、对齐、列表状态、成员权限胶囊、PUBLIC/PRIVATE 控件、删除确认文案</span></div>
+          <div class="info-row"><label>边界:</label><span>Network Terminal 为 HOME / CONNECTION / MEMBERS / SETTINGS / CREATE 五面板；密码加入流已移除</span></div>
         </div>
       </section>
     </div>

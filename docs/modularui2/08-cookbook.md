@@ -88,7 +88,7 @@ list.expanded();
 | text input | `TextFieldWidget().value(StringValue)` |
 | clear + append | `removeAll()` + `child(...)` + `scheduleResize()` |
 | `setBackgroundColor(argb)` | `.background(new Rectangle().color(argb))` |
-| 密码掩码控件 | 暂无内建等价，当前明文 |
+| 旧密码掩码控件 | 当前网络模型不使用密码输入；成员/网络名/过滤文本用普通 `TextFieldWidget` |
 
 ## 多面板终端模式
 
