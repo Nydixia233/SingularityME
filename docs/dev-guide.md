@@ -140,6 +140,8 @@ public class TileSingularityLevelEmitter extends AENetworkTile
 }
 ```
 
+> **权限校验**：设备入口必须接入权限检查，网络权限才会真正生效——方块的 `removedByPlayer()` / `onBlockActivated()` 调用 `SingularityPermissionHelper.checkBuild()` / `checkUse()`（见 `SingularityPermissionHelper.java:22`、`:31`），自动设备 tick 内用 `hasNodePermission()` 按放置者校验。
+
 ### Step 2：创建 Block 类
 
 ```java
@@ -217,6 +219,7 @@ Probe 是最直接的调试工具。放置后右键，显示：
 2. **跨维度失效** → 检查两个维度的设备是否解析到同一 `NetworkKey(ownerPlayerID, networkID)`
 3. **物品不显示在终端** → 检查 Drive 是否有存储元件、StorageBus 是否正确匹配容器
 4. **合成不执行** → 检查 CraftingCore 是否在线、Interface 是否有样板
+5. **权限不足无法操作** → 在 Network Terminal 权限页确认目标玩家已被授予对应权限（BUILD / INJECT / EXTRACT / CRAFT / SECURITY）
 
 ---
 

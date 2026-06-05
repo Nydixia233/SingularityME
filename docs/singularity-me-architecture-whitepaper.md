@@ -333,6 +333,16 @@ public final class PhantomSingularityNode {
 | `PUBLIC` | 所有玩家视为拥有全部 AE2 权限 |
 | `PRIVATE` | owner 内建全权限；其他玩家必须拥有至少一项显式授权才能使用 |
 
+**权限维度语义**
+
+| 权限 | 控制的操作 |
+|------|-----------|
+| `BUILD` | 放置 / 破坏 / 旋转设备，分配或解除设备所属网络，设为默认网络 |
+| `INJECT` | 终端手动存入，Import Bus 自动注入 |
+| `EXTRACT` | 终端手动取出，Export Bus 自动取出 |
+| `CRAFT` | 终端发起合成请求，Export Bus 合成补货（需 CRAFTING 卡） |
+| `SECURITY` | 管理授权表，修改网络名 / 颜色 / 类型 |
+
 **权限检查流程**
 
 权限检查分为三层，避免把"能看见"、"能使用"、"能执行某项操作"混在一起：
@@ -342,6 +352,12 @@ public final class PhantomSingularityNode {
 3. `hasPermission(networkID, playerID, permission)` 决定具体操作是否可执行：BUILD 管放置/破坏/配置，INJECT/EXTRACT 管终端和自动设备的存取，CRAFT 管合成请求，SECURITY 管授权表和网络设置。
 
 这些入口由 `SingularityNetworkRegistry` 提供（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:139`），方块、Tile 和容器侧通过 `SingularityPermissionHelper` 复用服务端检查（见 `src/main/java/com/github/singularityme/core/SingularityPermissionHelper.java:16`）。
+
+**自动设备权限**：Import / Export Bus 等无人值守设备按**放置者**身份（节点的 playerID）校验，而非当前操作玩家，确保自动化不会绕过权限。Import Bus 注入前检查 `INJECT`（见 `TileSingularityImportBus.java:316`），Export Bus 取出 / 合成补货前检查 `EXTRACT` / `CRAFT`（见 `TileSingularityExportBus.java:353`），均通过 `SingularityPermissionHelper.hasNodePermission()` 完成。
+
+**SECURITY 权限的下放**：持有 `SECURITY` 的玩家可管理任何非 owner 玩家的权限（含其他 `SECURITY` 持有者），照搬 AE2 安全终端的信任模型；owner 权限内建，不可被授权表修改。
+
+**新授权玩家默认权限**：通过 `PacketGrantPermissionByName` 添加在线玩家时，默认授予 `BUILD` / `INJECT` / `EXTRACT` / `CRAFT`，不含 `SECURITY`（见 `PermissionBits.DEFAULT_MEMBER_BITS`，`PermissionBits.java:16`）。
 
 旧存档迁移时，旧 `ENCRYPTED` 降级为 `PRIVATE`；旧 admin 迁移为全权限，旧 member 迁移为 BUILD / CRAFT / INJECT / EXTRACT，封禁和密码不再保留（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:272`）。
 
