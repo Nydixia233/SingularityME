@@ -30,7 +30,7 @@
 - 方块注册在 `block/`（11 种设备 + 1 调试探针），TileEntity 在 `tile/`
 - GUI 分两类：AE2 原版 GUI（`gui/`，继承 `GuiUpgradeable`）和 MUI2 网络 UI（`client/ui/`，`NetworkTabUI` + 8 标签 `NetworkTerminalUI`）
 - 网络 UI 通过 `ModularScreen` + `GuiScreenWrapper` 创建，保留 `static GuiScreen create(TileEntity)` 和 `static boolean receiveNetworkData(PacketNetworkTabData)` 静态接口；网络终端状态页另有 `receiveNetworkStatus(PacketNetworkStatus)` 静态入口
-- 核心逻辑在 `core/`：SingularityNetworkManager、SingularityGrid、SecurityLevel，以及基于 AE2 `SecurityPermissions` 的权限表（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:20`）。
+- 核心逻辑在 `core/`：SingularityNetworkManager、SingularityGrid、SecurityLevel，以及基于 AE2 `SecurityPermissions` 的权限表（`PermissionBits` 位转换 + `SingularityPermissionHelper` 校验入口）。
 - 能量模型：`SingularityAnchorNode` 作为结构性锚点，实际能量由 `TileSingularityPowerCore` 通过元件叠加提供（普通 200k AE/个、致密 1.6M AE/个、创造无限）
 
 ## 主动读取原则

@@ -298,9 +298,9 @@ public final class PhantomSingularityNode {
 3. **恢复**：当区块重新加载、设备重新 `onReady()` → `registerNode()` 时，`SingularityNetworkManager` 检查 `phantomNodes` 中是否有对应 key 的 Phantom。如果有，在 adopt 真实节点前先移除 Phantom。
 4. **清理**：如果 Phantom 对应的设备被永久拆除（`invalidate()` 而非 `onChunkUnload()`），Phantom 在 `unregisterNode(permanent=true)` 中被移除。
 
-**Phase 2 扩展计划**
+**后续扩展计划**
 
-当前 Phantom 只保留坐标——它不能存储设备的运行时状态。Phase 2 计划为 Phantom 添加存储快照功能：在设备卸载时缓存其库存内容（如 Drive 中元件的物品列表），使终端在设备离线时仍能显示"幽灵库存"（灰色图标 + "该设备所在区块未加载"提示）。
+当前 Phantom 只保留坐标——它不能存储设备的运行时状态。后续计划（Phase 3）为 Phantom 添加存储快照功能：在设备卸载时缓存其库存内容（如 Drive 中元件的物品列表），使终端在设备离线时仍能显示"幽灵库存"（灰色图标 + "该设备所在区块未加载"提示）。
 
 ---
 
@@ -310,7 +310,7 @@ public final class PhantomSingularityNode {
 
 奇点网络允许多人协作：一个玩家可以将自己的网络共享给其他玩家，让他们放置设备、访问库存。原版 AE2 的安全终端提供了一套基于 `IPlayerRegistry` 的权限体系，但它与物理网络绑定——权限作用于"这张 Grid"。奇点网络需要自己的权限模型，因为网络是玩家级别的抽象，而非物理级别的。
 
-当前实现不再维护 OWNER / ADMIN / MEMBER / BLOCKED 角色枚举，而是复用 AE2 原生 `appeng.api.config.SecurityPermissions` 五个权限维度：`INJECT`、`EXTRACT`、`CRAFT`、`BUILD`、`SECURITY`。权限集合与 NBT / packet 中的 bit 表示由 `PermissionBits` 统一转换（见 `src/main/java/com/github/singularityme/core/PermissionBits.java:12`）。
+**架构演进**：Singularity ME 从 v1.0 的角色制（OWNER/ADMIN/MEMBER/BLOCKED）迁移到 v2.0 的 AE2 风格权限制。当前实现复用 AE2 原生 `appeng.api.config.SecurityPermissions` 五个权限维度：`INJECT`、`EXTRACT`、`CRAFT`、`BUILD`、`SECURITY`。权限集合与 NBT / packet 中的 bit 表示由 `PermissionBits` 统一转换（见 `src/main/java/com/github/singularityme/core/PermissionBits.java`）。
 
 **NetworkMeta — 每个网络的元数据**
 
@@ -318,7 +318,7 @@ public final class PhantomSingularityNode {
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `ownerPlayerID` | `int` | 网络创建者，不可变更（当前版本） |
+| `ownerPlayerID` | `int` | 网络创建者，拥有内建全权限且不可变更 |
 | `name` | `String` | 网络显示名称 |
 | `color` | `int` | RGB 颜色（用于 UI 区分多网络） |
 | `security` | `SecurityLevel` | PUBLIC / PRIVATE |
@@ -328,23 +328,49 @@ public final class PhantomSingularityNode {
 
 | 级别 | 含义 |
 |------|------|
-| `PUBLIC` | 所有玩家视为拥有全部 AE2 权限 |
+| `PUBLIC` | 所有玩家视为拥有全部 AE2 权限，无需显式授权 |
 | `PRIVATE` | owner 内建全权限；其他玩家必须拥有至少一项显式授权才能使用 |
+
+**权限维度语义**
+
+| 权限 | 控制操作 |
+|------|---------|
+| `BUILD` | 放置/破坏/旋转设备、分配/解除分配设备到网络、设为默认网络 |
+| `INJECT` | 终端手动存入物品、Import Bus 自动注入 |
+| `EXTRACT` | 终端手动取出物品、Export Bus 自动取出 |
+| `CRAFT` | 终端发起合成请求、Export Bus 合成补货（需 CRAFTING 卡）|
+| `SECURITY` | 管理授权表、改网络名/颜色/类型（与 owner 共享管理权）|
+
+**新授权玩家默认权限**：通过 `PacketGrantPermissionByName` 添加玩家时，默认授予 `BUILD`、`INJECT`、`EXTRACT`、`CRAFT` 四项权限，**不含 `SECURITY`**（见 `PermissionBits.DEFAULT_MEMBER_BITS`）。
 
 **权限检查流程**
 
 权限检查分为三层，避免把"能看见"、"能使用"、"能执行某项操作"混在一起：
 
-1. `canViewNetwork(networkID, playerID)` 决定网络列表是否显示：PUBLIC 全员可见，PRIVATE 需要能使用。
+1. `canViewNetwork(networkID, playerID)` 决定网络列表是否显示：PUBLIC 网络全员可见，PRIVATE 网络仅对 owner 及拥有至少一项显式权限的玩家可见。
 2. `canUseNetwork(networkID, playerID)` 决定普通设备 GUI 是否可打开：PUBLIC 或 owner 放行，PRIVATE 需要任意一项权限。
-3. `hasPermission(networkID, playerID, permission)` 决定具体操作是否可执行：BUILD 管放置/破坏/配置，INJECT/EXTRACT 管终端和自动设备的存取，CRAFT 管合成请求，SECURITY 管授权表和网络设置。
+3. `hasPermission(networkID, playerID, permission)` 决定具体操作是否可执行。
 
-这些入口由 `SingularityNetworkRegistry` 提供（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:139`），方块、Tile 和容器侧通过 `SingularityPermissionHelper` 复用服务端检查（见 `src/main/java/com/github/singularityme/core/SingularityPermissionHelper.java:16`）。
+这些入口由 `SingularityNetworkRegistry` 提供，方块、Tile 和容器侧通过 `SingularityPermissionHelper` 复用服务端检查。
 
-旧存档迁移时，旧 `ENCRYPTED` 降级为 `PRIVATE`；旧 admin 迁移为全权限，旧 member 迁移为 BUILD / CRAFT / INJECT / EXTRACT，封禁和密码不再保留（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:272`）。
+**自动设备权限**：Import/Export Bus 等自动设备按 `GridNode.getPlayerID()`（设备放置者）检查权限，而非当前操作玩家。这确保自动化不会绕过权限控制。
+
+**旧存档迁移**
+
+旧版本存档加载时自动迁移：
+- 旧 `PUBLIC` → `PUBLIC`
+- 旧 `PRIVATE` / `ENCRYPTED` → `PRIVATE`（密码功能删除）
+- 旧 admin → 全权限（含 `SECURITY`）
+- 旧 member → `BUILD` / `CRAFT` / `INJECT` / `EXTRACT`
+- 旧 blocked → 丢弃（封禁功能删除）
+
+#### SECURITY 权限的下放机制
+
+拥有 `SECURITY` 权限的玩家可管理任何非 owner 玩家的权限（含其他 `SECURITY` 持有者），完全照搬 AE2 安全终端的信任模型。owner 权限内建且不可被授权表修改。
 
 **当前局限**
 
 - 所有权转让未实现；owner 权限内建且不可被授权表修改。
-- 权限变更不广播——其他在线玩家不会实时收到权限更新通知（需重新打开 Network Terminal）。
+- 权限变更不广播——其他在线玩家需重新打开 Network Terminal 才能看到权限更新。
+- 授权仅限在线玩家——添加玩家时必须在线，用于服务端名称解析。
 

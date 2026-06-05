@@ -144,8 +144,13 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 - 跨维度支持、能量系统、Mixin 频道绕过
 - 网络终端 UI（ModularUI2 实现）
 
-**Phase 2（规划中）**：
-- 加密网络安全验证 UI
+**Phase 2（已完成）**：
+- AE2 风格权限系统（INJECT/EXTRACT/CRAFT/BUILD/SECURITY）
+- 细粒度访问控制（canViewNetwork / canUseNetwork / hasPermission 三层）
+- 旧存档迁移（角色制→权限制）
+- 删除密码系统、自助加入、封禁功能、AccessLevel 枚举
+
+**Phase 3（规划中）**：
 - Phantom 节点存储快照（离线设备库存可见）
 - 网络所有权转让
 - 多网络之间的物品路由/优先级

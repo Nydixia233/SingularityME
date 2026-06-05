@@ -22,8 +22,9 @@ src/
 │       │   ├── SingularityNetworkData.java          ← WorldSavedData 持久化
 │       │   ├── SingularityNetworkDefaults.java      ← 默认网络分配
 │       │   ├── AEReflection.java                    ← AE2 内部反射工具
-│       │   ├── AccessLevel.java                     ← 权限枚举
-│       │   └── SecurityLevel.java                   ← 网络安全级别枚举
+│       │   ├── PermissionBits.java                  ← 权限位操作工具
+│       │   ├── SingularityPermissionHelper.java     ← 权限校验工具
+│       │   └── SecurityLevel.java                   ← 网络安全级别枚举（PUBLIC/PRIVATE）
 │       ├── grid/                       ← 网格模型
 │       │   ├── SingularityGrid.java                 ← Grid 包装器
 │       │   ├── SingularityAnchorNode.java           ← 虚拟锚点
@@ -137,6 +138,8 @@ public class TileSingularityLevelEmitter extends AENetworkTile
 }
 ```
 
+> **注意**：实际实现中应在方块的 `removedByPlayer()` 和 `onBlockActivated()` 等入口通过 `SingularityPermissionHelper.checkBuild()` / `checkUse()` 进行权限校验，确保权限控制生效。
+
 ### Step 2：创建 Block 类
 
 ```java
@@ -214,6 +217,7 @@ Probe 是最直接的调试工具。放置后右键，显示：
 2. **跨维度失效** → 检查两个维度的设备是否在同一 `playerID` 下
 3. **物品不显示在终端** → 检查 Drive 是否有存储元件、StorageBus 是否正确匹配容器
 4. **合成不执行** → 检查 CraftingCore 是否在线、Interface 是否有样板
+5. **权限不足无法操作** → 检查 Network Terminal 权限页中是否已授予对应维度的权限（BUILD/INJECT/EXTRACT/CRAFT/SECURITY）
 
 ---
 
