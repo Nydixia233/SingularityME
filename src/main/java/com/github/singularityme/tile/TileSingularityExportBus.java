@@ -53,6 +53,7 @@ import appeng.api.util.IConfigManager;
 import appeng.api.util.IConfigurableObject;
 import appeng.helpers.IOreFilterable;
 import appeng.helpers.MultiCraftingTracker;
+import appeng.core.settings.TickRates;
 import appeng.me.GridAccessException;
 import appeng.me.GridNode;
 import appeng.parts.automation.BlockUpgradeInventory;
@@ -335,7 +336,7 @@ public class TileSingularityExportBus extends AENetworkInvTile
 
     @Override
     public TickingRequest getTickingRequest(final IGridNode node) {
-        return new TickingRequest(1, 20, false, false);
+        return new TickingRequest(TickRates.ExportBus.getMin(), TickRates.ExportBus.getMax(), false, false);
     }
 
     @Override
@@ -735,7 +736,7 @@ public class TileSingularityExportBus extends AENetworkInvTile
         final ForgeDirection facing = this.getTargetSide();
         final TileEntity te = SingularityChunkAccess.getLoadedAdjacentTileIfAccessible(this, facing);
         if (te == null) return null;
-        return InventoryAdaptor
+        return SingularityBusTargetAdapters
             .getAdaptor(te, facing.getOpposite(), InventoryAdaptor.ALLOW_ITEMS | InventoryAdaptor.FOR_INSERTS);
     }
 

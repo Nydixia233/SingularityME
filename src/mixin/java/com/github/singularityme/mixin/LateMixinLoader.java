@@ -18,7 +18,9 @@ public class LateMixinLoader implements ILateMixinLoader {
     @Override
     public List<String> getMixins(Set<String> loadedMods) {
         List<String> mixins = new ArrayList<>();
+        mixins.add("ae2.MixinContainerCraftConfirm");
         mixins.add("ae2.MixinPathGridCache");
+        mixins.add("ae2.MixinPacketCraftRequest");
         return mixins;
     }
 }

@@ -59,3 +59,4 @@
 | 2026-06-04 | NEI 精确 GUI 类匹配导致奇点终端集成失效 | `ERROR-20260604-nei-exact-gui-class.md` |
 | 2026-06-05 | AE2 子 GUI 返回路径缺少奇点 PrimaryGui | `ERROR-20260605-ae2-primary-gui-return.md` |
 | 2026-06-05 | AE2 总线调度与矿辞状态细节未对齐 | `ERROR-20260605-ae2-bus-parity.md` |
+| 2026-06-05 | AE2 合成子容器与总线集成入口未完全对齐 | `ERROR-20260605-ae2-crafting-and-bus-integration.md` |

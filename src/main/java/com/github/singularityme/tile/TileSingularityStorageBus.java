@@ -62,6 +62,7 @@ import appeng.api.util.DimensionalCoord;
 import appeng.api.util.IConfigManager;
 import appeng.api.util.IConfigurableObject;
 import appeng.helpers.IInterfaceHost;
+import appeng.core.settings.TickRates;
 import appeng.me.GridAccessException;
 import appeng.me.GridNode;
 import appeng.me.storage.MEInventoryHandler;
@@ -590,7 +591,11 @@ public class TileSingularityStorageBus extends AENetworkInvTile implements IStor
 
     @Override
     public TickingRequest getTickingRequest(final IGridNode node) {
-        return new TickingRequest(5, 40, storageBusMonitors.isEmpty(), true);
+        return new TickingRequest(
+            TickRates.StorageBus.getMin(),
+            TickRates.StorageBus.getMax(),
+            storageBusMonitors.isEmpty(),
+            true);
     }
 
     @Override

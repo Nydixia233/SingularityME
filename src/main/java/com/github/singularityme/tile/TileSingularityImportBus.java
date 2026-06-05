@@ -40,6 +40,7 @@ import appeng.api.util.DimensionalCoord;
 import appeng.api.util.IConfigManager;
 import appeng.api.util.IConfigurableObject;
 import appeng.helpers.IOreFilterable;
+import appeng.core.settings.TickRates;
 import appeng.me.GridAccessException;
 import appeng.me.GridNode;
 import appeng.parts.automation.BlockUpgradeInventory;
@@ -298,7 +299,7 @@ public class TileSingularityImportBus extends AENetworkInvTile
 
     @Override
     public TickingRequest getTickingRequest(final IGridNode node) {
-        return new TickingRequest(1, 20, false, false);
+        return new TickingRequest(TickRates.ImportBus.getMin(), TickRates.ImportBus.getMax(), false, false);
     }
 
     @Override
@@ -584,7 +585,7 @@ public class TileSingularityImportBus extends AENetworkInvTile
         final ForgeDirection facing = this.getTargetSide();
         final TileEntity te = SingularityChunkAccess.getLoadedAdjacentTileIfAccessible(this, facing);
         if (te == null) return null;
-        return InventoryAdaptor
+        return SingularityBusTargetAdapters
             .getAdaptor(te, facing.getOpposite(), InventoryAdaptor.ALLOW_ITEMS | InventoryAdaptor.FOR_EXTRACTS);
     }
 

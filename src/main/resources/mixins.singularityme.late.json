@@ -6,7 +6,9 @@
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "ae2.MixinPathGridCache"
+    "ae2.MixinContainerCraftConfirm",
+    "ae2.MixinPathGridCache",
+    "ae2.MixinPacketCraftRequest"
   ],
   "client": [],
   "server": []

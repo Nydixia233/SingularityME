@@ -1,7 +1,9 @@
 package com.github.singularityme.tile;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -17,23 +19,44 @@ import java.util.Map;
 import java.util.Random;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.inventory.IInventory;
+import net.minecraft.inventory.ISidedInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.IChatComponent;
 import net.minecraft.world.World;
+import net.minecraftforge.common.util.ForgeDirection;
 
 import org.junit.Test;
 
+import com.google.common.collect.ImmutableSet;
+
 import appeng.api.config.FuzzyMode;
 import appeng.api.config.SchedulingMode;
+import appeng.api.config.Actionable;
+import appeng.api.config.Upgrades;
+import appeng.api.networking.IGridNode;
+import appeng.api.networking.crafting.ICraftingLink;
+import appeng.api.networking.crafting.ICraftingPatternDetails;
+import appeng.api.networking.crafting.ICraftingProviderHelper;
+import appeng.api.networking.ticking.TickingRequest;
 import appeng.api.storage.StorageChannel;
 import appeng.api.storage.IMEMonitor;
 import appeng.api.storage.data.IAETagCompound;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStackType;
+import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IItemList;
+import appeng.api.util.AECableType;
+import appeng.api.util.DimensionalCoord;
+import appeng.core.settings.TickRates;
+import appeng.helpers.DualityInterface;
+import appeng.helpers.IInterfaceHost;
 import appeng.me.storage.MEInventoryHandler;
+import appeng.util.InventoryAdaptor;
+import appeng.util.inv.AdaptorDualityInterface;
 import io.netty.buffer.ByteBuf;
 
 /** 验证奇点输出/存储总线与 AE2 原版细节保持一致。 */
@@ -101,6 +124,72 @@ public class TileSingularityExportBusParityTest {
         assertSame(third, iterator.next());
     }
 
+    /** 输出总线 tick 频率必须使用 AE2 原版 ExportBus 配置，不能用 1 tick 硬编码。 */
+    @Test
+    public void exportBusTickRequestUsesAe2TickRates() {
+        final int oldMin = TickRates.ExportBus.getMin();
+        final int oldMax = TickRates.ExportBus.getMax();
+        try {
+            TickRates.ExportBus.setMin(11);
+            TickRates.ExportBus.setMax(47);
+            final TickingRequest request = new TileSingularityExportBus().getTickingRequest(null);
+
+            assertEquals(11, request.minTickRate);
+            assertEquals(47, request.maxTickRate);
+        } finally {
+            TickRates.ExportBus.setMin(oldMin);
+            TickRates.ExportBus.setMax(oldMax);
+        }
+    }
+
+    /** 输入总线 tick 频率必须使用 AE2 原版 ImportBus 配置，避免比原版更快抽取。 */
+    @Test
+    public void importBusTickRequestUsesAe2TickRates() {
+        final int oldMin = TickRates.ImportBus.getMin();
+        final int oldMax = TickRates.ImportBus.getMax();
+        try {
+            TickRates.ImportBus.setMin(13);
+            TickRates.ImportBus.setMax(53);
+            final TickingRequest request = new TileSingularityImportBus().getTickingRequest(null);
+
+            assertEquals(13, request.minTickRate);
+            assertEquals(53, request.maxTickRate);
+        } finally {
+            TickRates.ImportBus.setMin(oldMin);
+            TickRates.ImportBus.setMax(oldMax);
+        }
+    }
+
+    /** 存储总线 tick 频率也必须跟随 AE2 StorageBus 配置，避免配置包下再次漂移。 */
+    @Test
+    public void storageBusTickRequestUsesAe2TickRates() throws Exception {
+        final int oldMin = TickRates.StorageBus.getMin();
+        final int oldMax = TickRates.StorageBus.getMax();
+        try {
+            TickRates.StorageBus.setMin(17);
+            TickRates.StorageBus.setMax(61);
+            final TickingRequest request = newRetiredStorageBus().getTickingRequest(null);
+
+            assertEquals(17, request.minTickRate);
+            assertEquals(61, request.maxTickRate);
+        } finally {
+            TickRates.StorageBus.setMin(oldMin);
+            TickRates.StorageBus.setMax(oldMax);
+        }
+    }
+
+    /** 直连奇点接口时，总线必须像 AE2 原版接口一样走 DualityInterface adaptor。 */
+    @Test
+    public void interfaceHostTargetUsesDualityAdaptorForItems() {
+        final InventoryAdaptor adaptor = SingularityBusTargetAdapters.getAdaptor(
+            new FakeInterfaceInventory(),
+            ForgeDirection.NORTH,
+            InventoryAdaptor.ALLOW_ITEMS | InventoryAdaptor.FOR_INSERTS);
+
+        assertNotNull(adaptor);
+        assertTrue(adaptor instanceof AdaptorDualityInterface);
+    }
+
     /** 存储总线 setFilter 必须像 AE2 一样同步更新 previous，拆装矿辞卡后才能恢复当前文本。 */
     @Test
     public void storageBusSetFilterStoresCurrentTextAsPreviousText() throws Exception {
@@ -159,6 +248,191 @@ public class TileSingularityExportBusParityTest {
         unsafeField.setAccessible(true);
         final sun.misc.Unsafe unsafe = (sun.misc.Unsafe) unsafeField.get(null);
         return cls.cast(unsafe.allocateInstance(cls));
+    }
+
+    private static final class FakeInterfaceInventory extends TileEntity implements IInterfaceHost, ISidedInventory {
+
+        @Override
+        public DualityInterface getInterfaceDuality() {
+            return null;
+        }
+
+        @Override
+        public java.util.EnumSet<ForgeDirection> getTargets() {
+            return java.util.EnumSet.of(ForgeDirection.NORTH);
+        }
+
+        @Override
+        public TileEntity getTileEntity() {
+            return this;
+        }
+
+        @Override
+        public void saveChanges() {}
+
+        @Override
+        public IGridNode getActionableNode() {
+            return null;
+        }
+
+        @Override
+        public IGridNode getGridNode(final ForgeDirection dir) {
+            return null;
+        }
+
+        @Override
+        public AECableType getCableConnectionType(final ForgeDirection dir) {
+            return AECableType.NONE;
+        }
+
+        @Override
+        public void securityBreak() {}
+
+        @Override
+        public DimensionalCoord getLocation() {
+            return new DimensionalCoord(0, 0, 0, 0);
+        }
+
+        @Override
+        public int rows() {
+            return 1;
+        }
+
+        @Override
+        public int rowSize() {
+            return 1;
+        }
+
+        @Override
+        public IInventory getPatterns() {
+            return this;
+        }
+
+        @Override
+        public String getName() {
+            return "fake";
+        }
+
+        @Override
+        public boolean shouldDisplay() {
+            return true;
+        }
+
+        @Override
+        public appeng.api.util.IConfigManager getConfigManager() {
+            return null;
+        }
+
+        @Override
+        public int getInstalledUpgrades(final Upgrades u) {
+            return 0;
+        }
+
+        @Override
+        public TileEntity getTile() {
+            return this;
+        }
+
+        @Override
+        public net.minecraft.inventory.IInventory getInventoryByName(final String name) {
+            return null;
+        }
+
+        @Override
+        public void provideCrafting(final ICraftingProviderHelper craftingTracker) {}
+
+        @Override
+        public boolean pushPattern(final ICraftingPatternDetails patternDetails,
+            final net.minecraft.inventory.InventoryCrafting table) {
+            return false;
+        }
+
+        @Override
+        public boolean isBusy() {
+            return false;
+        }
+
+        @Override
+        public ImmutableSet<ICraftingLink> getRequestedJobs() {
+            return ImmutableSet.of();
+        }
+
+        @Override
+        public IAEStack<?> injectCraftedItems(final ICraftingLink link, final IAEStack<?> items, final Actionable mode) {
+            return items;
+        }
+
+        @Override
+        public void jobStateChange(final ICraftingLink link) {}
+
+        @Override
+        public int[] getAccessibleSlotsFromSide(final int side) {
+            return new int[] { 0 };
+        }
+
+        @Override
+        public boolean canInsertItem(final int slot, final ItemStack stack, final int side) {
+            return true;
+        }
+
+        @Override
+        public boolean canExtractItem(final int slot, final ItemStack stack, final int side) {
+            return true;
+        }
+
+        @Override
+        public int getSizeInventory() {
+            return 1;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(final int slot) {
+            return null;
+        }
+
+        @Override
+        public ItemStack decrStackSize(final int slot, final int amount) {
+            return null;
+        }
+
+        @Override
+        public ItemStack getStackInSlotOnClosing(final int slot) {
+            return null;
+        }
+
+        @Override
+        public void setInventorySlotContents(final int slot, final ItemStack stack) {}
+
+        @Override
+        public String getInventoryName() {
+            return "fake";
+        }
+
+        @Override
+        public boolean hasCustomInventoryName() {
+            return false;
+        }
+
+        @Override
+        public int getInventoryStackLimit() {
+            return 64;
+        }
+
+        @Override
+        public boolean isUseableByPlayer(final net.minecraft.entity.player.EntityPlayer player) {
+            return true;
+        }
+
+        @Override
+        public void openInventory() {}
+
+        @Override
+        public void closeInventory() {}
+
+        @Override
+        public boolean isItemValidForSlot(final int slot, final ItemStack stack) {
+            return true;
+        }
     }
 
     private static final class FakeItemStack implements IAEItemStack {
