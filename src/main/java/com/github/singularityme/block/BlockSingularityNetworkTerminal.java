@@ -1,8 +1,10 @@
 package com.github.singularityme.block;
 
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
+import com.github.singularityme.SingularityME;
 import com.github.singularityme.tile.TileSingularityNetworkTerminal;
 
 /**
@@ -26,5 +28,14 @@ public class BlockSingularityNetworkTerminal extends BlockSingularityTerminal {
     @Override
     protected int getGuiId() {
         return GUI_ID;
+    }
+
+    @Override
+    public boolean onBlockActivated(final World world, final int x, final int y, final int z, final EntityPlayer player,
+        final int side, final float hitX, final float hitY, final float hitZ) {
+        if (!world.isRemote) {
+            player.openGui(SingularityME.instance, GUI_ID, world, x, y, z);
+        }
+        return true;
     }
 }

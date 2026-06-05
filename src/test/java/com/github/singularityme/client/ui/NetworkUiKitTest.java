@@ -1,0 +1,647 @@
+package com.github.singularityme.client.ui;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.junit.Test;
+
+import com.cleanroommc.modularui.api.drawable.IDrawable;
+import com.cleanroommc.modularui.api.widget.IWidget;
+import com.cleanroommc.modularui.widgets.ButtonWidget;
+import com.cleanroommc.modularui.widgets.ListWidget;
+import com.cleanroommc.modularui.widgets.layout.Flow;
+import com.github.singularityme.client.ui.NetworkUiKit.Palette;
+import com.github.singularityme.core.PermissionBits;
+import com.github.singularityme.core.SecurityLevel;
+import com.github.singularityme.network.packet.NetworkActionResult;
+import com.github.singularityme.network.packet.PacketNetworkStatus;
+import com.github.singularityme.network.packet.PacketNetworkTabData.NetworkEntry;
+
+import appeng.api.config.SecurityPermissions;
+
+/** 验证网络 UI 设备类型展示辅助方法。 */
+public class NetworkUiKitTest {
+
+    @Test
+    public void assignsKnownDeviceColors() {
+        assertEquals(Palette.ACCENT_AMBER, NetworkUiKit.deviceTypeColor("TileSingularityPowerCore"));
+        assertEquals(Palette.ACCESS_MEMBER, NetworkUiKit.deviceTypeColor("TileSingularityDrive"));
+        assertEquals(Palette.ACCESS_ADMIN, NetworkUiKit.deviceTypeColor("TileSingularityNetworkTerminal"));
+        assertEquals(Palette.BTN_NORMAL, NetworkUiKit.deviceTypeColor("TileSingularityStorageBus"));
+        assertEquals(Palette.TEXT_MUTED, NetworkUiKit.deviceTypeColor("UnmappedDevice"));
+    }
+
+    /** 提亮颜色时保留 alpha，并按比例靠近白色。 */
+    @Test
+    public void lightensColorTowardWhite() {
+        assertEquals(0xFF7F7F7F, NetworkUiKit.lighten(0xFF000000, 0.5f));
+        assertEquals(0xFFFFFFFF, NetworkUiKit.lighten(0xFFFFFFFF, 0.5f));
+    }
+
+    /** 压暗系数应限制在 0~1，避免越界调用产生反直觉颜色。 */
+    @Test
+    public void clampsDarkenFactor() {
+        assertEquals(0xFFFFFFFF, NetworkUiKit.darken(0xFFFFFFFF, 2.0f));
+        assertEquals(0xFF000000, NetworkUiKit.darken(0xFFFFFFFF, -1.0f));
+    }
+
+    /** 选中列表行只使用低饱和强调色，避免整行接近原色高亮。 */
+    @Test
+    public void selectedRowColorDarkensAccent() {
+        assertEquals(0xFF122438, NetworkUiKit.selectedRowColor(0xFF4A90E2));
+        assertEquals(0xFF122438, NetworkUiKit.selectedRowColor(0x004A90E2));
+    }
+
+    /** 颜色展示统一为 6 位大写 RGB，不泄露 alpha。 */
+    @Test
+    public void formatsRgbHexUppercase() {
+        assertEquals("4A90E2", NetworkUiKit.rgbHex(0xFF4A90E2));
+        assertEquals("00000A", NetworkUiKit.rgbHex(0x0000000A));
+    }
+
+    /** 默认网络徽章使用明确语义文本，避免单字母 D 在中文界面中像残留缩写。 */
+    @Test
+    public void defaultBadgeTextIsSemantic() {
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_terminal.badge.default"),
+            NetworkUiKit.defaultBadgeText());
+    }
+
+    /** 当前设备网络徽章必须使用明确语义文本，避免 "*" 在设备选择页看起来像异常符号。 */
+    @Test
+    public void currentBadgeTextIsSemantic() {
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.badge.current"),
+            NetworkUiKit.currentBadgeText());
+    }
+
+    /** 导航按钮使用稳定宽度，避免激活背景只绘制成小方块。 */
+    @Test
+    public void computesStableNavButtonWidth() {
+        assertEquals(110, NetworkUiKit.navButtonWidth(594, 5));
+        assertEquals(96, NetworkUiKit.navButtonWidth(520, 5));
+    }
+
+    @Test
+    public void capsTerminalPanelSize() {
+        assertEquals(1120, NetworkUiKit.terminalPanelWidth(2560, 1));
+        assertEquals(700, NetworkUiKit.terminalPanelHeight(1440, 1));
+        assertEquals(594, NetworkUiKit.terminalPanelWidth(2048, 2));
+        assertEquals(359, NetworkUiKit.terminalPanelHeight(1088, 2));
+        assertEquals(594, NetworkUiKit.terminalPanelWidth(2048, 3));
+        assertEquals(359, NetworkUiKit.terminalPanelHeight(1088, 3));
+        assertEquals(594, NetworkUiKit.terminalPanelWidth(2048, 4));
+        assertEquals(359, NetworkUiKit.terminalPanelHeight(1088, 4));
+        assertEquals(480, NetworkUiKit.terminalPanelWidth(800, 1));
+        assertEquals(317, NetworkUiKit.terminalPanelHeight(480, 1));
+    }
+
+    /** 终端内部控件以 guiScale=2 为参考；更高缩放需要缩小 GUI 坐标尺寸，保持物理像素观感一致。 */
+    @Test
+    public void computesTerminalVisualScale() {
+        assertEquals(1.0f, NetworkUiKit.terminalVisualScale(1), 0.001f);
+        assertEquals(1.0f, NetworkUiKit.terminalVisualScale(2), 0.001f);
+        assertEquals(2.0f / 3.0f, NetworkUiKit.terminalVisualScale(3), 0.001f);
+        assertEquals(0.5f, NetworkUiKit.terminalVisualScale(4), 0.001f);
+        assertEquals(20, NetworkUiKit.terminalScaledPx(30, 3));
+        assertEquals(15, NetworkUiKit.terminalScaledPx(30, 4));
+    }
+
+    /** 网络终端使用固定坐标骨架，避免顶层 Flow 相对布局在游戏内溢出或拉伸。 */
+    @Test
+    public void computesFixedTerminalLayout() {
+        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(594, 359);
+
+        assertEquals(8, layout.navX);
+        assertEquals(8, layout.navY);
+        assertEquals(578, layout.navW);
+        assertEquals(30, layout.navH);
+        assertEquals(8, layout.railX);
+        assertEquals(82, layout.railY);
+        assertEquals(208, layout.railW);
+        assertEquals(267, layout.railH);
+        assertEquals(179, layout.railListH);
+        assertEquals(228, layout.contentX);
+        assertEquals(82, layout.contentY);
+        assertEquals(346, layout.contentW);
+        assertEquals(227, layout.contentH);
+        assertEquals(228, layout.bottomX);
+        assertEquals(317, layout.bottomY);
+        assertEquals(346, layout.bottomW);
+        assertEquals(32, layout.bottomH);
+        assertTrue(layout.contentY + layout.contentH < layout.bottomY);
+        assertTrue(layout.railY + layout.railH <= 349);
+    }
+
+    /** 高 GUI 缩放下不使用固定 GUI 坐标最小宽高硬撑面板，避免 guiScale=3/4 下整体变胖。 */
+    @Test
+    public void keepsTerminalLayoutBoundedAtHighGuiScale() {
+        NetworkUiKit.TerminalLayout layout = NetworkUiKit.terminalLayout(
+            NetworkUiKit.terminalPanelWidth(2048, 3),
+            NetworkUiKit.terminalPanelHeight(1088, 3),
+            3);
+
+        assertEquals(8, layout.navX);
+        assertEquals(30, layout.navH);
+        assertEquals(208, layout.railW);
+        assertEquals(228, layout.contentX);
+        assertEquals(346, layout.contentW);
+        assertEquals(227, layout.contentH);
+        assertEquals(179, layout.railListH);
+        assertTrue(layout.contentY + layout.contentH < layout.bottomY);
+        assertTrue(layout.railListH >= 72);
+    }
+
+    /** 设备网络选择 GUI 必须与网络终端使用同一套外框尺寸，避免在高分辨率下被放大成近乎全屏。 */
+    @Test
+    public void alignsNetworkTabPanelSizeWithTerminal() {
+        NetworkUiKit.NetworkTabLayout tabLayout = NetworkUiKit.networkTabLayout(2048, 1088, 3);
+
+        assertEquals(NetworkUiKit.terminalPanelWidth(2048, 3), tabLayout.panelW);
+        assertEquals(NetworkUiKit.terminalPanelHeight(1088, 3), tabLayout.panelH);
+        assertEquals(NetworkUiKit.terminalVisualScale(3), tabLayout.visualScale, 0.001f);
+        assertEquals(594, tabLayout.panelW);
+        assertEquals(359, tabLayout.panelH);
+    }
+
+    /** 设备网络选择 GUI 的左侧列表和右侧摘要沿用终端固定坐标骨架，只替换右侧内容。 */
+    @Test
+    public void alignsNetworkTabBodyWithTerminalLayout() {
+        NetworkUiKit.NetworkTabLayout tabLayout = NetworkUiKit.networkTabLayout(2048, 1088, 3);
+        NetworkUiKit.TerminalLayout terminalLayout = NetworkUiKit.terminalLayout(tabLayout.panelW, tabLayout.panelH, 3);
+
+        assertEquals(terminalLayout.railX, tabLayout.railX);
+        assertEquals(terminalLayout.railY, tabLayout.railY);
+        assertEquals(terminalLayout.railW, tabLayout.railW);
+        assertEquals(terminalLayout.railH, tabLayout.railH);
+        assertEquals(terminalLayout.railListH, tabLayout.railListH);
+        assertEquals(terminalLayout.contentX, tabLayout.summaryX);
+        assertEquals(terminalLayout.contentY, tabLayout.summaryY);
+        assertEquals(terminalLayout.contentW, tabLayout.summaryW);
+        assertEquals(terminalLayout.railH, tabLayout.summaryH);
+    }
+
+    /** 主页信息在宽面板中使用两列紧凑布局，对齐 companion 预览稿的信息密度。 */
+    @Test
+    public void computesHomeInfoColumnWidth() {
+        assertEquals(172, NetworkUiKit.homeInfoColumnWidth(346));
+        assertEquals(320, NetworkUiKit.homeInfoColumnWidth(320));
+    }
+
+    @Test
+    public void detectsHomeInfoColumnMode() {
+        assertTrue(NetworkUiKit.homeInfoUsesTwoColumns(338));
+        assertFalse(NetworkUiKit.homeInfoUsesTwoColumns(320));
+    }
+
+    /** 内容视口存在内边距，主页两列宽度必须按实际可用宽度计算，避免右侧被裁切。 */
+    @Test
+    public void computesContentInnerWidthForHomeRows() {
+        assertEquals(4, Palette.CONTENT_VIEWPORT_PAD);
+        assertEquals(338, NetworkUiKit.terminalContentInnerWidth(346));
+        assertEquals(168, NetworkUiKit.homeInfoColumnWidth(NetworkUiKit.terminalContentInnerWidth(346)));
+    }
+
+    /** 切换网络时优先复用已收到的状态快照，避免内容区进入空白 loading 中间帧。 */
+    @Test
+    public void reusesCachedStatusForSelectedNetwork() {
+        final Map<Integer, PacketNetworkStatus> cache = new LinkedHashMap<>();
+        final PacketNetworkStatus status = new PacketNetworkStatus(13, 120D, 240D, Collections.emptyList());
+        cache.put(status.networkID, status);
+
+        assertSame(status, NetworkUiKit.cachedStatusForNetwork(cache, 13));
+        assertNull(NetworkUiKit.cachedStatusForNetwork(cache, 14));
+        assertNull(NetworkUiKit.cachedStatusForNetwork(cache, 0));
+    }
+
+    /** 状态包未返回时用稳定占位值填充主页指标，避免切换后指标行忽然消失再出现。 */
+    @Test
+    public void usesPendingStatusPlaceholderWhileLoading() {
+        final PacketNetworkStatus status = new PacketNetworkStatus(13, 120D, 240D, Collections.emptyList());
+
+        assertEquals("-", NetworkUiKit.statusValueOrPending(null, "120 AE"));
+        assertEquals("120 AE", NetworkUiKit.statusValueOrPending(status, "120 AE"));
+    }
+
+    /** 主页顶部能量显示为现有/容量（百分比），状态未返回时保持占位。 */
+    @Test
+    public void formatsHomeEnergyOverview() {
+        assertEquals("-", NetworkUiKit.formatHomeEnergyOverview(null));
+        assertEquals("120 AE / 240 AE (50%)", NetworkUiKit.formatHomeEnergyOverview(
+            new PacketNetworkStatus(13, 120D, 240D, Collections.emptyList())));
+        assertEquals("900.00T AE / 900.00T AE (100%)", NetworkUiKit.formatHomeEnergyOverview(
+            new PacketNetworkStatus(13, 900_000_000_000_000D, 900_000_000_000_000D, Collections.emptyList())));
+    }
+
+    /** 主页顶部在线率显示为在线/总数（百分比）。 */
+    @Test
+    public void formatsHomeOnlineOverview() {
+        assertEquals("-", NetworkUiKit.formatHomeOnlineOverview(null));
+        assertEquals("0 / 0 (0%)", NetworkUiKit.formatHomeOnlineOverview(
+            new PacketNetworkStatus(13, 0D, 0D, Collections.emptyList())));
+        assertEquals("1 / 2 (50%)", NetworkUiKit.formatHomeOnlineOverview(new PacketNetworkStatus(
+            13,
+            0D,
+            0D,
+            java.util.Arrays.asList(
+                new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 1, 2, 3, 0, true),
+                new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 4, 5, 6, 0, false)))));
+    }
+
+    /** 主页设备统计按状态包中的首次出现顺序聚合，便于稳定渲染两列网格。 */
+    @Test
+    public void countsHomeDeviceTypesInStableOrder() {
+        final PacketNetworkStatus status = new PacketNetworkStatus(
+            13,
+            0D,
+            0D,
+            java.util.Arrays.asList(
+                new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 1, 2, 3, 0, true),
+                new PacketNetworkStatus.DeviceInfo("TileSingularityPowerCore", 4, 5, 6, 0, true),
+                new PacketNetworkStatus.DeviceInfo("TileSingularityDrive", 7, 8, 9, 0, false)));
+
+        final Map<String, Integer> counts = NetworkUiKit.countDeviceTypes(status);
+
+        assertEquals(Integer.valueOf(2), counts.get("TileSingularityDrive"));
+        assertEquals(Integer.valueOf(1), counts.get("TileSingularityPowerCore"));
+        assertEquals("TileSingularityDrive", counts.keySet().iterator().next());
+        assertTrue(NetworkUiKit.countDeviceTypes(null).isEmpty());
+    }
+
+    /** 主页设备统计的值列统一使用 xN，和统计页文案保持一致。 */
+    @Test
+    public void formatsHomeDeviceCountBadge() {
+        assertEquals("x4", NetworkUiKit.formatCountBadge(4));
+        assertEquals("x0", NetworkUiKit.formatCountBadge(0));
+        assertEquals("x0", NetworkUiKit.formatCountBadge(-1));
+    }
+
+    /** 终端表面色保持参考稿的深蓝灰层级，避免内容区退回纯黑或高对比闪烁。 */
+    @Test
+    public void exposesReferenceSurfaceColors() {
+        assertEquals(0xF0141923, Palette.BG_PANEL);
+        assertEquals(0xD80D1219, Palette.BG_LIST);
+        assertEquals(0xFF192331, Palette.BG_ROW_SOFT);
+        assertEquals(0xB005070B, Palette.BG_OVERLAY);
+    }
+
+    @Test
+    public void formatsCompactEnergy() {
+        assertEquals("9.22P AE", NetworkUiKit.formatCompactEnergy(9223372036854777D));
+        assertEquals("120k AE", NetworkUiKit.formatCompactEnergy(120000D));
+    }
+
+    @Test
+    public void computesStableBadgeWidth() {
+        assertEquals(24, NetworkUiKit.badgeWidth("*"));
+        assertEquals(32, NetworkUiKit.badgeWidth("默认"));
+        assertEquals(57, NetworkUiKit.badgeWidth("Default"));
+        assertEquals(32, NetworkUiKit.idPillWidth(1));
+        assertEquals(36, NetworkUiKit.idPillWidth(123));
+    }
+
+    /** 表单与主页标签使用固定宽度，避免值列和输入框起点抖动。 */
+    @Test
+    public void exposesStableLabelWidths() {
+        assertEquals(44, Palette.INFO_LABEL_W);
+        assertEquals(76, Palette.FORM_LABEL_W);
+    }
+
+    @Test
+    public void treatsTwoArgumentPaddingAsHorizontalThenVertical() {
+        final Flow row = Flow.row().padding(4, 0);
+
+        assertEquals(4, row.getArea().getPadding().getLeft());
+        assertEquals(4, row.getArea().getPadding().getRight());
+        assertEquals(0, row.getArea().getPadding().getTop());
+        assertEquals(0, row.getArea().getPadding().getBottom());
+    }
+
+    /** 左侧列表的圆点、编号胶囊和行距使用紧凑尺寸，匹配游戏内小列观感。 */
+    @Test
+    public void exposesCompactNetworkListMetrics() {
+        assertEquals(6, Palette.STATUS_DOT_SIZE);
+        assertEquals(4, Palette.LIST_ROW_PADDING_H);
+        assertEquals(4, Palette.NETWORK_ROW_INSET);
+        assertEquals(4, Palette.LIST_CONTENT_INSET);
+        assertEquals(4, Palette.BADGE_PADDING_H);
+        assertPaletteFieldMissing("BADGE_MARGIN_H");
+        assertEquals(18, Palette.PERMISSION_CHIP_W);
+        assertEquals(32, Palette.ID_PILL_MIN_W);
+        assertEquals(2, Palette.LIST_ROW_GAP);
+    }
+
+    /** 权限摘要保持 BUILD/CRAFT/INJECT/EXTRACT/SECURITY 的紧凑字母顺序。 */
+    @Test
+    public void permissionMarksUseCompactLetters() {
+        assertEquals(
+            "B C I E S",
+            NetworkUiKit.permissionMarks(PermissionBits.toBits(EnumSet.allOf(SecurityPermissions.class))));
+        assertEquals("I E", NetworkUiKit.permissionMarks(
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.INJECT, SecurityPermissions.EXTRACT))));
+        assertEquals("gui.singularityme.permission.security", NetworkUiKit.permissionLabelKey(SecurityPermissions.SECURITY));
+    }
+
+    /** 权限胶囊按单个权限位切换，避免 UI 复制 bit 运算时出现顺序或掩码错误。 */
+    @Test
+    public void togglesSinglePermissionBit() {
+        final int buildOnly = PermissionBits.toBits(EnumSet.of(SecurityPermissions.BUILD));
+
+        assertEquals(0, NetworkUiKit.togglePermissionBit(buildOnly, SecurityPermissions.BUILD));
+        assertEquals(
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.BUILD, SecurityPermissions.CRAFT)),
+            NetworkUiKit.togglePermissionBit(buildOnly, SecurityPermissions.CRAFT));
+        assertEquals(buildOnly, NetworkUiKit.togglePermissionBit(buildOnly, null));
+    }
+
+    /** 带自身背景的表单胶囊也必须让圆点、文字和分段按钮离左右边界 4px。 */
+    @Test
+    public void keepsFormControlContentInsideItsOwnBackground() {
+        final Flow colorField = NetworkUiKit.colorReadonly(0x4A90E2);
+        assertEquals(4, colorField.getArea().getPadding().getLeft());
+        assertEquals(4, colorField.getArea().getPadding().getRight());
+        assertEquals(0, colorField.getArea().getPadding().getTop());
+        assertEquals(0, colorField.getArea().getPadding().getBottom());
+
+        final Flow securityField = NetworkUiKit.securitySegmentRow(SecurityLevel.PRIVATE, ignored -> {});
+        assertEquals(4, securityField.getArea().getPadding().getLeft());
+        assertEquals(4, securityField.getArea().getPadding().getRight());
+        assertEquals(0, securityField.getArea().getPadding().getTop());
+        assertEquals(0, securityField.getArea().getPadding().getBottom());
+    }
+
+    /** 主页信息胶囊使用自身背景时，内部标签和值也必须离左右边界 4px。 */
+    @Test
+    public void keepsInfoRowsInsideTheirOwnBackground() {
+        final Flow fixed = NetworkUiKit.infoRowFixed("标签", "值");
+        assertEquals(4, fixed.getArea().getPadding().getLeft());
+        assertEquals(4, fixed.getArea().getPadding().getRight());
+        assertEquals(0, fixed.getArea().getPadding().getTop());
+        assertEquals(0, fixed.getArea().getPadding().getBottom());
+
+        final Flow compact = NetworkUiKit.infoRowCompact("标签", "值");
+        assertEquals(4, compact.getArea().getPadding().getLeft());
+        assertEquals(4, compact.getArea().getPadding().getRight());
+        assertEquals(0, compact.getArea().getPadding().getTop());
+        assertEquals(0, compact.getArea().getPadding().getBottom());
+
+        final Flow selection = NetworkUiKit.selectionBar("选中", 0x4A90E2);
+        assertEquals(4, selection.getArea().getPadding().getLeft());
+        assertEquals(4, selection.getArea().getPadding().getRight());
+        assertEquals(0, selection.getArea().getPadding().getTop());
+        assertEquals(0, selection.getArea().getPadding().getBottom());
+    }
+
+    private static void assertPaletteFieldMissing(final String name) {
+        try {
+            Palette.class.getField(name);
+            fail("Palette should not expose " + name + ".");
+        } catch (NoSuchFieldException expected) {
+            // expected
+        }
+    }
+
+    /** 左侧网络栏、连接列表和成员列表使用更紧凑的高度，避免形成厚重色块。 */
+    @Test
+    public void usesCompactControlHeights() {
+        assertEquals(26, Palette.ROW_H);
+        assertEquals(22, Palette.LIST_ROW_H);
+        assertEquals(16, Palette.TEXT_ROW_H);
+        assertEquals(16, Palette.RAIL_HEADER_H);
+        assertEquals(24, Palette.RAIL_FILTER_H);
+        assertEquals(22, Palette.RAIL_ROW_H);
+        assertEquals(24, Palette.RAIL_ACTION_H);
+        assertEquals(16, Palette.BADGE_H);
+        assertEquals(16, Palette.ID_PILL_H);
+    }
+
+    /** 高 GUI 缩放下仍保留两栏布局的最小可用空间，并让左侧操作按钮留在 rail 内部。 */
+    @Test
+    public void exposesTerminalMinimumBounds() {
+        assertEquals(296, NetworkUiKit.terminalMinimumWidth());
+        assertEquals(236, NetworkUiKit.terminalMinimumHeight());
+        assertEquals(88, NetworkUiKit.terminalRailChromeHeight());
+        assertEquals(88, NetworkUiKit.railActionWidth(96));
+        assertEquals(200, NetworkUiKit.railActionWidth(208));
+    }
+
+    /** 终端列表高度优先占满内容区，只为过滤、元信息和选中栏预留稳定空间。 */
+    @Test
+    public void computesTerminalListHeights() {
+        assertEquals(240, NetworkUiKit.selectionListHeight(356));
+        assertEquals(306, NetworkUiKit.memberListHeight(356));
+        assertEquals(120, NetworkUiKit.selectionListHeight(180));
+        assertEquals(130, NetworkUiKit.memberListHeight(180));
+    }
+
+    /** 成员页列表必须为添加玩家输入行预留空间，避免输入框被顶出可见区域。 */
+    @Test
+    public void memberListLeavesRoomForAddMemberRow() {
+        final int contentHeight = 180;
+        final int addRowBudget = Palette.ROW_H
+            + Palette.MEMBER_ADD_ROW_MARGIN_V * 2
+            + Palette.TERMINAL_CONTENT_CHILD_GAP
+            + Palette.CONTENT_VIEWPORT_PAD * 2;
+
+        assertTrue(NetworkUiKit.memberListHeight(contentHeight) + addRowBudget <= contentHeight);
+    }
+
+    /** 嵌套列表必须使用内容视口扣除 padding 后的高度，避免外层内容区出现 8px 假滚动。 */
+    @Test
+    public void computesContentInnerHeightForNestedLists() {
+        assertEquals(219, NetworkUiKit.terminalContentInnerHeight(227));
+        assertEquals(348, NetworkUiKit.terminalContentInnerHeight(356));
+        assertEquals(219, NetworkUiKit.connectionListHeight(227));
+    }
+
+    /** 页面切换复用同一个 ListWidget 时必须清除旧滚动位置，避免滚动偏移泄漏到其他页面。 */
+    @Test
+    public void resetsListScrollOffset() {
+        final ListWidget<?, ?> list = new ListWidget<>();
+        list.onInit();
+        list.size(100, 100);
+        list.getScrollData().setScrollSize(200);
+        list.getScrollData().scrollTo(list.getScrollArea(), 40);
+
+        NetworkUiKit.resetListScroll(list);
+
+        assertEquals(0, list.getScrollData().getScroll());
+    }
+
+    /** 色板按钮视觉尺寸固定，选中态不得通过改变控件大小造成布局跳动。 */
+    @Test
+    public void exposesStableSwatchMetrics() {
+        assertEquals(26, Palette.SWATCH_BUTTON_SIZE);
+        assertEquals(22, Palette.SWATCH_INNER_SIZE);
+    }
+
+    /** 色板行必须把按钮完整放在父行点击区域内，否则游戏里会出现看得到但点不到。 */
+    @Test
+    public void keepsColorSwatchesInsideClickableRowBounds() {
+        final Flow row = NetworkUiKit.colorSwatchRow(new int[] { 0x4A90E2 }, 0x4A90E2, ignored -> {});
+
+        assertEquals(NetworkUiKit.formInputOffset(), row.getArea().getPadding().getLeft());
+        assertEquals(0, row.getArea().getPadding().getRight());
+        assertEquals(0, row.getArea().getPadding().getTop());
+        assertEquals(0, row.getArea().getPadding().getBottom());
+    }
+
+    /** 设置/创建页色板第一颗色块必须与上方表单输入框左边缘对齐。 */
+    @Test
+    public void alignsColorSwatchesWithFormInputStart() {
+        assertEquals(84, NetworkUiKit.formInputOffset());
+
+        final Flow row = NetworkUiKit.colorSwatchRow(new int[] { 0x4A90E2 }, 0x4A90E2, ignored -> {});
+
+        assertEquals(NetworkUiKit.formInputOffset(), row.getArea().getPadding().getLeft());
+    }
+
+    /** 色块视觉必须挂在 ButtonWidget 本体上，避免内部 Flow 抢占 MUI2 的 hover/click 命中链。 */
+    @Test
+    public void rendersColorSwatchesOnClickableButtonItself() {
+        final Flow row = NetworkUiKit.colorSwatchRow(new int[] { 0x4A90E2 }, 0x4A90E2, ignored -> {});
+        final IWidget child = row.getChildren().get(0);
+
+        assertTrue(child instanceof ButtonWidget);
+        final ButtonWidget<?> button = (ButtonWidget<?>) child;
+        assertTrue(IDrawable.isVisible(button.getBackground()));
+        assertTrue(IDrawable.isVisible(button.getOverlay()));
+        assertTrue(button.getChildren().isEmpty());
+    }
+
+    /** 公开网络由服务端下发全权限，客户端直接按可用网络处理。 */
+    @Test
+    public void treatsPublicGuestAsFullPermission() {
+        final NetworkEntry entry = entry(SecurityLevel.PUBLIC, allPermissionBits());
+
+        assertTrue(NetworkUiKit.canAccess(entry));
+        assertTrue(NetworkUiKit.isMemberAccess(entry));
+        assertTrue(NetworkUiKit.hasPermission(entry, SecurityPermissions.BUILD));
+        assertTrue(NetworkUiKit.hasPermission(entry, SecurityPermissions.SECURITY));
+    }
+
+    /** 私有访客没有任何权限时不可访问。 */
+    @Test
+    public void deniesPrivateGuestWithoutGrant() {
+        final NetworkEntry entry = entry(SecurityLevel.PRIVATE, 0);
+
+        assertFalse(NetworkUiKit.canAccess(entry));
+        assertFalse(NetworkUiKit.isMemberAccess(entry));
+        assertFalse(NetworkUiKit.hasPermission(entry, SecurityPermissions.BUILD));
+    }
+
+    /** 私有访客和已授权玩家在两种 GUI 中应得到一致权限判断。 */
+    @Test
+    public void classifiesPrivateGuestAndGrantedAccess() {
+        final NetworkEntry privateGuest = entry(SecurityLevel.PRIVATE, 0);
+        final NetworkEntry member = entry(SecurityLevel.PRIVATE, PermissionBits.DEFAULT_MEMBER_BITS);
+
+        assertFalse(NetworkUiKit.canAccess(privateGuest));
+        assertFalse(NetworkUiKit.hasPermission(privateGuest, SecurityPermissions.BUILD));
+
+        assertTrue(NetworkUiKit.canAccess(member));
+        assertTrue(NetworkUiKit.isMemberAccess(member));
+        assertTrue(NetworkUiKit.hasPermission(member, SecurityPermissions.BUILD));
+        assertFalse(NetworkUiKit.hasPermission(member, SecurityPermissions.SECURITY));
+    }
+
+    /** 操作结果颜色只按成功/失败语义映射，保证终端和设备选择界面反馈一致。 */
+    @Test
+    public void mapsActionResultColorsBySuccessFlag() {
+        assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.actionResultColor(NetworkActionResult.SUCCESS));
+        assertEquals(Palette.SECURITY_PUBLIC, NetworkUiKit.actionResultColor(NetworkActionResult.DEVICE_ASSIGNED));
+        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.actionResultColor(NetworkActionResult.NO_ACCESS));
+        assertEquals(Palette.TEXT_MUTED, NetworkUiKit.actionResultColor(null));
+    }
+
+    /** 设备分配主动作应随目标网络状态变化，减少“点了会发生什么”的猜测。 */
+    @Test
+    public void describesDeviceAssignmentPrimaryActions() {
+        final NetworkEntry current = entry(7, SecurityLevel.PRIVATE, PermissionBits.DEFAULT_MEMBER_BITS);
+        final NetworkEntry unassigned = entry(0, SecurityLevel.PUBLIC, 0);
+        final NetworkEntry buildTarget = entry(
+            8,
+            SecurityLevel.PRIVATE,
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.BUILD)));
+        final NetworkEntry extractOnlyTarget = entry(
+            9,
+            SecurityLevel.PRIVATE,
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.EXTRACT)));
+
+        assertFalse(NetworkUiKit.canAssignDeviceTo(current, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.current"),
+            NetworkUiKit.deviceAssignmentActionText(current, 7));
+
+        assertTrue(NetworkUiKit.canAssignDeviceTo(unassigned, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.unassign"),
+            NetworkUiKit.deviceAssignmentActionText(unassigned, 7));
+
+        assertTrue(NetworkUiKit.canAssignDeviceTo(buildTarget, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.assign"),
+            NetworkUiKit.deviceAssignmentActionText(buildTarget, 7));
+
+        assertFalse(NetworkUiKit.canAssignDeviceTo(extractOnlyTarget, 7));
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.action.unavailable"),
+            NetworkUiKit.deviceAssignmentActionText(extractOnlyTarget, 7));
+    }
+
+    /** 设备分配提示文字必须解释可用/不可用原因，并用稳定颜色表达状态。 */
+    @Test
+    public void explainsDeviceAssignmentState() {
+        final NetworkEntry current = entry(7, SecurityLevel.PRIVATE, PermissionBits.DEFAULT_MEMBER_BITS);
+        final NetworkEntry unassigned = entry(0, SecurityLevel.PUBLIC, 0);
+        final NetworkEntry buildTarget = entry(
+            8,
+            SecurityLevel.PRIVATE,
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.BUILD)));
+        final NetworkEntry extractOnlyTarget = entry(
+            9,
+            SecurityLevel.PRIVATE,
+            PermissionBits.toBits(EnumSet.of(SecurityPermissions.EXTRACT)));
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.current"),
+            NetworkUiKit.deviceAssignmentHint(current, 7));
+        assertEquals(Palette.TEXT_MUTED, NetworkUiKit.deviceAssignmentHintColor(current, 7));
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.unassign"),
+            NetworkUiKit.deviceAssignmentHint(unassigned, 7));
+        assertEquals(Palette.TEXT_MUTED, NetworkUiKit.deviceAssignmentHintColor(unassigned, 7));
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.network_tab.hint.assign"),
+            NetworkUiKit.deviceAssignmentHint(buildTarget, 7));
+        assertEquals(Palette.BTN_NORMAL, NetworkUiKit.deviceAssignmentHintColor(buildTarget, 7));
+
+        assertEquals(NetworkUiKit.tr("gui.singularityme.permission.no_build"),
+            NetworkUiKit.deviceAssignmentHint(extractOnlyTarget, 7));
+        assertEquals(Palette.BTN_DANGER_NORMAL, NetworkUiKit.deviceAssignmentHintColor(extractOnlyTarget, 7));
+    }
+
+    private static int allPermissionBits() {
+        return PermissionBits.toBits(EnumSet.allOf(SecurityPermissions.class));
+    }
+
+    private static NetworkEntry entry(final SecurityLevel security, final int permissionBits) {
+        return entry(7, security, permissionBits);
+    }
+
+    private static NetworkEntry entry(final int id, final SecurityLevel security, final int permissionBits) {
+        return new NetworkEntry(
+            id,
+            1,
+            false,
+            "Alpha",
+            0x4A90E2,
+            security.ordinal(),
+            permissionBits,
+            (permissionBits & (1 << SecurityPermissions.SECURITY.ordinal())) != 0,
+            false,
+            false);
+    }
+}

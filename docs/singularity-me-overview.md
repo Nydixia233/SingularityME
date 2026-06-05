@@ -36,12 +36,12 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 
 奇点网格默认无能量来源，需要 **奇点能量核心**（Singularity Power Core）提供 GT EU 电力接入：
 
-- 接受 GregTech EU 电力输入，每 tick 将 GT EU 转换并注入奇点网格
+- 接受 GregTech EU 电力输入，通过 AE2 `PowerUnits.EU -> PowerUnits.AE` 转换后写入 PowerCore 的 AE 缓冲
 - 内置 3 个能量元件槽位，总缓冲 = 元件数量 × 基础容量 × CONFIG 倍率：
   - **普通能量元件**：每个 200,000 AE（最多 64 个）
   - **致密能量元件**：每个 1,600,000 AE（最多 64 个）
   - **创造能量元件**：几近无限容量（限 1 个）
-- 实现 `IEnergyConnected` 接口，兼容 GT 的标准电力网络
+- PowerCore 实现 `IEnergyConnected` 接口，兼容 GT 的标准电力网络；`SingularityAnchorNode` 在网格侧暴露虚拟 `IAEPowerStorage`，按需从当前有效 PowerCore 提取 AE
 - 玩家可选择"真实供电"模式，按需扩展能量缓冲
 
 ---
@@ -56,7 +56,7 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 | 奇点终端 | ME Terminal | 访问奇点网格中的所有物品 |
 | 奇点合成终端 | ME Crafting Terminal | 终端内直接进行合成操作 |
 | 奇点样板终端 | ME Pattern Terminal | 创建和管理合成样板 |
-| 奇点网络终端 | — | 网络选择、成员管理、网络设置（基于 Qz UILib） |
+| 奇点网络终端 | — | 网络选择、权限管理、网络设置（基于 ModularUI2） |
 | 奇点输入总线 | ME Import Bus | 从相邻容器抽取物品存入网格 |
 | 奇点输出总线 | ME Export Bus | 从网格向相邻容器输出物品 |
 | 奇点接口 | ME Interface | 物品缓冲与自动合成接口 |
@@ -73,8 +73,9 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 **升级卡系统**
 
 - 存储总线：CAPACITY（最多 5 张，过滤槽从 18 扩展至 63）、FUZZY、INVERTER
-- 输入总线：CAPACITY（最多 2 张，过滤槽从 1 扩展至 9）、SPEED、FUZZY、REDSTONE
-- 输出总线：CAPACITY、SPEED、FUZZY、REDSTONE、CRAFTING
+- 输入总线：CAPACITY（最多 2 张，过滤槽从 1 扩展至 9）、SPEED、SUPERSPEED、SUPERLUMINALSPEED、FUZZY、REDSTONE、ORE_FILTER
+- 输出总线：CAPACITY、SPEED、SUPERSPEED、SUPERLUMINALSPEED、FUZZY、REDSTONE、CRAFTING、ORE_FILTER
+- 接口：CRAFTING、PATTERN_CAPACITY、ADVANCED_BLOCKING、FAKE_CRAFTING、LOCK_CRAFTING、FUZZY
 
 **过滤与控制**
 
@@ -84,7 +85,7 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 
 **GUI 完整性**
 
-- GUI 根据设备类型分别继承不同基类：总线类继承 `GuiUpgradeable`，终端类继承 AE2 原生 `GuiMEMonitorable`/`GuiCraftingTerm`/`GuiPatternTerm`，驱动器/合成核心/能量核心继承 `AEBaseGui`，网络终端使用 Qz UILib 自建界面
+- GUI 根据设备类型分别继承不同基类：总线类继承 `GuiUpgradeable`，终端类继承 AE2 原生 `GuiMEMonitorable`/`GuiCraftingTerm`/`GuiPatternTerm`，驱动器/合成核心/能量核心继承 `AEBaseGui`，网络终端使用 ModularUI2 自建界面
 - 存储总线 GUI 高度 251px，7 行 × 9 列过滤槽，含 clear/partition/priority 子界面
 - 输入/输出总线 GUI 按钮可见性与 AE2 完全一致（按升级卡安装情况动态显示）
 
@@ -102,7 +103,7 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 以下为最简摘要：
 
 - **节点注入**：通过 `AEReflection` 反射调用 AE2 的 package-private 方法 `GridNode.setGrid()`，将设备节点强制注入奇点网格，完全跳过路径计算和线缆扫描。
-- **能量虚拟化**：`SingularityAnchorNode` 充当虚拟锚点（坐标 `0,-256,0,MIN_VALUE`），`TileSingularityPowerCore` 将 GT EU 转换为 AE 能量，通过 `IAEPowerStorage` 接口注入网格。
+- **能量虚拟化**：`SingularityAnchorNode` 充当虚拟锚点（坐标 `0,-256,0,MIN_VALUE`）并暴露 `IAEPowerStorage`，`TileSingularityPowerCore` 将 GT EU 转换为 AE 缓冲，网格按需从当前有效 PowerCore 提取能量。
 - **通道绕过**：`MixinPathGridCache` 拦截 AE2 通道分配逻辑，使奇点网格设备不受 8 通道限制。
 - **1.7.10 兼容**：无 Forge Capability 系统，使用 `IInventory` / `ISidedInventory` 进行容器检测；NBT 序列化通过 `@TileEvent` 注解实现。
 
@@ -139,14 +140,14 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 ## 八、当前开发阶段
 
 **Phase 1（已完成）**：
-- 12 种奇点设备的基础功能（注册、联网、GUI、WAILA）
+- 12 种奇点设备（含调试探针）的基础功能（注册、联网、GUI、WAILA）
 - 核心网络模型（SingularityGrid、AnchorNode、NetworkManager）
 - 跨维度支持、能量系统、Mixin 频道绕过
-- 网络终端 UI（Qz UILib 实现）
+- 网络终端 UI（ModularUI2 实现）
+- 网络权限系统（PUBLIC/PRIVATE + AE2 五权限 BUILD/CRAFT/INJECT/EXTRACT/SECURITY，逐玩家授权）
 
 **Phase 2（规划中）**：
-- 加密网络安全验证 UI
 - Phantom 节点存储快照（离线设备库存可见）
-- 网络所有权转让
-- 多网络之间的物品路由/优先级
+- 权限变更实时广播（当前需重新打开 Network Terminal 刷新）
+- 多网络之间的物品路由 / 优先级
 - AE2FC 流体兼容深度集成

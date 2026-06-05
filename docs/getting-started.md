@@ -71,12 +71,51 @@ $env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
 .\deploy-mod.bat -Once
 ```
 
-默认部署目标由 `scripts/deploy-built-mod.ps1` 中的 `$ModsDir` 参数决定，可通过命令行传入：
+部署完成后，可一键启动 GTNH 测试服务器（需先设置环境变量 `SINGULARITYME_SERVER_ROOT` 指向服务端根目录）和 `GTNH290test` Prism 实例：
 
-如需修改目标目录，在 `scripts/deploy-built-mod.ps1` 中调整 `$ModsDir` 参数或直接在命令行传入：
+```powershell
+.\start-test-env.bat
+```
+
+该命令默认按“构建 -> 部署 -> 启动服务器和客户端”的顺序执行。若只想快速启动已有环境，可使用：
+
+```powershell
+.\start-test-env.bat -SkipBuild -SkipDeploy
+```
+
+若只想构建并部署，不启动服务器和客户端，可使用：
+
+```powershell
+.\start-test-env.bat -NoLaunch
+```
+
+如果部署到服务端或客户端实例时提示旧 `singularityme-*.jar` 正在被使用，先关闭对应 Minecraft 客户端或 GTNH 测试服务端，再重新执行部署或一键启动命令。
+
+默认部署目标由 `scripts/deploy-built-mod.ps1` 中的目标列表管理：两个 PrismLauncher 客户端实例（路径基于 `%APPDATA%\PrismLauncher`）和一个 GTNH 测试服务端。服务端根目录因机器而异，通过环境变量 `SINGULARITYME_SERVER_ROOT` 提供；未设置时部署会自动跳过服务端目标、只部署到客户端实例，`start-test-env.bat` 启动服务器则会报错提示（可改用 `-ClientOnly` 只启动客户端）。文档不记录本地绝对路径。
+
+如需临时覆盖目标目录，可直接传入一个或多个 `mods` 目录：
 
 ```powershell
 .\deploy-mod.bat -Once -ModsDir "你的实例mods目录路径"
+```
+
+如需用配置文件覆盖目标，可传入 `-TargetsFile`。配置文件支持 `mods-dir`、`prism-instance`、`server-root` 三类目标：
+
+```json
+{
+  "targets": [
+    {
+      "name": "client-a",
+      "kind": "prism-instance",
+      "path": "Prism 实例根目录"
+    },
+    {
+      "name": "server",
+      "kind": "server-root",
+      "path": "GTNH 服务端根目录"
+    }
+  ]
+}
 ```
 
 ---
@@ -105,19 +144,12 @@ $env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
 .\gradlew.bat build -x spotlessJavaCheck
 ```
 
-### 2. Qz UILib 依赖解析失败
+### 2. ModularUI2 依赖解析失败
 ```
-Could not find club.heiqi.uilib:Qz-UILib-4.1.3-LTS
+Could not find com.github.GTNewHorizons:ModularUI2
 ```
-**原因**：Qz UILib 通过 `mavenLocal()` 解析，需要先将 JAR 安装到本地 Maven 仓库。
-**解决**：
-1. 确保 `Qz-UILib-4.1.3-LTS` 源码在本地并已构建
-2. 或从 GTNH 实例的 `mods/` 目录复制 `qz_uilib-4.1.3-LTS.jar`，手动安装到本地 Maven：
-```powershell
-mvn install:install-file -Dfile=qz_uilib-4.1.3-LTS.jar `
-  -DgroupId=club.heiqi.uilib -DartifactId=Qz-UILib-4.1.3-LTS `
-  -Dversion=NO-GIT-TAG-SET -Dpackaging=jar
-```
+**原因**：未能从 GTNH Maven 仓库解析依赖（通常是网络或仓库配置问题）。
+**解决**：ModularUI2 由 GTNH Maven 自动解析，无需手动安装。确认 `dependencies.gradle` 中声明 `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`，并检查网络可访问 GTNH Maven。
 
 ### 3. `Unsupported class file major version XX`
 **原因**：JDK 版本过低。GTNH 约定使用 Jabel 转译，但编译过程需要 JDK 17+。
@@ -149,4 +181,4 @@ mvn install:install-file -Dfile=qz_uilib-4.1.3-LTS.jar `
 
 - [GTNH 官方 Wiki](https://gtnh.miraheze.org/)
 - [AE2 非官方 GTNH 版文档](https://github.com/GTNewHorizons/Applied-Energistics-2)
-- [Qz UILib 文档](../../Qz-UILib-4.1.3-LTS/)（同工作区）
+- [ModularUI2 仓库](https://github.com/GTNewHorizons/ModularUI2)（GTNH fork）

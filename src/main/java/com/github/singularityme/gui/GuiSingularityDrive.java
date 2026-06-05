@@ -22,6 +22,9 @@ import appeng.core.sync.packets.PacketSwitchGuis;
  */
 public class GuiSingularityDrive extends AEBaseGui {
 
+    public static final int PRIORITY_TAB_Y_OFFSET = 66;
+    private static final int NETWORK_TAB_Y_OFFSET = 22;
+
     private GuiTabButton priority;
     private GuiTabButton networkTab;
     private final TileSingularityDrive te;
@@ -50,7 +53,7 @@ public class GuiSingularityDrive extends AEBaseGui {
         this.buttonList.add(
             this.priority = new GuiTabButton(
                 this.guiLeft + 154,
-                this.guiTop,
+                this.guiTop + PRIORITY_TAB_Y_OFFSET,
                 2 + 4 * 16,
                 GuiText.Priority.getLocal(),
                 itemRender));
@@ -58,7 +61,7 @@ public class GuiSingularityDrive extends AEBaseGui {
         this.buttonList.add(
             this.networkTab = new GuiTabButton(
                 this.guiLeft + 154,
-                this.guiTop + 22,
+                this.guiTop + NETWORK_TAB_Y_OFFSET,
                 2 + 11 * 16,
                 "Network",
                 itemRender));

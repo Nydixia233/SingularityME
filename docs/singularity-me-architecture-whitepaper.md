@@ -14,13 +14,13 @@
 
 原版 AE2 中，网络的边界由 ME Controller 和多面体结构（Multiblock）定义——Controller 是网络的根，所有通过线缆物理可达的设备被路径计算算法纳入同一张 Grid。网络的边界就是线缆的物理边界。
 
-奇点网络中，网络的边界由**玩家身份**定义。一个玩家（或队伍）的所有奇点设备自动归属于同一张 Grid，无论它们身处哪个维度、相距多远。不存在"物理可达"的概念——玩家的 UUID 就是网络的边界。这个设计等价于：每位玩家生来就拥有一张隐形的、全宇宙覆盖的 ME 网络，"加入网络"不需要线缆，只需要"你是你"。
+奇点网络中，网络的边界由**注册表网络身份**定义：`NetworkKey(ownerPlayerID, networkID)`。玩家可以创建多张网络，设备保存 `networkID`，注册时由 `SingularityNetworkRegistry` 解析该网络的 owner，再加入对应 owner 的虚拟 Grid。不存在"物理可达"的概念——网络归属不取决于线缆拓扑，而取决于玩家选择的网络 ID 与权限。
 
 **玩家绑定与生命周期**
 
 原版中网络的存在完全取决于物理设备——最后一个设备被拆除，Grid 自动销毁。网络和玩家身份没有任何关联。
 
-奇点网络通过 AE2 内部的 `GridNode.getPlayerID()` 机制绑定玩家。当玩家在 AE2 安全终端中设置所有权后，AE2 框架会自动将 playerID 写入该玩家放置的所有 GridNode。`SingularityNetworkManager` 维护一个 `playerID → SingularityGrid` 的全局映射表，设备放置时根据节点的 playerID 查找或创建对应的网格。网络的生命周期与玩家登录状态无关——服务器重启后，`SingularityNetworkData`（基于 Minecraft WorldSavedData）从磁盘恢复所有已知网络的设备坐标，在区块加载前预先创建空网格骨架，设备所在的区块加载时重新填充。
+奇点网络通过 AE2 内部的 `GridNode.getPlayerID()` 机制取得放置者身份，再结合设备保存的 `networkID` 查询注册表。`SingularityNetworkManager` 维护一个 `NetworkKey(ownerPlayerID, networkID) → SingularityGrid` 的全局映射表；`networkID == 0` 是"未分配"哨兵，不会创建真实网格。网络的生命周期与玩家登录状态无关——服务器重启后，`SingularityNetworkData`（基于 Minecraft WorldSavedData）从磁盘恢复已知网络设备坐标，在区块加载前预先创建空网格骨架，设备所在的区块加载时重新填充。
 
 **SingularityGrid 与 Grid 的结构关系**
 
@@ -38,9 +38,9 @@
 
 `SingularityNetworkManager` 是奇点网络的总调度中心，它是一个枚举单例（`enum`），负责：
 
-- **节点注册**：`registerNode(playerID, node)` — 根据 playerID 查找或创建 SingularityGrid，调用 `grid.adoptNode(node)` 将节点强制注入该 Grid。这里有一个双层操作：先用 `computeIfAbsent` 获取或创建 Grid，再调用 `adoptNode`，而 `adoptNode` 内部先 `ensureInternalGrid()` 确保内部 Grid 存在，再通过反射调用 `GridNode.setGrid(internalGrid)` 将节点注入。
-- **节点注销**：`unregisterNode(playerID, node)` — 从 Grid 的 adoptedNodes 集合中移除节点，调用 `node.destroy()` 断开与 internalGrid 的连接。如果这是最后一个节点，销毁整个 SingularityGrid。
-- **世界卸载防御**：`onWorldUnload(world)` — 遍历所有 playerGrid，找出属于该 World 的节点，先调用 `retireSingularityContribution()` 让设备清理缓存状态，再注销节点。这是对 AE2 内部 `TickHandler.unloadWorld` 可能直接 destroy 节点的防御。
+- **节点注册**：`registerNode(playerID, networkID, node)` — 先用注册表解析 `networkID` 的 owner，再以 `NetworkKey(ownerPlayerID, networkID)` 查找或创建 SingularityGrid，调用 `grid.adoptNode(node)` 将节点强制注入该 Grid。`adoptNode` 内部先 `ensureInternalGrid()` 确保内部 Grid 存在，再通过反射调用 `GridNode.setGrid(internalGrid)` 将节点注入。
+- **节点注销**：`unregisterNodeForOwner(ownerPlayerID, networkID, node, permanent)` — 从 Grid 的 adoptedNodes 集合中移除节点，调用 `node.destroy()` 断开与 internalGrid 的连接。如果这是最后一个真实节点，销毁整个 SingularityGrid。
+- **世界卸载防御**：`onWorldUnload(world)` — 遍历所有 `grids`，找出属于该 World 的节点，先调用 `retireSingularityContribution()` 让设备清理缓存状态，再注销节点。这是对 AE2 内部 `TickHandler.unloadWorld` 可能直接 destroy 节点的防御。
 - **失效节点修剪**：`pruneInvalidNodes()` — 周期性扫描所有 adopted 节点，检查其 TileEntity 是否仍然有效（未被破坏、区块仍在加载），将失效节点清除。
 
 **SingularityAnchorNode — 虚拟锚点**
@@ -60,7 +60,7 @@
 
 `SingularityGrid` 不能依赖这个自动 GC。原因有二：第一，虚拟锚点作为一个永久节点存在于 Grid 中，原版 Grid 永远不会因为"无节点"而自动销毁；第二，SingularityGrid 本身是一个包装器，它持有对内部 Grid 的引用和 adoptedNodes 集合，即使内部 Grid 被意外销毁，SingularityGrid 的外部状态（playerID、adoptedNodes 快照）仍然需要显式清理。
 
-因此，SingularityGrid 的 GC 是**手动触发**的：`unregisterNode()` 在移除节点后检查 `getAdoptedNodeCount() == 0`，如果为零，调用 `grid.destroy()` 遍历所有残留节点逐个销毁，然后丢弃 internalGrid 引用。`SingularityNetworkManager.playerGrids` 中的条目通过 `computeIfPresent` 在返回 null 时自动从 ConcurrentHashMap 中移除。
+因此，SingularityGrid 的 GC 是**手动触发**的：`unregisterNodeForOwner()` 在移除节点后检查 `getAdoptedNodeCount() == 0`，如果为零，调用 `grid.destroy()` 遍历所有残留节点逐个销毁，然后丢弃 internalGrid 引用。`SingularityNetworkManager.grids` 中的 `NetworkKey(ownerPlayerID, networkID)` 条目通过 `computeIfPresent` 在返回 null 时自动从 ConcurrentHashMap 中移除。
 
 ---
 
@@ -95,7 +95,7 @@
 
 奇点网络的能量模型在两个层面与原版不同：
 
-**第一层：能量来源。** 奇点网络默认没有任何能量来源——`SingularityAnchorNode` 的 `getIdlePowerUsage()` 返回 `0.0`。这不是"免费能量"的设计，而是"默认无能量"的设计。在放置 PowerCore 之前，网络处于 0 AE 状态，所有需要能量的操作（物品导入、导出、合成）都无法执行。只有当玩家放置并激活 `TileSingularityPowerCore` 后，GT EU 被转换为 AE 注入网络，设备才开始工作。PowerCore 实现 `IAEPowerStorage`，以 `isAEPublicPowerStorage() = true` 和 `AccessRestriction.READ` 将自身注册为"只读公共储能"——电网可以从中提取能量，但不能反向注入。
+**第一层：能量来源。** 奇点网络默认没有任何能量来源——`SingularityAnchorNode` 的 `getIdlePowerUsage()` 返回 `0.0`。这不是"免费能量"的设计，而是"默认无能量"的设计。在放置 PowerCore 之前，网络处于 0 AE 状态，所有需要能量的操作（物品导入、导出、合成）都无法执行。`TileSingularityPowerCore` 接收 GT EU 并转换为 AE 缓冲；`SingularityAnchorNode` 实现 `IAEPowerStorage`，以 `isAEPublicPowerStorage() = true` 和 `AccessRestriction.READ` 将虚拟储能注册到电网，再按需代理到当前有效 PowerCore。
 
 **第二层：设备功耗计算。** 奇点设备的功耗计算与 AE2 原版保持一致——每个设备在 `getProxy().setIdlePowerUsage(x)` 中声明自己的基础功耗，原版 AE2 的 `EnergyGridCache` 自动累加所有节点的 `idlePowerUsage` 得到网络总需求，按 tick 从已注册的 `IAEPowerStorage` 中提取。奇点网络**不加收任何额外能量税**——没有"跨维度传输损耗"、没有"全局网络维护费"、没有"节点距离加权扣费"。能量消耗仅取决于连接的设备数量，与维度分布无关。
 
@@ -120,8 +120,10 @@
 一个奇点设备（以 Singularity Drive 为例）被放置后：
 1. `onReady()` 被调用（在 `super.onReady()` 之前，确保代理先完成设置）。
 2. 设备从 AE2 代理获取其 `GridNode`。在 GTNH AE2 中，节点携带 `playerID`（由安全系统写入），这是玩家身份的来源。
-3. 调用 `SingularityNetworkManager.INSTANCE.registerNode(playerID, node)`：
-   - Manager 查找 `playerGrids.get(playerID)`。如果是首次放置，`computeIfAbsent` 创建新的 `SingularityGrid(playerID)`。
+3. 调用 `SingularityNetworkManager.INSTANCE.registerNode(playerID, networkID, node)`：
+   - 如果 `networkID == 0`，Manager 返回 `-1`，设备保持未分配，不加入任何 Grid。
+   - Manager 通过 `SingularityNetworkRegistry` 解析该 `networkID` 的 owner，构造 `NetworkKey(ownerPlayerID, networkID)`。
+   - Manager 查找 `grids.get(key)`。如果是首次加载该网络，`computeIfAbsent` 创建新的 `SingularityGrid(ownerPlayerID, networkID)`。
    - `grid.adoptNode(node)` 被调用。
    - `adoptNode` 内部首先调用 `ensureInternalGrid()`，确保 internalGrid 存在且锚点有效。
    - 然后通过 `AEReflection.setGrid(node, internalGrid)` 反射调用 `GridNode.setGrid()`，将节点强制注入 internalGrid。
@@ -149,8 +151,8 @@
 
 奇点设备在末地、地狱、暮色森林放置后，**立即**加入与主世界设备相同的 SingularityGrid。不需要任何额外设备、任何手动链接、任何能量消耗。实现原理是：
 
-- `SingularityNetworkManager` 是 JVM 级单例（enum），不绑定任何 World 实例。`playerGrids` 这个 ConcurrentHashMap 对所有维度的所有 World 可见。
-- 当末地的一个 chunk 加载、其中的 Singularity Drive 调用 `onReady()` → `registerNode()` 时，它找到的 `SingularityGrid` 对象就是主世界第一个设备创建的那个——因为 `playerID` 相同，`computeIfAbsent` 直接返回已有实例。
+- `SingularityNetworkManager` 是 JVM 级单例（enum），不绑定任何 World 实例。`grids` 这个 ConcurrentHashMap 对所有维度的所有 World 可见，键是 `NetworkKey(ownerPlayerID, networkID)`。
+- 当末地的一个 chunk 加载、其中的 Singularity Drive 调用 `onReady()` → `registerNode()` 时，它找到的 `SingularityGrid` 对象就是同一 owner、同一 networkID 在主世界使用的那个——因为 `NetworkKey` 相同，`computeIfAbsent` 直接返回已有实例。
 - `adoptNode()` 将末地的 `GridNode` 注入同一个 `internalGrid`。这个 internalGrid 的 pivot（虚拟锚点）的 DimensionalCoord 是 `(0, -256, 0, Integer.MIN_VALUE)`，在任何 WorldServer 的正常坐标范围之外——但它有效，AE2 的 Grid 接受它。
 - 不同维度节点的 `GridNode` 对象属于不同的 `WorldServer` 实例，但它们都是同一个 `Grid` 对象的成员。AE2 内部的 `GridCache` 遍历 `Grid.getNodes()` 时，对维度信息完全透明。
 
@@ -186,7 +188,7 @@
    - **Interface**：调用 `removeStorageInterceptors()` 从 NetworkMonitor 中移除自己的存储拦截器，调用 `postCraftingPatternChange()` 通知合成缓存样板已不可用。
    - **CraftingCore**：调用 `destroySyntheticCluster()` 销毁其虚拟 CPU 集群，通知 `MENetworkCraftingCpuChange`。
    - **StorageBus**：使其外部库存 handler 失效，通知存储缓存。
-3. 然后调用 `unregister()` → `SingularityNetworkManager.unregisterNode(playerID, node)`，将节点从 `adoptedNodes` 和 internalGrid 中移除。
+3. 然后调用注销路径 → `SingularityNetworkManager.unregisterNodeForOwner(ownerPlayerID, networkID, node, permanent)`，将节点从 `adoptedNodes` 和 internalGrid 中移除。
 4. 最后调用 `super.onChunkUnload()`。
 
 **为什么需要主动调用 unregisterNode**
@@ -197,7 +199,7 @@
 
 当整个维度卸载时，AE2 的 `TickHandler.unloadWorld` 可能直接调用 `node.destroy()`，**不经过** `TileEntity.onChunkUnload()`。这绕过了奇点设备的 `retireSingularityContribution()` 调用，导致贡献（存储拦截器、合成样板、CPU 集群）未被清理。
 
-防御措施在 `SingularityNetworkManager.onWorldUnload(world)` 中：它接收 World 卸载事件，在 AE2 的 TickHandler 之前（或之后——取决于事件顺序，但至少提供了一个清理机会），遍历所有 playerGrid 中属于该 World 的 adopted 节点，先调用 `retireContribution()`（检查节点绑定的 TileEntity 是否实现了 `ISingularityContributionHost`），再调用 `unregisterNode()`。`pruneInvalidNodes()` 作为周期性的第二道防线，扫描 TileEntity 已经无效但节点仍在 adopted 集合中的情况。
+防御措施在 `SingularityNetworkManager.onWorldUnload(world)` 中：它接收 World 卸载事件，在 AE2 的 TickHandler 之前（或之后——取决于事件顺序，但至少提供了一个清理机会），遍历所有 `grids` 中属于该 World 的 adopted 节点，先调用 `retireContribution()`（检查节点绑定的 TileEntity 是否实现了 `ISingularityContributionHost`），再调用注销路径。`pruneInvalidNodes()` 作为周期性的第二道防线，扫描 TileEntity 已经无效但节点仍在 adopted 集合中的情况。
 
 ---
 
@@ -215,12 +217,12 @@
 
 - 在 `unregisterNode()` 中，移除节点后立即检查 `grid.getAdoptedNodeCount() == 0`。
 - 如果为零，调用 `grid.destroy()`——它遍历 `adoptedNodes` 的剩余快照（此时应为空），销毁锚点节点，清空 internalGrid 引用。
-- `playerGrids.compute()` 在 `unregisterNode` 返回 null 时自动将对应条目从 ConcurrentHashMap 中移除。
+- `grids.compute()` 在注销路径返回 null 时自动将对应 `NetworkKey(ownerPlayerID, networkID)` 条目从 ConcurrentHashMap 中移除。
 
 **玩家下线与设备全部拆除**
 
 - **玩家下线**：SingularityGrid **保留**在服务器内存中（通过 `ConcurrentHashMap` 持有）。玩家离线并不影响网格状态——他们的设备仍然在 World 中、区块仍然可能被加载。如果所有设备所在的区块都被卸载且所有维度都无人，网格在内存中只是一个空壳（internalGrid 仍然存活但 adoptedNodes 为空？不——实际上设备节点被 unregister 了，所以 adoptedNodes 应该为空，Grid 被销毁）。更精确地说：如果玩家离线且所有设备所在区块被卸载，chunk unload 触发 unregister 流程，最后一个设备注销时网格自动销毁。
-- **设备全部拆除（玩家在线）**：最后一个设备被破坏时，`invalidate()` → `retireSingularityContribution()` → `unregisterNode()` → `grid.getAdoptedNodeCount() == 0` → `grid.destroy()` → `playerGrids` 移除条目。网格完全释放。
+- **设备全部拆除（玩家在线）**：最后一个设备被破坏时，`invalidate()` → `retireSingularityContribution()` → 注销路径 → `grid.getAdoptedNodeCount() == 0` → `grid.destroy()` → `grids` 移除对应 `NetworkKey`。网格完全释放。
 - **服务器重启**：`SingularityNetworkData` 从磁盘恢复设备坐标。在服务器启动、第一个设备所在区块加载时，`registerNode()` 重新创建 SingularityGrid。如果玩家的所有设备都在未加载的区块中，网格在内存中不存在——直到玩家走到设备附近、区块加载、`onReady()` 触发。
 
 ---
@@ -229,7 +231,7 @@
 
 奇点网络在以下四个维度上对原版 AE2 网络完成了架构性的升格：
 
-**第一，从物理拓扑到身份拓扑。** 原版 AE2 的网络是一张由线缆和 Controller 定义的物理图——网络边界是线缆长度，加入网络的条件是"物理连接"。奇点网络将网络定义为玩家身份的延伸——认识网络的方式从"接线"变为"持有"，网络的拓扑从物理图变为星型图（所有设备直接连接到以玩家身份为根的虚拟中心）。
+**第一，从物理拓扑到注册表拓扑。** 原版 AE2 的网络是一张由线缆和 Controller 定义的物理图——网络边界是线缆长度，加入网络的条件是"物理连接"。奇点网络将网络定义为 owner + networkID 的注册表条目——认识网络的方式从"接线"变为"选择网络并通过权限使用"，网络的拓扑从物理图变为星型图（所有设备直接连接到以网络身份为根的虚拟中心）。
 
 **第二，从维度隔离到全域统一。** 原版 AE2 中，维度是一道硬边界——跨维度需要专门的设备（Quantum Bridge）、消耗维护能量、建立点对点链接。奇点网络将 Grid 从 World 的管辖中抽离出来，放入一个跨 World 的全局注册表中，使得维度概念对网络透明化。设备在哪个维度不再影响网络的统一性——所有维度共享同一个 Grid 实例。
 
@@ -304,23 +306,13 @@ public final class PhantomSingularityNode {
 
 ---
 
-### 3. 权限模型：AccessLevel 与 NetworkMeta
+### 3. 权限模型：SecurityPermissions 与 NetworkMeta
 
 **为什么需要权限模型**
 
 奇点网络允许多人协作：一个玩家可以将自己的网络共享给其他玩家，让他们放置设备、访问库存。原版 AE2 的安全终端提供了一套基于 `IPlayerRegistry` 的权限体系，但它与物理网络绑定——权限作用于"这张 Grid"。奇点网络需要自己的权限模型，因为网络是玩家级别的抽象，而非物理级别的。
 
-**AccessLevel 枚举**
-
-```java
-public enum AccessLevel {
-    OWNER,   // 网络创建者，唯一可删除网络、转让所有权
-    ADMIN,   // 可管理成员（添加/移除/修改角色），不可转让所有权
-    MEMBER,  // 可在网络中放置设备、访问库存
-    BLOCKED, // 明确被禁止访问（即使网络是 PUBLIC）
-    NONE;    // 无任何权限（默认状态）
-}
-```
+当前实现不再维护 OWNER / ADMIN / MEMBER / BLOCKED 角色枚举，而是复用 AE2 原生 `appeng.api.config.SecurityPermissions` 五个权限维度：`INJECT`、`EXTRACT`、`CRAFT`、`BUILD`、`SECURITY`。权限集合与 NBT / packet 中的 bit 表示由 `PermissionBits` 统一转换（见 `src/main/java/com/github/singularityme/core/PermissionBits.java:12`）。
 
 **NetworkMeta — 每个网络的元数据**
 
@@ -331,34 +323,46 @@ public enum AccessLevel {
 | `ownerPlayerID` | `int` | 网络创建者，不可变更（当前版本） |
 | `name` | `String` | 网络显示名称 |
 | `color` | `int` | RGB 颜色（用于 UI 区分多网络） |
-| `security` | `SecurityLevel` | PRIVATE / PUBLIC / ENCRYPTED |
-| `passwordHash` | `String` | SHA-256 哈希（仅 ENCRYPTED 模式） |
-| `adminPlayerIDs` | `Set<Integer>` | 管理员列表 |
-| `memberPlayerIDs` | `Set<Integer>` | 成员列表 |
-| `blockedPlayerIDs` | `Set<Integer>` | 封禁列表 |
+| `security` | `SecurityLevel` | PUBLIC / PRIVATE |
+| `permissions` | `Map<Integer, EnumSet<SecurityPermissions>>` | 显式授权表，owner 不写入表中 |
 
 **SecurityLevel**
 
 | 级别 | 含义 |
 |------|------|
-| `PRIVATE` | 仅 OWNER + ADMIN + MEMBER 可访问 |
-| `PUBLIC` | 任何人均可访问（BLOCKED 除外） |
-| `ENCRYPTED` | 需要输入正确密码才能加入为 MEMBER |
+| `PUBLIC` | 所有玩家视为拥有全部 AE2 权限 |
+| `PRIVATE` | owner 内建全权限；其他玩家必须拥有至少一项显式授权才能使用 |
+
+**权限维度语义**
+
+| 权限 | 控制的操作 |
+|------|-----------|
+| `BUILD` | 放置 / 破坏 / 旋转设备，分配或解除设备所属网络，设为默认网络 |
+| `INJECT` | 终端手动存入，Import Bus 自动注入 |
+| `EXTRACT` | 终端手动取出，Export Bus 自动取出 |
+| `CRAFT` | 终端发起合成请求，Export Bus 合成补货（需 CRAFTING 卡） |
+| `SECURITY` | 管理授权表，修改网络名 / 颜色 / 类型 |
 
 **权限检查流程**
 
-当设备通过 `SingularityNetworkManager.registerNode()` 尝试加入网络时：
+权限检查分为三层，避免把"能看见"、"能使用"、"能执行某项操作"混在一起：
 
-1. 从 `GridNode` 获取 `playerID`（由 AE2 安全系统在放置方块时写入）。
-2. 检查 `networkID` 是否有效。
-3. 调用 `SingularityNetworkRegistry.canAccess(networkID, playerID)`：
-   - 遍历 `NetworkMeta` 的 OWNER → ADMIN → MEMBER → BLOCKED 列表。
-   - PUBLIC 网络默认允许，除非 playerID 在 BLOCKED 列表中。
-   - ENCRYPTED 网络需要先通过 `joinEncryptedNetwork()` 提供正确密码。
-4. 权限不足时，设备不注册到网络，并向玩家发送提示。
+1. `canViewNetwork(networkID, playerID)` 决定网络列表是否显示：PUBLIC 全员可见，PRIVATE 需要能使用。
+2. `canUseNetwork(networkID, playerID)` 决定普通设备 GUI 是否可打开：PUBLIC 或 owner 放行，PRIVATE 需要任意一项权限。
+3. `hasPermission(networkID, playerID, permission)` 决定具体操作是否可执行：BUILD 管放置/破坏/配置，INJECT/EXTRACT 管终端和自动设备的存取，CRAFT 管合成请求，SECURITY 管授权表和网络设置。
+
+这些入口由 `SingularityNetworkRegistry` 提供（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:139`），方块、Tile 和容器侧通过 `SingularityPermissionHelper` 复用服务端检查（见 `src/main/java/com/github/singularityme/core/SingularityPermissionHelper.java:16`）。
+
+**自动设备权限**：Import / Export Bus 等无人值守设备按**放置者**身份（节点的 playerID）校验，而非当前操作玩家，确保自动化不会绕过权限。Import Bus 注入前检查 `INJECT`（见 `TileSingularityImportBus.java:316`），Export Bus 取出 / 合成补货前检查 `EXTRACT` / `CRAFT`（见 `TileSingularityExportBus.java:353`），均通过 `SingularityPermissionHelper.hasNodePermission()` 完成。
+
+**SECURITY 权限的下放**：持有 `SECURITY` 的玩家可管理任何非 owner 玩家的权限（含其他 `SECURITY` 持有者），照搬 AE2 安全终端的信任模型；owner 权限内建，不可被授权表修改。
+
+**新授权玩家默认权限**：通过 `PacketGrantPermissionByName` 添加在线玩家时，默认授予 `BUILD` / `INJECT` / `EXTRACT` / `CRAFT`，不含 `SECURITY`（见 `PermissionBits.DEFAULT_MEMBER_BITS`，`PermissionBits.java:16`）。
+
+旧存档迁移时，旧 `ENCRYPTED` 降级为 `PRIVATE`；旧 admin 迁移为全权限，旧 member 迁移为 BUILD / CRAFT / INJECT / EXTRACT，封禁和密码不再保留（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:272`）。
 
 **当前局限**
 
-- 所有权转让未实现（`setMemberRole` 中对 OWNER 直接返回 `false`）。
+- 所有权转让未实现；owner 权限内建且不可被授权表修改。
 - 权限变更不广播——其他在线玩家不会实时收到权限更新通知（需重新打开 Network Terminal）。
 

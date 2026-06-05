@@ -1,7 +1,12 @@
 package com.github.singularityme.tile;
 
 import java.util.EnumSet;
+import java.util.Collection;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
@@ -13,11 +18,16 @@ import net.minecraftforge.common.util.ForgeDirection;
 
 import org.jetbrains.annotations.NotNull;
 
+import com.github.singularityme.core.SingularityPermissionHelper;
 import com.github.singularityme.core.SingularityNetworkManager;
 import com.github.singularityme.grid.SingularityGrid;
 
 import appeng.api.AEApi;
+import appeng.api.config.AccessRestriction;
+import appeng.api.config.Actionable;
+import appeng.api.config.FuzzyMode;
 import appeng.api.config.PinsRows;
+import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
 import appeng.api.config.SortDir;
 import appeng.api.config.SortOrder;
@@ -28,7 +38,12 @@ import appeng.api.networking.IGridNode;
 import appeng.api.networking.events.MENetworkBootingStatusChange;
 import appeng.api.networking.events.MENetworkEventSubscribe;
 import appeng.api.networking.events.MENetworkPowerStatusChange;
+import appeng.api.networking.security.BaseActionSource;
+import appeng.api.networking.security.PlayerSource;
 import appeng.api.networking.storage.IStorageGrid;
+import appeng.api.storage.IMEMonitorHandlerReceiver;
+import appeng.api.storage.IMEInventory;
+import appeng.api.storage.IMENetworkInventory;
 import appeng.api.storage.IMEMonitor;
 import appeng.api.storage.ITerminalHost;
 import appeng.api.storage.ITerminalPins;
@@ -37,6 +52,7 @@ import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
 import appeng.api.storage.data.IAEStackType;
+import appeng.api.storage.data.IItemList;
 import appeng.api.util.AECableType;
 import appeng.api.util.IConfigManager;
 import appeng.helpers.IPrimaryGuiIconProvider;
@@ -53,6 +69,7 @@ import appeng.tile.inventory.InvOperation;
 import appeng.util.ConfigManager;
 import appeng.util.IConfigManagerHost;
 import appeng.util.MonitorableTypeFilter;
+import appeng.util.item.PrioritizedNetworkItemList;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.objects.Reference2BooleanMap;
 
@@ -72,6 +89,7 @@ public class TileSingularityTerminal extends AENetworkTile
     private final AppEngInternalInventory viewCell = new AppEngInternalInventory(this, 5);
     private final PinsHolder pinsInv = new PinsHolder(this);
     private final MonitorableTypeFilter typeFilters = new MonitorableTypeFilter();
+    private final Map<IMEMonitor<?>, IMEMonitor<?>> securedMonitorCache = new IdentityHashMap<>();
     private byte spin = 0;
     private int clientFlags = 0;
     /** Per-player network index. 0 = unassigned. */
@@ -93,6 +111,7 @@ public class TileSingularityTerminal extends AENetworkTile
 
     @Override
     public void onReady() {
+        this.securedMonitorCache.clear();
         this.getProxy()
             .setFlags();
         this.getProxy()
@@ -123,12 +142,14 @@ public class TileSingularityTerminal extends AENetworkTile
     @Override
     public void onChunkUnload() {
         this.unregister(false);
+        this.securedMonitorCache.clear();
         super.onChunkUnload();
     }
 
     @Override
     public void invalidate() {
         this.unregister(true);
+        this.securedMonitorCache.clear();
         super.invalidate();
     }
 
@@ -147,21 +168,21 @@ public class TileSingularityTerminal extends AENetworkTile
     public IMEMonitor<IAEItemStack> getItemInventory() {
         if (!this.isTerminalAccessible()) return null;
         final IStorageGrid storage = this.getStorageGrid();
-        return storage == null ? null : storage.getItemInventory();
+        return storage == null ? null : secureMonitor(storage.getItemInventory());
     }
 
     @Override
     public IMEMonitor<IAEFluidStack> getFluidInventory() {
         if (!this.isTerminalAccessible()) return null;
         final IStorageGrid storage = this.getStorageGrid();
-        return storage == null ? null : storage.getFluidInventory();
+        return storage == null ? null : secureMonitor(storage.getFluidInventory());
     }
 
     @Override
     public IMEMonitor<?> getMEMonitor(final IAEStackType<?> type) {
         if (!this.isTerminalAccessible()) return null;
         final IStorageGrid storage = this.getStorageGrid();
-        return storage == null ? null : storage.getMEMonitor(type);
+        return storage == null ? null : secureMonitor(storage.getMEMonitor(type));
     }
 
     @Override
@@ -298,6 +319,7 @@ public class TileSingularityTerminal extends AENetworkTile
         if (this.networkID == newNetworkID) return;
         // Unregister from old network (permanent=true so the persisted record is removed)
         this.unregister(true);
+        this.securedMonitorCache.clear();
         this.networkID = newNetworkID;
         this.gridOwnerPlayerID = -1;
         this.defaultNetworkApplied = true;
@@ -415,6 +437,162 @@ public class TileSingularityTerminal extends AENetworkTile
     private boolean isTerminalAccessible() {
         return this.getProxy()
             .isActive() && SingularityChunkAccess.isHostChunkNetworkAccessible(this);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends IAEStack> IMEMonitor<T> secureMonitor(final IMEMonitor<T> delegate) {
+        if (delegate == null) return null;
+        final IMEMonitor<?> cached = this.securedMonitorCache.get(delegate);
+        if (cached != null) return (IMEMonitor<T>) cached;
+        final IMEMonitor<T> secured = new SecuredTerminalMonitor<>(delegate);
+        this.securedMonitorCache.put(delegate, secured);
+        return secured;
+    }
+
+    /** 包装 AE2 monitor，在实际存取发生时按发起玩家检查奇点网络权限。 */
+    private final class SecuredTerminalMonitor<T extends IAEStack> implements IMEMonitor<T> {
+
+        private final IMEMonitor<T> delegate;
+
+        private SecuredTerminalMonitor(final IMEMonitor<T> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public T injectItems(final T input, final Actionable type, final BaseActionSource src) {
+            if (!hasSourcePermission(src, SecurityPermissions.INJECT)) return input;
+            return this.delegate.injectItems(input, type, src);
+        }
+
+        @Override
+        public T extractItems(final T request, final Actionable type, final BaseActionSource src) {
+            if (!hasSourcePermission(src, SecurityPermissions.EXTRACT)) return null;
+            return this.delegate.extractItems(request, type, src);
+        }
+
+        @Override
+        public IItemList<T> getStorageList() {
+            return this.delegate.getStorageList();
+        }
+
+        @Override
+        public IItemList<T> getAvailableItems(final IItemList out) {
+            return this.delegate.getAvailableItems(out);
+        }
+
+        @Override
+        public IItemList<T> getAvailableItems(final IItemList<T> out, final int iteration) {
+            return this.delegate.getAvailableItems(out, iteration);
+        }
+
+        @Override
+        public IItemList<T> getAvailableItems(final IItemList<T> out, final int iteration,
+            final Optional<Predicate<T>> filter) {
+            return this.delegate.getAvailableItems(out, iteration, filter);
+        }
+
+        @Override
+        public T getAvailableItem(final T request) {
+            return this.delegate.getAvailableItem(request);
+        }
+
+        @Override
+        public T getAvailableItem(final T request, final int iteration) {
+            return this.delegate.getAvailableItem(request, iteration);
+        }
+
+        @Override
+        public Collection<T> getSortedFuzzyItems(final Collection<T> output, final T request, final FuzzyMode fuzzyMode,
+            final int iteration) {
+            return this.delegate.getSortedFuzzyItems(output, request, fuzzyMode, iteration);
+        }
+
+        @Override
+        public void addListener(final IMEMonitorHandlerReceiver receiver, final Object verificationToken) {
+            this.delegate.addListener(receiver, verificationToken);
+        }
+
+        @Override
+        public void removeListener(final IMEMonitorHandlerReceiver receiver) {
+            this.delegate.removeListener(receiver);
+        }
+
+        @Override
+        public AccessRestriction getAccess() {
+            return this.delegate.getAccess();
+        }
+
+        @Override
+        public boolean isPrioritized(final T input) {
+            return this.delegate.isPrioritized(input);
+        }
+
+        @Override
+        public boolean canAccept(final T input) {
+            return this.delegate.canAccept(input);
+        }
+
+        @Override
+        public int getPriority() {
+            return this.delegate.getPriority();
+        }
+
+        @Override
+        public int getSlot() {
+            return this.delegate.getSlot();
+        }
+
+        @Override
+        public boolean validForPass(final int pass) {
+            return this.delegate.validForPass(pass);
+        }
+
+        @Override
+        public appeng.api.storage.StorageChannel getChannel() {
+            return this.delegate.getChannel();
+        }
+
+        @Override
+        public IAEStackType<?> getStackType() {
+            return this.delegate.getStackType();
+        }
+
+        @Override
+        public boolean getSticky() {
+            return this.delegate.getSticky();
+        }
+
+        @Override
+        public boolean isAutoCraftingInventory() {
+            return this.delegate.isAutoCraftingInventory();
+        }
+
+        @Override
+        public IMEInventory<T> getInternal() {
+            return this.delegate.getInternal();
+        }
+
+        @Override
+        public IMENetworkInventory<T> getExternalNetworkInventory() {
+            return this.delegate.getExternalNetworkInventory();
+        }
+
+        @Override
+        public PrioritizedNetworkItemList<T> getAvailableItemsWithPriority(final int iteration) {
+            return this.delegate.getAvailableItemsWithPriority(iteration);
+        }
+
+        private boolean hasSourcePermission(final BaseActionSource src, final SecurityPermissions permission) {
+            if (src instanceof PlayerSource playerSource) {
+                return SingularityPermissionHelper.hasPlayerPermission(
+                    TileSingularityTerminal.this.worldObj,
+                    TileSingularityTerminal.this.networkID,
+                    playerSource.player,
+                    permission);
+            }
+            // 非玩家来源（合成 CPU、机器自动化）在网格层执行，不绑定某个正在操作的玩家。
+            return !src.isPlayer();
+        }
     }
 
     private final class TerminalPinsHandler extends PinsHandler {

@@ -8,7 +8,7 @@ import net.minecraft.tileentity.TileEntity;
 import appeng.container.AEBaseContainer;
 
 /**
- * Slotless server-side container for the Qz Network Tab screen.
+ * Slotless server-side container for the Network Tab screen.
  *
  * <p>
  * The client screen requests network data after it is fully open. This container only keeps Forge's OpenGui flow valid

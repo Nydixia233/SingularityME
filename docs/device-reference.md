@@ -1,7 +1,7 @@
 # Singularity ME — 设备参考手册
 
 **面向**：开发者
-**最后更新**：2026-05-31
+**最后更新**：2026-06-05
 
 本文档列出所有 12 种奇点设备（11 种生产设备 + 1 种调试探针）的详细技术参数。
 
@@ -40,14 +40,14 @@
 | 1 | 致密能量元件 (Dense Energy Cell) | 1,600,000 AE | 64 |
 | 2 | 创造能量元件 (Creative Energy Cell) | ~9.22×10¹⁴ AE（近无限） | 1 |
 
-- 总缓冲 = Σ(堆叠数 × 单件容量)，无额外倍率。
-- 实现 `IEnergyConnected`，接受 GT 标准电力输入。
-- 实现 `IAEPowerStorage`（只读公共储能），电网可从中提取能量，不可反向注入。
+- 总缓冲 = Σ(堆叠数 × 单件容量) × AE2 `PowerMultiplier.CONFIG.multiplier`；创造能量元件使用近无限固定容量。
+- 实现 `IEnergyConnected`，接受 GT 标准电力输入；`injectEnergyUnits()` 中通过 AE2 `PowerUnits.EU -> PowerUnits.AE` 转换后写入 AE 缓冲。
+- PowerCore 本身不直接作为网格公共储能注册；`SingularityAnchorNode` 暴露虚拟 `IAEPowerStorage`，再代理到当前有效 PowerCore。
 
 **升级卡**：不支持
 
 **已知限制**：
-- GT EU → AE 的转换率目前为硬编码，未做成配置项。
+- 同一网格多 PowerCore 时，`SingularityGrid` 选择一个当前有效 PowerCore 作为虚拟储能来源，不直接把所有 PowerCore 容量求和。
 - 创造能量元件不检测是否为真正的创造模式物品——只要物品匹配 `energyCellCreative` 即视为无限。
 
 ---
@@ -103,15 +103,15 @@
 | 升级卡 | 最大数量 | 效果 |
 |--------|---------|------|
 | CAPACITY | 2 | 过滤槽 +4 个/张 |
-| SPEED | 1 | 每 tick 抽取 1 个物品 |
-| SUPERSPEED | 1 | 每 tick 抽取 8 个物品（叠加 SPEED 后生效） |
-| SUPERLUMINALSPEED | 1 | 每 tick 抽取 64 个物品（叠加前两级后生效） |
+| SPEED | 由 AE2 原型镜像 | 提高每轮导入预算 |
+| SUPERSPEED | 由 AE2 原型镜像 | 提高每轮导入预算 |
+| SUPERLUMINALSPEED | 由 AE2 原型镜像 | 提高每轮导入预算 |
 | FUZZY | 1 | 启用模糊匹配 |
 | REDSTONE | 1 | 接受红石信号控制 |
 | ORE_FILTER | 1 | 启用矿物词典匹配 |
 
 **已知限制**：
-- 抽取速度层级：基础 1 → SPEED 2 → SUPERSPEED 8 → SUPERLUMINALSPEED 64（每 tick）。
+- 工作频率使用 AE2 `TickRates.ImportBus`；单轮传输预算由 `TileSingularityImportBus.calculateMaxItems()` 根据 SPEED / SUPERSPEED / SUPERLUMINALSPEED 计算。
 
 ---
 
@@ -124,16 +124,16 @@
 | 升级卡 | 最大数量 | 效果 |
 |--------|---------|------|
 | CAPACITY | 1 | 扩展过滤/调度槽 |
-| SPEED | 1 | 每 tick 输出 1 个物品 |
-| SUPERSPEED | 1 | 每 tick 输出 8 个物品 |
-| SUPERLUMINALSPEED | 1 | 每 tick 输出 64 个物品 |
+| SPEED | 由 AE2 原型镜像 | 提高每轮导出预算 |
+| SUPERSPEED | 由 AE2 原型镜像 | 提高每轮导出预算 |
+| SUPERLUMINALSPEED | 由 AE2 原型镜像 | 提高每轮导出预算 |
 | FUZZY | 1 | 启用模糊匹配 |
 | REDSTONE | 1 | 接受红石信号控制 |
 | CRAFTING | 1 | 允许触发自动合成以补充输出物品 |
 | ORE_FILTER | 1 | 启用矿物词典匹配 |
 
 **已知限制**：
-- 与 Import Bus 共用相同的 speed 层级逻辑。
+- 工作频率使用 AE2 `TickRates.ExportBus`；单轮传输预算由 `TileSingularityExportBus.calculateMaxItems()` 根据 SPEED / SUPERSPEED / SUPERLUMINALSPEED 计算。
 
 ---
 
@@ -177,15 +177,16 @@
 
 ## 9. 奇点网络终端（Network Terminal）
 
-**功能**：管理奇点网络的成员、安全级别和默认网络选择。**这是唯一不继承 AE2 TileEntity 体系而直接继承 `TileEntity` 的设备**——它的 UI 基于 Qz UILib 纯自定义界面。
+**功能**：管理奇点网络的成员、安全级别和默认网络选择。**这是唯一不继承 AE2 TileEntity 体系而直接继承 `TileEntity` 的设备**——它的 UI 基于 ModularUI2 client-only 界面。
 
-**UI 实现**：`QzNetworkTerminalScreens` / `QzNetworkTabScreens`，通过 `UiDocumentScreens.createDocumentScreen()` 渲染。
+**UI 实现**：`NetworkTerminalUI` / `NetworkTabUI`，通过 `ModularScreen` + `GuiScreenWrapper` 渲染。
 
 **升级卡**：不支持
 
 **已知限制**：
 - 不消耗 AE 能量（无 `GridNode`），仅依赖方块实体本身。
-- Phase 2 计划：加密网络密码验证 UI、成员在线状态显示。
+- 当前网络模型为 PUBLIC / PRIVATE + AE2 五权限（BUILD / CRAFT / INJECT / EXTRACT / SECURITY）；新增成员默认拥有 BUILD / CRAFT / INJECT / EXTRACT，不含 SECURITY。
+- PUBLIC 网络全员可见且视为全权限，但公私切换、名称、颜色、授权表修改只允许 owner/具备对应服务端权限的路径执行，其中公私切换限定 owner。
 
 ---
 
@@ -211,7 +212,16 @@
 
 **核心实现**：内部委托给 AE2 的 `DualityInterface`，通过 `IPrimaryGuiIconProvider` 提供图标一致性。
 
-**升级卡**：不支持
+**升级卡支持**：
+
+| 升级卡 | 效果 |
+|--------|------|
+| CRAFTING | 与 AE2 Interface 合成卡行为一致 |
+| PATTERN_CAPACITY | 扩展样板容量 |
+| ADVANCED_BLOCKING | 高级阻挡模式 |
+| FAKE_CRAFTING | 假合成模式 |
+| LOCK_CRAFTING | 锁定合成模式 |
+| FUZZY | 模糊匹配 |
 
 **已知限制**：
 - 卸载时需调用 `removeStorageInterceptors()` 清理存储拦截器，调用 `postCraftingPatternChange()` 通知合成缓存样板不可用。
@@ -238,11 +248,15 @@
 | SPEED | ImportBus, ExportBus |
 | SUPERSPEED | ImportBus, ExportBus |
 | SUPERLUMINALSPEED | ImportBus, ExportBus |
-| FUZZY | StorageBus, ImportBus, ExportBus |
+| FUZZY | StorageBus, ImportBus, ExportBus, Interface |
 | REDSTONE | ImportBus, ExportBus |
 | INVERTER | StorageBus |
 | STICKY | StorageBus |
 | CRAFTING | ExportBus |
 | ORE_FILTER | StorageBus, ImportBus, ExportBus |
+| PATTERN_CAPACITY | Interface |
+| ADVANCED_BLOCKING | Interface |
+| FAKE_CRAFTING | Interface |
+| LOCK_CRAFTING | Interface |
 
-> 以上升级卡行为与 GTNH AE2 原版一致。未列出的设备（终端类、PowerCore、Drive、Interface、CraftingCore、Probe）不支持升级卡。
+> 以上升级卡行为按 GTNH AE2 原版设备镜像。未列出的设备（终端类、PowerCore、Drive、CraftingCore、Probe）不支持升级卡。

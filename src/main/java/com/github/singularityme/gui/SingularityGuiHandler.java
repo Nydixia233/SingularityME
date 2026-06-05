@@ -16,8 +16,8 @@ import com.github.singularityme.block.BlockSingularityPatternTerminal;
 import com.github.singularityme.block.BlockSingularityPowerCore;
 import com.github.singularityme.block.BlockSingularityStorageBus;
 import com.github.singularityme.block.BlockSingularityTerminal;
-import com.github.singularityme.client.ui.QzNetworkTabScreens;
-import com.github.singularityme.client.ui.QzNetworkTerminalScreens;
+import com.github.singularityme.client.ui.NetworkTabUI;
+import com.github.singularityme.client.ui.NetworkTerminalUI;
 import com.github.singularityme.tile.TileSingularityCraftingCore;
 import com.github.singularityme.tile.TileSingularityCraftingTerminal;
 import com.github.singularityme.tile.TileSingularityDrive;
@@ -31,10 +31,6 @@ import com.github.singularityme.tile.TileSingularityStorageBus;
 import com.github.singularityme.tile.TileSingularityTerminal;
 
 import appeng.container.ContainerOpenContext;
-import appeng.container.implementations.ContainerCraftingTerm;
-import appeng.container.implementations.ContainerInterface;
-import appeng.container.implementations.ContainerMEMonitorable;
-import appeng.container.implementations.ContainerPatternTerm;
 import cpw.mods.fml.common.network.IGuiHandler;
 
 /**
@@ -49,7 +45,8 @@ import cpw.mods.fml.common.network.IGuiHandler;
  * <li>4 — Singularity Export Bus (custom ContainerSingularityExportBus / GuiSingularityExportBus)</li>
  * <li>5 — Singularity Drive (custom ContainerSingularityDrive / GuiSingularityDrive)</li>
  * <li>6 — Singularity Import Bus (custom ContainerSingularityImportBus / GuiSingularityImportBus)</li>
- * <li>10 — Network Tab (ContainerSingularityNetworkTab / QzNetworkTabScreens)</li>
+ * <li>10 — Network Tab (ContainerSingularityNetworkTab / NetworkTabUI)</li>
+ * <li>11 — Network Terminal (ContainerSingularityNetworkTerminal / NetworkTerminalUI)</li>
  * </ul>
  */
 public class SingularityGuiHandler implements IGuiHandler {
@@ -65,17 +62,19 @@ public class SingularityGuiHandler implements IGuiHandler {
         if (te == null) return null;
 
         if (id == BlockSingularityTerminal.GUI_ID && te instanceof TileSingularityTerminal terminal) {
-            final ContainerMEMonitorable c = new ContainerMEMonitorable(player.inventory, terminal);
+            final ContainerSingularityTerminal c = new ContainerSingularityTerminal(player.inventory, terminal);
             setOpenContext(c, te, world, x, y, z, ForgeDirection.UNKNOWN);
             return c;
         }
         if (id == BlockSingularityCraftingTerminal.GUI_ID && te instanceof TileSingularityCraftingTerminal terminal) {
-            final ContainerCraftingTerm c = new ContainerCraftingTerm(player.inventory, terminal);
+            final ContainerSingularityCraftingTerminal c =
+                new ContainerSingularityCraftingTerminal(player.inventory, terminal);
             setOpenContext(c, te, world, x, y, z, ForgeDirection.UNKNOWN);
             return c;
         }
         if (id == BlockSingularityPatternTerminal.GUI_ID && te instanceof TileSingularityPatternTerminal terminal) {
-            final ContainerPatternTerm c = new ContainerPatternTerm(player.inventory, terminal);
+            final ContainerSingularityPatternTerminal c =
+                new ContainerSingularityPatternTerminal(player.inventory, terminal);
             setOpenContext(c, te, world, x, y, z, ForgeDirection.UNKNOWN);
             return c;
         }
@@ -97,7 +96,7 @@ public class SingularityGuiHandler implements IGuiHandler {
             return c;
         }
         if (id == BlockSingularityInterface.GUI_ID && te instanceof TileSingularityInterface iface) {
-            final ContainerInterface c = new ContainerInterface(player.inventory, iface);
+            final ContainerSingularityInterface c = new ContainerSingularityInterface(player.inventory, iface);
             setOpenContext(c, te, world, x, y, z, ForgeDirection.UNKNOWN);
             return c;
         }
@@ -178,10 +177,10 @@ public class SingularityGuiHandler implements IGuiHandler {
             return new GuiSingularityPowerCore(player.inventory, powerCore);
         }
         if (id == BlockSingularityNetworkTerminal.GUI_ID && te instanceof TileSingularityNetworkTerminal) {
-            return QzNetworkTerminalScreens.create(te);
+            return NetworkTerminalUI.create(te);
         }
         if (id == ContainerSingularityNetworkTab.GUI_ID) {
-            return QzNetworkTabScreens.create(te);
+            return NetworkTabUI.create(te);
         }
         return null;
     }

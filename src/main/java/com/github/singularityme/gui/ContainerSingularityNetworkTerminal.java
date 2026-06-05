@@ -9,7 +9,7 @@ import com.github.singularityme.tile.TileSingularityNetworkTerminal;
 import appeng.container.AEBaseContainer;
 
 /**
- * Slotless server-side container for the Qz Network Terminal screen.
+ * Slotless server-side container for the Network Terminal screen.
  */
 public class ContainerSingularityNetworkTerminal extends AEBaseContainer {
 

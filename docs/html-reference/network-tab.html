@@ -178,12 +178,12 @@
 // 模拟数据 — 对应 PacketNetworkTabData.NetworkEntry
 // ============================================================
 const MOCK_NETWORKS = [
-  { networkID: 0,  name: "默认",     color: 0x777777, security:"PUBLIC",    access:"NONE",    ownerName:"-", isOwner:false },
-  { networkID: 1,  name: "主基地网络", color: 0x4A90E2, security:"PRIVATE",   access:"OWNER",   ownerName:"PlayerX", isOwner:true },
-  { networkID: 2,  name: "采矿前哨",  color: 0xE2A84A, security:"ENCRYPTED", access:"NONE",    ownerName:"Steve",  isOwner:false },
-  { networkID: 3,  name: "公共交易站", color: 0x4AE24A, security:"PUBLIC",    access:"MEMBER",  ownerName:"Alex",   isOwner:false },
-  { networkID: 4,  name: "实验室网络", color: 0x7B68EE, security:"PRIVATE",   access:"ADMIN",   ownerName:"Notch",  isOwner:false },
-  { networkID: 5,  name: "被封锁网络", color: 0xE24A4A, security:"ENCRYPTED", access:"BLOCKED", ownerName:"Griefer",isOwner:false },
+  { networkID: 0,  name: "未分配",   color: 0x777777, security:"PUBLIC",  access:"NONE",     permissions:"-",         canBuild:true,  ownerName:"-",       isOwner:false },
+  { networkID: 1,  name: "主基地网络", color: 0x4A90E2, security:"PRIVATE", access:"OWNER",    permissions:"OWNER",     canBuild:true,  ownerName:"PlayerX", isOwner:true },
+  { networkID: 2,  name: "采矿前哨",  color: 0xE2A84A, security:"PRIVATE", access:"MEMBER",   permissions:"B C I E",   canBuild:true,  ownerName:"Steve",   isOwner:false },
+  { networkID: 3,  name: "公共交易站", color: 0x4AE24A, security:"PUBLIC",  access:"MEMBER",   permissions:"B C I E S", canBuild:true,  ownerName:"Alex",    isOwner:false },
+  { networkID: 4,  name: "实验室网络", color: 0x7B68EE, security:"PRIVATE", access:"SECURITY", permissions:"B C I E S", canBuild:true,  ownerName:"Notch",   isOwner:false },
+  { networkID: 5,  name: "只读仓库",   color: 0xE24A4A, security:"PRIVATE", access:"MEMBER",   permissions:"E",         canBuild:false, ownerName:"Builder", isOwner:false },
 ];
 
 const DEVICE_NETWORK_ID = 1;   // 设备当前网络
@@ -194,17 +194,15 @@ let selectedNetworkID = DEVICE_NETWORK_ID;
 // ── 安全级别映射 (对应 SecurityLevel) ──
 const SECURITY = {
   PUBLIC:    { name:"公开",     short:"公", color:"var(--security-public)" },
-  ENCRYPTED: { name:"加密",     short:"密", color:"var(--security-encrypted)" },
   PRIVATE:   { name:"私有",     short:"私", color:"var(--security-private)" },
 };
 
-// ── 访问级别映射 (对应 AccessLevel) ──
+// ── 权限摘要映射 (B/C/I/E/S 来自 AE2 SecurityPermissions) ──
 const ACCESS = {
-  OWNER:   { name:"所有者", short:"O", color:"var(--access-owner)" },
-  ADMIN:   { name:"管理员", short:"A", color:"var(--access-admin)" },
-  MEMBER:  { name:"成员",   short:"M", color:"var(--access-member)" },
-  BLOCKED: { name:"已封锁", short:"B", color:"var(--access-blocked)" },
-  NONE:    { name:"无",     short:"-", color:"var(--access-none)" },
+  OWNER:    { name:"拥有者", short:"OWN", color:"var(--access-owner)" },
+  SECURITY: { name:"安全",   short:"S",   color:"var(--access-admin)" },
+  MEMBER:   { name:"成员",   short:"B/C", color:"var(--access-member)" },
+  NONE:     { name:"无权限", short:"-",   color:"var(--access-none)" },
 };
 
 // ── 工具函数 ──
@@ -219,14 +217,9 @@ function darken(hex, factor) {
 }
 function securityInfo(entry) { return SECURITY[entry.security] || SECURITY.PUBLIC; }
 function accessInfo(entry)   { return ACCESS[entry.access] || ACCESS.NONE; }
-function isBlocked(entry)    { return entry.access === 'BLOCKED'; }
 function canAccess(entry) {
-  if (entry.access === 'BLOCKED') return false;
   if (entry.access !== 'NONE') return true;
   return entry.security === 'PUBLIC';
-}
-function isEncryptedJoinRequired(entry) {
-  return entry.networkID !== 0 && entry.security === 'ENCRYPTED' && entry.access === 'NONE';
 }
 
 // ── 渲染 ──
@@ -319,7 +312,7 @@ function renderList() {
     const acc = accessInfo(entry);
     const accBadge = document.createElement('span');
     accBadge.className = 'badge';
-    accBadge.textContent = acc.short;
+    accBadge.textContent = entry.isOwner ? acc.short : entry.permissions;
     accBadge.style.backgroundColor = acc.color;
     row.appendChild(accBadge);
 
@@ -332,11 +325,11 @@ function renderList() {
       row.appendChild(star);
     }
 
-    // 默认网络标记 D
+    // 默认网络标记
     if (isDefault) {
       const d = document.createElement('span');
       d.className = 'badge';
-      d.textContent = 'D';
+      d.textContent = '默认';
       d.style.backgroundColor = 'var(--badge-default)';
       row.appendChild(d);
     }
@@ -352,61 +345,29 @@ function renderSelectedBar() {
   const color = sel ? entryColor(sel) : 'var(--border-list)';
   bar.style.borderColor = color;
   bar.querySelector('.text').textContent = sel
-    ? `已选中：${sel.name}  #${sel.networkID}  ${securityInfo(sel).name}  (${accessInfo(sel).short})`
+    ? `已选中：${sel.name}  #${sel.networkID}  ${securityInfo(sel).name}  (${sel.permissions})`
     : '未选中任何网络';
 }
 
 // 底部操作区
-let passwordMode = false;
-
 function renderBottom() {
   const bottom = document.getElementById('bottomArea');
   const sel = selectedEntry();
   const canAssign = sel && sel.networkID !== DEVICE_NETWORK_ID
-    && !isBlocked(sel)
-    && (sel.networkID === 0 || canAccess(sel) || isEncryptedJoinRequired(sel));
+    && canAccess(sel)
+    && sel.canBuild;
 
-  if (passwordMode) {
-    bottom.innerHTML = `
-      <div class="action-row">
-        <input type="password" id="passwordInput" placeholder="输入密码..." maxlength="64" autofocus>
-        <button class="btn btn-sm" id="joinBtn">加入</button>
-        <button class="btn btn-sm btn-danger" id="cancelBtn">取消</button>
-      </div>
-    `;
-    document.getElementById('cancelBtn').addEventListener('click', () => {
-      passwordMode = false;
-      renderBottom();
-    });
-    document.getElementById('joinBtn').addEventListener('click', () => {
-      const pw = document.getElementById('passwordInput').value;
-      if (!pw) return;
-      alert(`[模拟] 加入加密网络 #${sel.networkID}\n密码 SHA-256 后发送`);
-      passwordMode = false;
-      renderBottom();
-    });
-    document.getElementById('passwordInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('joinBtn').click();
-    });
-  } else {
-    bottom.innerHTML = `
-      <div class="action-row">
-        <button class="btn btn-md" id="selectBtn">选择并分配到此设备</button>
-      </div>
-    `;
-    const selectBtn = document.getElementById('selectBtn');
-    selectBtn.disabled = !canAssign;
-    selectBtn.addEventListener('click', () => {
-      if (!sel) return;
-      if (isEncryptedJoinRequired(sel)) {
-        passwordMode = true;
-        renderBottom();
-        setTimeout(() => document.getElementById('passwordInput')?.focus(), 50);
-        return;
-      }
-      alert(`[模拟] 将设备网络设置为 #${sel.networkID} "${sel.name}"`);
-    });
-  }
+  bottom.innerHTML = `
+    <div class="action-row">
+      <button class="btn btn-md" id="selectBtn">选择并分配到此设备</button>
+    </div>
+  `;
+  const selectBtn = document.getElementById('selectBtn');
+  selectBtn.disabled = !canAssign;
+  selectBtn.addEventListener('click', () => {
+    if (!sel || !canAssign) return;
+    alert(`[模拟] 将设备网络设置为 #${sel.networkID} "${sel.name}"`);
+  });
 }
 
 // ── 初始化 ──

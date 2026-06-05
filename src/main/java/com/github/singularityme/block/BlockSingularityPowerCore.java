@@ -13,6 +13,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import com.github.singularityme.SingularityME;
+import com.github.singularityme.core.SingularityPermissionHelper;
 import com.github.singularityme.tile.TileSingularityPowerCore;
 
 import appeng.me.helpers.IGridProxyable;
@@ -37,9 +38,22 @@ public class BlockSingularityPowerCore extends Block implements ITileEntityProvi
     public boolean onBlockActivated(final World world, final int x, final int y, final int z, final EntityPlayer player,
         final int side, final float hitX, final float hitY, final float hitZ) {
         if (!world.isRemote) {
+            final TileEntity te = world.getTileEntity(x, y, z);
+            if (!SingularityPermissionHelper.checkUse(world, te, player)) return true;
             player.openGui(SingularityME.instance, GUI_ID, world, x, y, z);
         }
         return true;
+    }
+
+    @Override
+    public boolean removedByPlayer(final World world, final EntityPlayer player, final int x, final int y, final int z,
+        final boolean willHarvest) {
+        final TileEntity te = world.getTileEntity(x, y, z);
+        if (!world.isRemote && !SingularityPermissionHelper.checkBuild(world, te, player)) {
+            SingularityBlockSyncHelper.resyncDeniedBreak(world, player, x, y, z);
+            return false;
+        }
+        return super.removedByPlayer(world, player, x, y, z, willHarvest);
     }
 
     @Override

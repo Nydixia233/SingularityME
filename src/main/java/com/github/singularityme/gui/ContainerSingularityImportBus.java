@@ -4,6 +4,7 @@ import static appeng.util.Platform.isServer;
 
 import net.minecraft.entity.player.InventoryPlayer;
 
+import com.github.singularityme.block.BlockSingularityImportBus;
 import com.github.singularityme.tile.TileSingularityImportBus;
 
 import appeng.api.config.RedstoneMode;
@@ -11,6 +12,7 @@ import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
 import appeng.api.storage.StorageName;
 import appeng.api.storage.data.IAEStack;
+import appeng.container.PrimaryGui;
 import appeng.container.implementations.ContainerUpgradeable;
 import appeng.container.interfaces.IVirtualSlotHolder;
 import appeng.container.slot.OptionalSlotFake;
@@ -33,6 +35,11 @@ public class ContainerSingularityImportBus extends ContainerUpgradeable implemen
     public ContainerSingularityImportBus(final InventoryPlayer ip, final TileSingularityImportBus te) {
         super(ip, te);
         this.importBus = te;
+    }
+
+    @Override
+    public PrimaryGui createPrimaryGui() {
+        return SingularityPrimaryGui.create(BlockSingularityImportBus.GUI_ID, this);
     }
 
     // ---- ContainerUpgradeable overrides ----

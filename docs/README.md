@@ -21,6 +21,8 @@
 | [设备参考手册](device-reference.md) | 12 种设备的技术参数：类名、接口、功耗、升级卡 |
 | [架构白皮书](singularity-me-architecture-whitepaper.md) | 网络模型、节点注入、生命周期、跨维度、能量流、权限 |
 | [开发者指南](dev-guide.md) | 项目结构、添加新设备步骤、关键扩展点、调试技巧 |
+| [ModularUI2 速查](modularui2-guide.md) | 本项目网络 UI 的常用 Widget、刷新模式、迁移对照 |
+| [ModularUI2 指导](modularui2/README.md) | ModularUI2 源码级深度指南、client-only 接入、布局求解、Widget、同步、绘制与排错 |
 
 ### 🔧 维护者
 
@@ -41,6 +43,9 @@
 | `device-reference.md` | 参考 | 开发者 | 每个设备的技术参数手册 |
 | `singularity-me-architecture-whitepaper.md` | 设计 | 开发者 | 网络模型、生命周期、注入机制的深度解析 |
 | `dev-guide.md` | 指南 | 开发者 | 如何贡献代码、添加新设备 |
+| `modularui2-guide.md` | 指南 | 开发者 | 网络 UI 维护速查 |
+| `modularui2/README.md` | 指南 | 开发者 | ModularUI2 源码级深度指南与 Qz 迁移对照 |
+| `html-reference/` | 参考 | 开发者 | Network Tab/Terminal 的 HTML 视觉原型 |
 | `compat-profile.md` | 配置 | 维护者 | AE2 生态兼容测试方案 |
 | `errors/README.md` | 运维 | 维护者 | 历史错误索引与教训 |
 

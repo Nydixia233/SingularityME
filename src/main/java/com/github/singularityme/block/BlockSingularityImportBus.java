@@ -8,6 +8,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import com.github.singularityme.SingularityME;
+import com.github.singularityme.core.SingularityPermissionHelper;
 import com.github.singularityme.tile.TileSingularityImportBus;
 
 import appeng.me.helpers.IGridProxyable;
@@ -84,6 +85,8 @@ public class BlockSingularityImportBus extends BlockSingularityPartLike {
         final int side, final float fx, final float fy, final float fz) {
         if (BlockSingularityStorageBus.tryWrenchRotate(world, x, y, z, player)) return true;
         if (!world.isRemote) {
+            final TileEntity te = world.getTileEntity(x, y, z);
+            if (!SingularityPermissionHelper.checkUse(world, te, player)) return true;
             player.openGui(SingularityME.instance, GUI_ID, world, x, y, z);
         }
         return true;

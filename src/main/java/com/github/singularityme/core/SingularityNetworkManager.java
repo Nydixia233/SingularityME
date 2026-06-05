@@ -25,9 +25,9 @@ import appeng.me.GridNode;
  * Server-level singleton that maps each {@link NetworkKey} to its {@link SingularityGrid}.
  *
  * <p>
- * All ME devices owned by the same player and assigned to the same network are
- * redirected to the corresponding grid here. The default network (networkID=0) is
- * backward-compatible with the pre-P2 single-network-per-player behaviour.
+ * All ME devices assigned to the same registry network are redirected to the
+ * corresponding owner grid here. {@code networkID = 0} is the unassigned sentinel
+ * and never joins a runtime grid.
  */
 public enum SingularityNetworkManager {
 
@@ -35,7 +35,7 @@ public enum SingularityNetworkManager {
 
     private static final Logger LOG = LogManager.getLogger("SingularityME");
 
-    // NetworkKey (playerID + networkID) -> their SingularityGrid
+    // NetworkKey (ownerPlayerID + networkID) -> runtime SingularityGrid
     private final Map<NetworkKey, SingularityGrid> grids = new ConcurrentHashMap<>();
     private volatile int lastPrunedStaleNodeCount = 0;
 
@@ -114,8 +114,8 @@ public enum SingularityNetworkManager {
     }
 
     /**
-     * Backward-compatible overload for the default network (networkID=0).
-     * Existing callers that have not yet been updated to pass networkID use this.
+     * Legacy overload for callers that have not been updated to pass a network ID.
+     * It resolves to the unassigned sentinel and therefore does not join a grid.
      */
     public int registerNode(final int playerID, final GridNode node) {
         return registerNode(playerID, 0, node);
@@ -182,7 +182,7 @@ public enum SingularityNetworkManager {
     }
 
     /**
-     * Backward-compatible overload for the default network (networkID=0).
+     * Legacy overload for the unassigned sentinel (networkID=0).
      */
     public void unregisterNode(final int playerID, final GridNode node, final boolean permanent) {
         unregisterNode(playerID, 0, node, permanent);
@@ -310,7 +310,7 @@ public enum SingularityNetworkManager {
         return grids.get(key);
     }
 
-    /** Returns the default-network grid for a player, or {@code null} if none exists. */
+    /** Legacy lookup for the unassigned sentinel; normally returns {@code null}. */
     public SingularityGrid getGridForPlayer(final int playerID) {
         if (playerID < 0) return null;
         return grids.get(NetworkKey.defaultFor(playerID));
@@ -337,7 +337,7 @@ public enum SingularityNetworkManager {
         return grid;
     }
 
-    /** Backward-compatible: get or create the default network grid for a player. */
+    /** Legacy creation path for the unassigned sentinel; {@link #getOrCreateGrid} rejects it. */
     public SingularityGrid getOrCreateGridForPlayer(final int playerID) {
         return getOrCreateGrid(NetworkKey.defaultFor(playerID));
     }

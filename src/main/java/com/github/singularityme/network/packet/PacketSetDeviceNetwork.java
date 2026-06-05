@@ -5,8 +5,10 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
 
 import com.github.singularityme.core.SingularityNetworkRegistry;
+import com.github.singularityme.network.SingularityChannel;
 import com.github.singularityme.tile.ISingularityNetworkDevice;
 
+import appeng.api.config.SecurityPermissions;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
 import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
 import cpw.mods.fml.common.network.simpleimpl.MessageContext;
@@ -19,8 +21,7 @@ import io.netty.buffer.ByteBuf;
  * Payload: int x, int y, int z, int dim, int newNetworkID
  *
  * <p>
- * The server validates that the requesting player has access to the target network
- * before applying the change.
+ * The server validates BUILD permission on the target/current network before applying the change.
  */
 public class PacketSetDeviceNetwork implements IMessage {
 
@@ -73,6 +74,7 @@ public class PacketSetDeviceNetwork implements IMessage {
             final World world = NetworkTabPacketHelper.getLoadedWorld(msg.dim);
             if (world == null) {
                 NetworkTabPacketHelper.sendNetworkTabData(player, 0);
+                sendResult(player, NetworkActionResult.DEVICE_UNAVAILABLE, msg.newNetworkID);
                 return;
             }
 
@@ -80,6 +82,7 @@ public class PacketSetDeviceNetwork implements IMessage {
             final int currentNetworkID = NetworkTabPacketHelper.getDeviceNetworkID(te);
             if (!(te instanceof ISingularityNetworkDevice device)) {
                 NetworkTabPacketHelper.sendNetworkTabData(player, currentNetworkID);
+                sendResult(player, NetworkActionResult.DEVICE_UNAVAILABLE, msg.newNetworkID);
                 return;
             }
 
@@ -87,13 +90,32 @@ public class PacketSetDeviceNetwork implements IMessage {
             if (playerID < 0) return;
 
             final SingularityNetworkRegistry registry = NetworkTabPacketHelper.getRegistry(player);
-            if (msg.newNetworkID < 0 || (msg.newNetworkID != 0 && !registry.canAccess(msg.newNetworkID, playerID))) {
+            if (!canChangeAssignment(registry, currentNetworkID, msg.newNetworkID, playerID)) {
                 NetworkTabPacketHelper.sendNetworkTabData(player, currentNetworkID);
+                sendResult(player, NetworkActionResult.NO_ACCESS, msg.newNetworkID);
                 return;
             }
 
             device.setNetworkID(msg.newNetworkID);
             NetworkTabPacketHelper.sendNetworkTabData(player, device.getNetworkID());
+            sendResult(player, NetworkActionResult.DEVICE_ASSIGNED, msg.newNetworkID);
+        }
+
+        private static void sendResult(final EntityPlayerMP player, final NetworkActionResult result,
+            final int networkID) {
+            SingularityChannel.CHANNEL.sendTo(
+                new PacketNetworkActionResult(NetworkActionType.ASSIGN_DEVICE, result, networkID),
+                player);
+        }
+
+        private static boolean canChangeAssignment(final SingularityNetworkRegistry registry,
+            final int currentNetworkID, final int newNetworkID, final int playerID) {
+            if (newNetworkID < 0) return false;
+            if (newNetworkID == 0) {
+                return currentNetworkID == 0
+                    || registry.hasPermission(currentNetworkID, playerID, SecurityPermissions.BUILD);
+            }
+            return registry.hasPermission(newNetworkID, playerID, SecurityPermissions.BUILD);
         }
     }
 }

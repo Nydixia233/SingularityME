@@ -10,6 +10,7 @@ import net.minecraft.entity.player.InventoryPlayer;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.github.singularityme.block.BlockSingularityStorageBus;
 import com.github.singularityme.tile.TileSingularityStorageBus;
 
 import appeng.api.config.AccessRestriction;
@@ -26,6 +27,7 @@ import appeng.api.storage.data.IAEStackType;
 import appeng.api.storage.data.IItemList;
 import appeng.api.util.IConfigManager;
 import appeng.api.util.IConfigurableObject;
+import appeng.container.PrimaryGui;
 import appeng.container.guisync.GuiSync;
 import appeng.container.implementations.ContainerUpgradeable;
 import appeng.container.interfaces.IVirtualSlotHolder;
@@ -85,6 +87,11 @@ public class ContainerSingularityStorageBus extends ContainerUpgradeable
         this.partitionMode = pair != null && pair.getKey() == this.storageBus.getStackType()
             ? ActionItems.NEXT_PARTITION
             : ActionItems.WRENCH;
+    }
+
+    @Override
+    public PrimaryGui createPrimaryGui() {
+        return SingularityPrimaryGui.create(BlockSingularityStorageBus.GUI_ID, this);
     }
 
     // ---- IConfigurableObject ----

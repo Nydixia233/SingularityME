@@ -10,9 +10,8 @@
 | 模组总览 | `docs/singularity-me-overview.md` |
 | 架构设计 | `docs/singularity-me-architecture-whitepaper.md` |
 | 兼容配置 | `docs/compat-profile.md` |
-| 审查报告 | `docs/SingularityME-审查报告-20260528-三层深度审计.md` |
+| MUI2 集成方式 | `docs/modularui2/README.md` + 本文件"ModularUI2 集成"章节 |
 | 错误记录索引 | `docs/errors/README.md` |
-| 三种 AI 角色定义 | `prompts/architect.md` |
 
 ## 项目定位
 
@@ -22,23 +21,24 @@
 - 设计原则：加法而非修改——不改动 AE2 现有行为，只新增平行设备体系。
 - 核心概念：玩家可创建多张奇点网格（SingularityGrid），以网络 ID 区分；设备即放即用、破坏即注销。
 - 网格在服务端启动时从 WorldSavedData 预恢复，或设备分配网络后创建。
-- UI 层基于 Qz UILib 4.1.3-LTS，同时包含 AE2 原生 GUI（`GuiUpgradeable`、`GuiMEMonitorable` 等）。
+- UI 层基于 GTNH ModularUI2 2.3.63，同时包含 AE2 原生 GUI（`GuiUpgradeable`、`GuiMEMonitorable` 等）。
+- 网络 UI（Network Tab + Network Terminal）使用 ModularUI2 `ModularScreen` + `GuiScreenWrapper`，纯客户端面板，不走 MUI2 sync handler。
 
 ## 对外入口边界
 
 - `SingularityME.java` — `@Mod` 主类，preInit/init/postInit 生命周期入口
 - 方块注册在 `block/`（11 种设备 + 1 调试探针），TileEntity 在 `tile/`
-- GUI 分两类：AE2 原版 GUI（`gui/`，继承 `GuiUpgradeable`）和 Qz UILib 网页式 UI（`client/ui/`）
-- UI 通过 `UiDocumentScreens.createDocumentScreen()` 创建（网络终端、网络标签页）
-- 核心逻辑在 `core/`：SingularityNetworkManager、SingularityGrid、SecurityLevel、AccessLevel
+- GUI 分两类：AE2 原版 GUI（`gui/`，继承 `GuiUpgradeable`）和 MUI2 网络 UI（`client/ui/`，`NetworkTabUI` + 5 面板 `NetworkTerminalUI`）
+- 网络 UI 通过 `ModularScreen` + `GuiScreenWrapper` 创建，保留 `static GuiScreen create(TileEntity)` 和 `static boolean receiveNetworkData(PacketNetworkTabData)` 静态接口；网络终端状态页另有 `receiveNetworkStatus(PacketNetworkStatus)` 静态入口
+- 核心逻辑在 `core/`：SingularityNetworkManager、SingularityGrid、SecurityLevel，以及基于 AE2 `SecurityPermissions` 的权限表（见 `src/main/java/com/github/singularityme/core/SingularityNetworkRegistry.java:20`）。
 - 能量模型：`SingularityAnchorNode` 作为结构性锚点，实际能量由 `TileSingularityPowerCore` 通过元件叠加提供（普通 200k AE/个、致密 1.6M AE/个、创造无限）
 
 ## 主动读取原则
 
 - 涉及 AE2 兼容 → 先读 `docs/compat-profile.md`
-- 涉及 UI 布局 → 参考 `client/ui/` 下 Java 文件 + `docs/html-reference/` 下 HTML 预览
+- 涉及 NEI/AE2 终端 GUI 兼容 → 注意 NEI overlay/bookmark 按精确 `GuiContainer` 类注册；奇点 GUI 继承 AE2 原 GUI 后仍需显式注册子类，当前入口见 `src/main/java/com/github/singularityme/client/integration/SingularityNeiCompat.java:49`
+- 涉及 UI 布局 → 参考 `client/ui/` 下 Java 文件 + `docs/html-reference/` 下 HTML 预览 + `docs/modularui2/README.md`
 - 涉及网络协议 → 先读 `network/packet/` 下的包定义
-- 涉及审查结论 → 先读审查报告
 - 需要具体类/入口/目录位置 → 用 Glob/Grep/Read 现查，不在本文件维护索引
 
 ## 运行与验证
@@ -49,19 +49,39 @@
   - 编译：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat compileJava compileMixinJava -x spotlessJavaCheck`
   - 构建：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat build -x spotlessJavaCheck`
   - Spotless：`$env:GRADLE_USER_HOME="$env:USERPROFILE\.gradle"; ./gradlew.bat spotlessJavaCheck`
-  - 部署：`./deploy-mod.bat -Once`
-  - 目标实例：`$env:APPDATA\PrismLauncher\instances\<实例名>\.minecraft\mods`
-- Qz UILib 依赖通过本地 Maven 仓库解析（`mavenLocal()`），官方 JAR 名 `qz_uilib-4.1.3-LTS.jar`
-- 修复后的 Qz UILib 在实例 mods 文件夹中，如需重新修补参考本文件末尾的已知问题列表
+  - 本地联机一键启动：`./start-test-env.bat`（默认先构建、部署，再启动 GTNH 测试服务器与 `GTNH290test` Prism 实例；目标路径由脚本参数和 `scripts/` 默认配置管理）
+  - 部署：`./deploy-mod.bat -Once`（自动部署到脚本当前配置的多人联机测试目标）
+- ModularUI2 依赖通过 GTNH Maven 仓库解析，`dependencies.gradle` 中声明 `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`
+- 当前默认部署目标由 `scripts/deploy-built-mod.ps1` 管理，用于两个 PrismLauncher 客户端实例和一个 GTNH 测试服务端；服务端根目录通过环境变量 `SINGULARITYME_SERVER_ROOT` 提供（未设置时自动跳过服务端目标），文档不记录本地绝对路径。
 
-## 已知的 Qz UILib 问题与 workaround
+## ModularUI2 集成
 
-| 问题 | 根因代码 | 状态 |
-|------|----------|------|
-| flex 子元素 maxWidth/minWidth 不生效 | `FlexLayoutHelper.resolveContentMainSize()` 未调用 `applyWidthConstraints` | Qz 源码已修补 |
-| 列 flex 用自然内容高度覆盖 flex-basis | `FlexLayoutHelper.layoutColumnFlexChildren()` L228-232 | Qz 源码已修补 |
-| 框架给根元素默认 `overflow-y:auto` | `UiDocumentScreens` 文档注释 | Java 侧显式设 `overflow:hidden` |
-| 滚动容器需 `height:auto()` 而非 `px(0)` | `UiStyleLength.Type` 区分 PIXEL/AUTO | Java 侧 `scrollBox()` 使用 `auto()` |
+- 包名：`com.cleanroommc.modularui`（GTNH fork）
+- 网络 UI 走 **client-only screen** 路线：`ModularScreen` + `GuiScreenWrapper`（非 `GuiContainer`），不使用 MUI2 sync handler
+- 创建屏幕配方：  
+  ```java
+  ModularScreen screen = new ModularScreen("singularityme",
+      (ModularGuiContext ctx) -> buildPanel(te));  // 返回 ModularPanel
+  screen.getContext().setSettings(new UISettings());
+  return new GuiScreenWrapper(screen);
+  ```
+- `GuiScreenWrapper` 构造时 `screen.construct(this)` 跳过 `ModularContainer` 初始化，纯客户端面板无需 sync
+- 数据刷新沿用 packet → client 线程 `func_152344_a` → 静态接收入口 → 重建 widget 子树。网络列表走 `PacketNetworkTabData`，网络终端 HOME/CONNECTION 状态摘要走 `PacketNetworkStatus`，请求以选中的 `networkID` 为键，不以终端方块坐标为键。
+
+### 已知的 MUI2 API 陷阱
+
+| 问题 | 说明 | 状态 |
+|------|------|------|
+| `IPositioned` sizing 链式类型退化 | 源码签名返回泛型 `W`，但在部分 Widget、raw type 或 Java 静态类型推断下会退化为 `IPositioned`，导致 `.width()` / `.expanded()` 后不能继续 `.background()` / `.color()` 等 Widget 专属方法 | 已规避：分步调用或先设 background 再 sizing |
+| MUI2 两参数 `padding` / `margin` 顺序是水平、垂直 | 左右留白应写 `.padding(horizontal, 0)`；`.padding(0, horizontal)` 实际是上下留白 | 已记录：见 `docs/errors/ERROR-20260603-mui2-padding-argument-order.md` |
+| `Rectangle` 不支持圆角+边框并存 | 原 Qz UI 大量圆角+边框效果丢失 | 接受直角边框 |
+| SIZING TextWidget padding overflow | 见下方已知问题 | 待修复 |
+
+### 已知的 MUI2 SIZING 问题
+
+| 问题 | 根因 | 状态 |
+|------|------|------|
+| TextWidget `margin/padding set on both sides on axis Y exceeds parent size` | row 固定高度（24px）内 TextWidget 的 padding 与主题默认 padding 叠加导致垂直溢出 | 日志报错但未阻断渲染，待排查修复 |
 
 ## 设计决策
 

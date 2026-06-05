@@ -45,6 +45,9 @@ import appeng.core.sync.packets.PacketValueConfig;
  */
 public class GuiSingularityStorageBus extends GuiUpgradeable {
 
+    public static final int PRIORITY_TAB_Y_OFFSET = 66;
+    private static final int NETWORK_TAB_Y_OFFSET = 22;
+
     /** Max columns per row. */
     private static final int COLS = 9;
     /** Max rows (5 CAPACITY cards → 7 rows × 9 = 63 slots). */
@@ -121,11 +124,16 @@ public class GuiSingularityStorageBus extends GuiUpgradeable {
             ActionItems.ORE_FILTER);
         btnPriority = new GuiTabButton(
             this.guiLeft + 154,
-            this.guiTop,
+            this.guiTop + PRIORITY_TAB_Y_OFFSET,
             2 + 4 * 16,
             GuiText.Priority.getLocal(),
             itemRender);
-        btnNetworkTab = new GuiTabButton(this.guiLeft + 154, this.guiTop + 22, 2 + 11 * 16, "Network", itemRender);
+        btnNetworkTab = new GuiTabButton(
+            this.guiLeft + 154,
+            this.guiTop + NETWORK_TAB_Y_OFFSET,
+            2 + 11 * 16,
+            "Network",
+            itemRender);
 
         this.buttonList.add(btnStorageFilter);
         this.buttonList.add(this.fuzzyMode);

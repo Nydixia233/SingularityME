@@ -3,11 +3,10 @@ package com.github.singularityme.core;
 public enum SecurityLevel {
 
     PUBLIC,
-    ENCRYPTED,
     PRIVATE;
 
+    /** 从网络包/NBT 中安全还原安全级别；旧 ENCRYPTED ordinal=1 会迁移为 PRIVATE。 */
     public static SecurityLevel fromOrdinal(final int ordinal) {
-        final SecurityLevel[] values = values();
-        return ordinal >= 0 && ordinal < values.length ? values[ordinal] : PRIVATE;
+        return ordinal == PUBLIC.ordinal() ? PUBLIC : PRIVATE;
     }
 }

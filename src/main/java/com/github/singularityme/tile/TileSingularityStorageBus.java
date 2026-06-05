@@ -62,6 +62,7 @@ import appeng.api.util.DimensionalCoord;
 import appeng.api.util.IConfigManager;
 import appeng.api.util.IConfigurableObject;
 import appeng.helpers.IInterfaceHost;
+import appeng.core.settings.TickRates;
 import appeng.me.GridAccessException;
 import appeng.me.GridNode;
 import appeng.me.storage.MEInventoryHandler;
@@ -590,7 +591,11 @@ public class TileSingularityStorageBus extends AENetworkInvTile implements IStor
 
     @Override
     public TickingRequest getTickingRequest(final IGridNode node) {
-        return new TickingRequest(5, 40, storageBusMonitors.isEmpty(), true);
+        return new TickingRequest(
+            TickRates.StorageBus.getMin(),
+            TickRates.StorageBus.getMax(),
+            storageBusMonitors.isEmpty(),
+            true);
     }
 
     @Override
@@ -814,8 +819,9 @@ public class TileSingularityStorageBus extends AENetworkInvTile implements IStor
 
     @Override
     public void setFilter(final String filter) {
-        previousOreFilterString = oreFilterString;
-        oreFilterString = filter == null ? "" : filter;
+        final String normalizedFilter = filter == null ? "" : filter;
+        oreFilterString = normalizedFilter;
+        previousOreFilterString = normalizedFilter;
         invalidateStorageHandler();
     }
 
@@ -991,6 +997,11 @@ public class TileSingularityStorageBus extends AENetworkInvTile implements IStor
         @Override
         public boolean validForPass(final int pass) {
             return canUseStorage() && super.validForPass(pass);
+        }
+
+        @Override
+        public IMEInventory<T> getInternal() {
+            return canUseStorage() ? super.getInternal() : null;
         }
 
         @Override

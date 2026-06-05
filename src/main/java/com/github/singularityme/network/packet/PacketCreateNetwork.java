@@ -31,7 +31,6 @@ public class PacketCreateNetwork implements IMessage {
     public String name = "";
     public int color = SingularityNetworkRegistry.DEFAULT_COLOR;
     public int securityOrdinal = SecurityLevel.PRIVATE.ordinal();
-    public String passwordHash = "";
 
     public PacketCreateNetwork() {}
 
@@ -44,11 +43,10 @@ public class PacketCreateNetwork implements IMessage {
     }
 
     public PacketCreateNetwork(final int x, final int y, final int z, final int dim, final String name, final int color,
-        final int securityOrdinal, final String passwordHash) {
+        final int securityOrdinal) {
         this(x, y, z, dim, name);
         this.color = color & 0xFFFFFF;
         this.securityOrdinal = securityOrdinal;
-        this.passwordHash = passwordHash == null ? "" : passwordHash;
     }
 
     @Override
@@ -63,10 +61,6 @@ public class PacketCreateNetwork implements IMessage {
         this.name = new String(nameBytes, java.nio.charset.StandardCharsets.UTF_8);
         this.color = buf.readInt();
         this.securityOrdinal = buf.readInt();
-        final int hashLen = buf.readShort();
-        final byte[] hashBytes = new byte[hashLen];
-        buf.readBytes(hashBytes);
-        this.passwordHash = new String(hashBytes, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     @Override
@@ -80,9 +74,6 @@ public class PacketCreateNetwork implements IMessage {
         buf.writeBytes(nameBytes);
         buf.writeInt(this.color & 0xFFFFFF);
         buf.writeInt(this.securityOrdinal);
-        final byte[] hashBytes = this.passwordHash.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        buf.writeShort(hashBytes.length);
-        buf.writeBytes(hashBytes);
     }
 
     // ---- Handler (runs on SERVER) ----
@@ -117,8 +108,7 @@ public class PacketCreateNetwork implements IMessage {
                 playerID,
                 trimmedName,
                 msg.color,
-                SecurityLevel.fromOrdinal(msg.securityOrdinal),
-                msg.passwordHash);
+                SecurityLevel.fromOrdinal(msg.securityOrdinal));
 
             // Get the current networkID of the device so the reply packet is accurate
             final net.minecraft.tileentity.TileEntity te = NetworkTabPacketHelper
