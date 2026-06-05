@@ -103,13 +103,15 @@ public class SingularityNetworkRegistry extends WorldSavedData {
         return true;
     }
 
-    /** SECURITY 持有者或 owner 可修改网络颜色与公开/私有类型。 */
+    /** SECURITY 持有者或 owner 可修改网络颜色；公开/私有切换仅 owner 可改。 */
     public synchronized boolean setNetworkSettings(final int networkID, final int requestingPlayerID, final int color,
         final SecurityLevel security) {
         final NetworkMeta meta = networks.get(networkID);
         if (meta == null || !meta.canManagePermissions(requestingPlayerID)) return false;
+        final SecurityLevel requestedSecurity = security == null ? SecurityLevel.PRIVATE : security;
+        if (requestedSecurity != meta.security && meta.ownerPlayerID != requestingPlayerID) return false;
         meta.color = color & 0xFFFFFF;
-        meta.security = security == null ? SecurityLevel.PRIVATE : security;
+        meta.security = requestedSecurity;
         meta.touch();
         markDirty();
         return true;

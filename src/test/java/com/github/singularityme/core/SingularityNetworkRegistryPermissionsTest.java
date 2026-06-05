@@ -81,6 +81,52 @@ public class SingularityNetworkRegistryPermissionsTest {
         assertEquals(EnumSet.allOf(SecurityPermissions.class), registry.getPlayerPermissions(networkID, 99));
     }
 
+    /** PUBLIC 网络的非 owner 玩家即使被视为可使用，也不能把网络切为 PRIVATE。 */
+    @Test
+    public void publicNetworkNonOwnerCannotChangeSecurityLevel() {
+        final SingularityNetworkRegistry registry = new SingularityNetworkRegistry("test_registry");
+        final int networkID = registry.createNetwork(1, "Public", 0x123456, SecurityLevel.PUBLIC);
+
+        assertFalse(registry.setNetworkSettings(networkID, 2, 0x654321, SecurityLevel.PRIVATE));
+        assertEquals(SecurityLevel.PUBLIC, registry.getNetwork(networkID).security);
+        assertEquals(0x123456, registry.getNetwork(networkID).color);
+    }
+
+    /** 公私切换只属于 owner；显式 SECURITY 持有者也不能把私有网络改公开。 */
+    @Test
+    public void delegatedSecurityHolderCannotChangeSecurityLevel() {
+        final SingularityNetworkRegistry registry = new SingularityNetworkRegistry("test_registry");
+        final int networkID = registry.createNetwork(1, "Private", 0x123456, SecurityLevel.PRIVATE);
+        assertTrue(registry.setPlayerPermissions(networkID, 1, 2, EnumSet.of(SECURITY)));
+
+        assertFalse(registry.setNetworkSettings(networkID, 2, 0x654321, SecurityLevel.PUBLIC));
+        assertEquals(SecurityLevel.PRIVATE, registry.getNetwork(networkID).security);
+        assertEquals(0x123456, registry.getNetwork(networkID).color);
+    }
+
+    /** SECURITY 持有者不切换公私状态时，仍可修改网络颜色。 */
+    @Test
+    public void delegatedSecurityHolderCanChangeColorWithoutChangingSecurityLevel() {
+        final SingularityNetworkRegistry registry = new SingularityNetworkRegistry("test_registry");
+        final int networkID = registry.createNetwork(1, "Private", 0x123456, SecurityLevel.PRIVATE);
+        assertTrue(registry.setPlayerPermissions(networkID, 1, 2, EnumSet.of(SECURITY)));
+
+        assertTrue(registry.setNetworkSettings(networkID, 2, 0x654321, SecurityLevel.PRIVATE));
+        assertEquals(SecurityLevel.PRIVATE, registry.getNetwork(networkID).security);
+        assertEquals(0x654321, registry.getNetwork(networkID).color);
+    }
+
+    /** owner 可以切换网络公私状态。 */
+    @Test
+    public void ownerCanChangeSecurityLevel() {
+        final SingularityNetworkRegistry registry = new SingularityNetworkRegistry("test_registry");
+        final int networkID = registry.createNetwork(1, "Public", 0x123456, SecurityLevel.PUBLIC);
+
+        assertTrue(registry.setNetworkSettings(networkID, 1, 0x654321, SecurityLevel.PRIVATE));
+        assertEquals(SecurityLevel.PRIVATE, registry.getNetwork(networkID).security);
+        assertEquals(0x654321, registry.getNetwork(networkID).color);
+    }
+
     /** PRIVATE 网络未授权玩家不可见也不可用。 */
     @Test
     public void privateNetworkRequiresGrant() {

@@ -1099,6 +1099,20 @@ public final class NetworkUiKit {
             .child(new TextWidget(IKey.str("#" + rgbHex(color))).color(0xFF000000 | color));
     }
 
+    /** 构建安全级别只读字段，用于非 owner 设置页展示当前公私状态。 */
+    @SuppressWarnings("unchecked")
+    public static Flow securityReadonly(final SecurityLevel security) {
+        final SecurityLevel actual = security == null ? SecurityLevel.PRIVATE : security;
+        return Flow.row()
+            .childPadding(6).height(Palette.ROW_H).expanded()
+            .padding(Palette.LIST_ROW_PADDING_H, 0)
+            .crossAxisAlignment(Alignment.CrossAxis.CENTER)
+            .background(Styles.inputBg())
+            .disableHoverBackground()
+            .child(statusDotWidget(securityColor(actual)))
+            .child(new TextWidget(IKey.str(securityChoiceName(actual))).color(Palette.TEXT_PRIMARY));
+    }
+
     /** 构建安全级别分段控件。 */
     @SuppressWarnings("unchecked")
     public static Flow securitySegmentRow(final SecurityLevel selected,

@@ -950,10 +950,10 @@ public final class NetworkTerminalUI {
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.security"),
-                NetworkUiKit.securitySegmentRow(selectedSecurity, level -> {
+                sel.isOwner ? NetworkUiKit.securitySegmentRow(selectedSecurity, level -> {
                     selectedSecurity = level;
                     renderContent(false);
-                })));
+                }) : NetworkUiKit.securityReadonly(SecurityLevel.fromOrdinal(sel.securityOrdinal))));
 
             contentArea.child(formRow(
                 NetworkUiKit.tr("gui.singularityme.network_terminal.settings.color"),
@@ -977,8 +977,9 @@ public final class NetworkTerminalUI {
             if (!name.isEmpty() && !name.equals(sel.name)) {
                 SingularityChannel.CHANNEL.sendToServer(new PacketRenameNetwork(sel.networkID, name));
             }
+            final SecurityLevel securityToSend = sel.isOwner ? selectedSecurity : SecurityLevel.fromOrdinal(sel.securityOrdinal);
             SingularityChannel.CHANNEL.sendToServer(
-                new PacketSetNetworkSettings(sel.networkID, selectedColor, selectedSecurity.ordinal()));
+                new PacketSetNetworkSettings(sel.networkID, selectedColor, securityToSend.ordinal()));
         }
 
         private Flow infoRow(String label, String value) {
