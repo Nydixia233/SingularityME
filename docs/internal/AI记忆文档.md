@@ -52,7 +52,7 @@
   - 本地联机一键启动：`./start-test-env.bat`（默认先构建、部署，再启动 GTNH 测试服务器与 `GTNH290test` Prism 实例；目标路径由脚本参数和 `scripts/` 默认配置管理）
   - 部署：`./deploy-mod.bat -Once`（自动部署到脚本当前配置的多人联机测试目标）
 - ModularUI2 依赖通过 GTNH Maven 仓库解析，`dependencies.gradle` 中声明 `com.github.GTNewHorizons:ModularUI2:2.3.63-1.7.10:dev`
-- 当前默认部署目标由 `scripts/deploy-built-mod.ps1` 管理，用于两个 PrismLauncher 客户端实例和一个 GTNH 测试服务端；文档不记录本地绝对路径。
+- 当前默认部署目标由 `scripts/deploy-built-mod.ps1` 管理，用于两个 PrismLauncher 客户端实例和一个 GTNH 测试服务端；服务端根目录通过环境变量 `SINGULARITYME_SERVER_ROOT` 提供（未设置时自动跳过服务端目标），文档不记录本地绝对路径。
 
 ## ModularUI2 集成
 

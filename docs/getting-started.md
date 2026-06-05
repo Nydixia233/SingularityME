@@ -71,7 +71,7 @@ $env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
 .\deploy-mod.bat -Once
 ```
 
-部署完成后，可一键启动默认 GTNH 测试服务器和 `GTNH290test` Prism 实例：
+部署完成后，可一键启动 GTNH 测试服务器（需先设置环境变量 `SINGULARITYME_SERVER_ROOT` 指向服务端根目录）和 `GTNH290test` Prism 实例：
 
 ```powershell
 .\start-test-env.bat
@@ -91,7 +91,7 @@ $env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
 
 如果部署到服务端或客户端实例时提示旧 `singularityme-*.jar` 正在被使用，先关闭对应 Minecraft 客户端或 GTNH 测试服务端，再重新执行部署或一键启动命令。
 
-默认部署目标由 `scripts/deploy-built-mod.ps1` 中的目标列表管理，当前用于多人联机测试：两个 PrismLauncher 客户端实例和一个 GTNH 测试服务端。具体本机路径只在部署脚本中维护，文档不记录本地绝对路径。
+默认部署目标由 `scripts/deploy-built-mod.ps1` 中的目标列表管理：两个 PrismLauncher 客户端实例（路径基于 `%APPDATA%\PrismLauncher`）和一个 GTNH 测试服务端。服务端根目录因机器而异，通过环境变量 `SINGULARITYME_SERVER_ROOT` 提供；未设置时部署会自动跳过服务端目标、只部署到客户端实例，`start-test-env.bat` 启动服务器则会报错提示（可改用 `-ClientOnly` 只启动客户端）。文档不记录本地绝对路径。
 
 如需临时覆盖目标目录，可直接传入一个或多个 `mods` 目录：
 

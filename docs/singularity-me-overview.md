@@ -140,14 +140,14 @@ Singularity ME 是一个运行于 **Minecraft 1.7.10 / GTNH（GregTech New Horiz
 ## 八、当前开发阶段
 
 **Phase 1（已完成）**：
-- 12 种奇点设备的基础功能（注册、联网、GUI、WAILA）
+- 12 种奇点设备（含调试探针）的基础功能（注册、联网、GUI、WAILA）
 - 核心网络模型（SingularityGrid、AnchorNode、NetworkManager）
 - 跨维度支持、能量系统、Mixin 频道绕过
 - 网络终端 UI（ModularUI2 实现）
+- 网络权限系统（PUBLIC/PRIVATE + AE2 五权限 BUILD/CRAFT/INJECT/EXTRACT/SECURITY，逐玩家授权）
 
 **Phase 2（规划中）**：
-- 网络权限与协作体验继续完善（PUBLIC/PRIVATE、B/C/I/E/S 权限、成员反馈）
 - Phantom 节点存储快照（离线设备库存可见）
-- 网络所有权转让
-- 多网络之间的物品路由/优先级
+- 权限变更实时广播（当前需重新打开 Network Terminal 刷新）
+- 多网络之间的物品路由 / 优先级
 - AE2FC 流体兼容深度集成
